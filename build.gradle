@@ -3,6 +3,10 @@ plugins {
     id 'maven-publish'
     id 'idea'
     id 'net.neoforged.moddev' version '2.0.107'
+    // kotlin support
+    id 'org.jetbrains.kotlin.jvm' version '2.2.20'
+    // OPTIONAL Kotlin Serialization plugin
+//    id 'org.jetbrains.kotlin.plugin.serialization' version '2.2.20'
 }
 
 version = mod_version
@@ -15,6 +19,10 @@ repositories {
         content {
             includeGroup("software.bernie.geckolib")
         }
+    }
+    maven {
+        name = 'Kotlin for Forge'
+        url = 'https://thedarkcolour.github.io/KotlinForForge/'
     }
 }
 
@@ -84,6 +92,7 @@ dependencies {
     // The group id is ignored when searching -- in this case, it is "blank"
     // implementation "blank:coolmod-${mc_version}:${coolmod_version}"
     implementation "software.bernie.geckolib:geckolib-neoforge-${minecraft_version}:${geckolib_version}"
+    implementation 'thedarkcolour:kotlinforforge-neoforge:5.10.0'
 
     // Example mod dependency using a file as dependency
     // implementation files("libs/coolmod-${mc_version}-${coolmod_version}.jar")

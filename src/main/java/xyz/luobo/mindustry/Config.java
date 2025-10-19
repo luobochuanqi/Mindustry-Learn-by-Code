@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-@EventBusSubscriber(modid = Mindustry.MODID)
+@EventBusSubscriber(modid = Mindustry.MOD_ID)
 public class Config implements IModBusEvent {
     private static final ModConfigSpec.Builder BUILDER =
             new ModConfigSpec.Builder();
