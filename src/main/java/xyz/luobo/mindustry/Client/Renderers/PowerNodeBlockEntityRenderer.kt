@@ -3,7 +3,6 @@ package xyz.luobo.mindustry.Client.Renderers
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import net.minecraft.client.Minecraft
-import net.minecraft.client.renderer.LevelRenderer
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer
@@ -35,16 +34,17 @@ class PowerNodeBlockEntityRenderer(
         val connections = blockEntity.getConnectedNodes()
 
         // 调试信息
-//        if (connections.isNotEmpty()) {
-//            Mindustry.LOGGER.debug("Rendering {} connections from {}", connections.size, fromPos)
-//        }
+        if (connections.isNotEmpty()) {
+//            Mindustry.LOGGER.debug("Rendering {} connections from {} to {}", connections.size, fromPos, connections)
+        }
 
         // 只渲染一次（避免双向重复绘制）
         // 可选：只渲染 fromPos < toPos 的连接
         for (toPos in connections) {
             if (fromPos >= toPos) continue // 避免重复
 
-            renderLaser(level, fromPos, toPos, poseStack, bufferSource, partialTick)
+//            Mindustry.LOGGER.debug("Rendering laser from {} to {}", fromPos, toPos)
+            renderLaser(level, fromPos, toPos, poseStack, bufferSource, partialTick, packedLight, packedOverlay)
         }
     }
 
@@ -54,7 +54,9 @@ class PowerNodeBlockEntityRenderer(
         to: BlockPos,
         poseStack: PoseStack,
         bufferSource: MultiBufferSource,
-        partialTicks: Float
+        partialTicks: Float,
+        packedLight: Int,
+        packedOverlay: Int
     ) {
         val fromCenter = Vector3f(
             from.x + 0.5f,
@@ -69,7 +71,7 @@ class PowerNodeBlockEntityRenderer(
         )
 
         // 获取顶点消费者（使用 RenderType.lines()）
-        val consumer: VertexConsumer = bufferSource.getBuffer(RenderType.LINE_STRIP)
+        val consumer: VertexConsumer = bufferSource.getBuffer(RenderType.lines())
 
         // 设置颜色（例如：蓝色激光）
         val r = 0.2f
@@ -78,50 +80,23 @@ class PowerNodeBlockEntityRenderer(
         val a = 0.8f
 
         // 获取光照（可选，激光通常忽略光照）
-        val light = LevelRenderer.getLightColor(level, to)
+        // val light = LevelRenderer.getLightColor(level, to)
 
         poseStack.pushPose()
-        val matrix = poseStack.last().pose()
-
-        // 构建顶点数据
+        val pose = poseStack.last()
+        val matrix = pose.pose()
+        val normal = Vector3f(0f, 1f, 0f)
         consumer.addVertex(matrix, fromCenter.x, fromCenter.y, fromCenter.z)
-            .setColor(255, 0, 0, 255)
-            .setNormal(0f, 1f, 0f) // 直接设置法线，不需要矩阵
+            .setColor((r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt(), (a * 255).toInt())
+            .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
+//            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
+//            .setOverlay(packedOverlay)
 
         consumer.addVertex(matrix, toCenter.x, toCenter.y, toCenter.z)
-            .setColor(255, 0, 0, 255)
-            .setNormal(0f, 1f, 0f)
-//        // --- 开始构建顶点 ---
-//        // --- 第一个顶点 (起点) ---
-//        consumer.addVertex(poseStack.last(), fromCenter.x, fromCenter.y, fromCenter.z)
-//        consumer.setColor(r, g, b, a) // 设置颜色
-//        consumer.setUv(0f, 0f)       // UV 坐标 (线条渲染通常用不到)
-//        consumer.setOverlay(0)    // 覆盖坐标 (例如附魔光效)
-//        consumer.setLight(light)     // 光照 (使用 uv2)
-//        consumer.setNormal(poseStack.last(), 0f, 1f, 0f) // 法线向量 (用于光照计算)
-//
-//        // --- 第二个顶点 (终点) ---
-//        consumer.addVertex(poseStack.last(), toCenter.x, toCenter.y, toCenter.z)
-//        consumer.setColor(r, g, b, a) // 设置颜色
-//        consumer.setUv(0f, 0f)       // UV 坐标
-//        consumer.setOverlay(0)    // 覆盖坐标
-//        consumer.setLight(light)     // 光照
-//        consumer.setNormal(poseStack.last(), 0f, 1f, 0f) // 法线向量
-//        consumer.vertex(poseStack.last().pose(), fromCenter.x, fromCenter.y, fromCenter.z)
-//            .color(r, g, b, a)
-//            .uv(0f, 0f)
-//            .overlayCoords(0, 0)
-//            .uv2(light)
-//            .normal(poseStack.last().normal(), 0f, 1f, 0f)
-//            .endVertex()
-//
-//        consumer.vertex(poseStack.last().pose(), toCenter.x, toCenter.y, toCenter.z)
-//            .color(r, g, b, a)
-//            .uv(0f, 0f)
-//            .overlayCoords(0, 0)
-//            .uv2(light)
-//            .normal(poseStack.last().normal(), 0f, 1f, 0f)
-//            .endVertex()
+            .setColor((r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt(), (a * 255).toInt())
+            .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
+//            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
+//            .setOverlay(packedOverlay)
         poseStack.popPose()
     }
 }
