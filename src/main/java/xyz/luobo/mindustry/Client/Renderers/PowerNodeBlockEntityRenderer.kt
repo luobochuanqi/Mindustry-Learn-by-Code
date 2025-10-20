@@ -87,13 +87,13 @@ class PowerNodeBlockEntityRenderer(
         val matrix = pose.pose()
         val normal = Vector3f(0f, 1f, 0f)
         consumer.addVertex(matrix, fromCenter.x, fromCenter.y, fromCenter.z)
-            .setColor((r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt(), (a * 255).toInt())
+            .setColor(r, g, b, a)
             .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
 //            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
 //            .setOverlay(packedOverlay)
 
         consumer.addVertex(matrix, toCenter.x, toCenter.y, toCenter.z)
-            .setColor((r * 255).toInt(), (g * 255).toInt(), (b * 255).toInt(), (a * 255).toInt())
+            .setColor(r, g, b, a)
             .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
 //            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
 //            .setOverlay(packedOverlay)
