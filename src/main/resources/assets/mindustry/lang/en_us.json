@@ -1,5 +1,6 @@
 {
   "itemGroup.mindustry": "Mindustry",
   "block.mindustry.example_block": "Useless Block",
-  "item.mindustry.example_item": "Useless Item"
+  "item.mindustry.example_item": "Useless Item",
+  "block.mindustry.power_node_block": "Power Node"
 }

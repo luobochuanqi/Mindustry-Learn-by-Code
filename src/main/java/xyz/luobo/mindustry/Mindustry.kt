@@ -43,11 +43,5 @@ object Mindustry {
             })
 
         println(obj)
-
-//        CoroutineScope(Dispatchers.Default).launch {
-//            LOGGER.info("Before delay")
-//            delay(5.seconds)
-//            LOGGER.info("After 5 seconds")
-//        }
     }
 }

@@ -1,9 +1,12 @@
 package xyz.luobo.mindustry.Client.Renderers
 
+import com.mojang.blaze3d.vertex.DefaultVertexFormat
 import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
+import com.mojang.blaze3d.vertex.VertexFormat
 import net.minecraft.client.Minecraft
 import net.minecraft.client.renderer.MultiBufferSource
+import net.minecraft.client.renderer.RenderStateShard
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider
@@ -11,10 +14,39 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.level.Level
 import org.joml.Vector3f
 import xyz.luobo.mindustry.Common.BlockEntities.PowerNodeBlockEntity
+import xyz.luobo.mindustry.Mindustry
+import java.util.*
 
 class PowerNodeBlockEntityRenderer(
     ctx: BlockEntityRendererProvider.Context
 ) : BlockEntityRenderer<PowerNodeBlockEntity> {
+
+    /**
+     * 自定义的激光线条 RenderType。
+     * - 格式: POSITION_COLOR_NORMAL (位置, 颜色, 法线)
+     * - 模式: LINES (线条模式)
+     * - 缓冲区大小: 1536 (与 RenderType.lines 相同)
+     * - affectsCrumbling: false (与 RenderType.lines 相同)
+     * - sortOnUpload: false (与 RenderType.lines 相同)
+     * - 输出: MAIN_TARGET (主世界渲染目标)
+     * - 其他状态: 复制自 RenderType.LINES 的定义，但修改了 outputState。
+     */
+    @JvmField
+    val POWER_NODE_LASER_LINES: RenderType = RenderType.create( // 修改这里：类型改为 RenderType
+        "power_node_laser_lines",
+        DefaultVertexFormat.POSITION_COLOR_NORMAL, // 与 RenderType.lines() 相同
+        VertexFormat.Mode.LINES, 1536,
+        RenderType.CompositeState.builder()
+            .setShaderState(RenderType.RENDERTYPE_LINES_SHADER) // 与 RenderType.lines() 相同
+            .setLineState(RenderStateShard.LineStateShard(OptionalDouble.empty())) // 与 RenderType.lines() 相同
+            .setLayeringState(RenderType.VIEW_OFFSET_Z_LAYERING) // 与 RenderType.lines() 相同
+            .setTransparencyState(RenderType.TRANSLUCENT_TRANSPARENCY) // 与 RenderType.lines() 相同
+            // 关键修改：将输出目标从 ITEM_ENTITY_TARGET 改为 MAIN_TARGET
+            .setOutputState(RenderStateShard.MAIN_TARGET) // 这是修复渲染问题的核心
+            .setWriteMaskState(RenderStateShard.COLOR_DEPTH_WRITE) // 与 RenderType.lines() 相同
+            .setCullState(RenderStateShard.NO_CULL) // 与 RenderType.lines() 相同
+            .createCompositeState(false) // 与 RenderType.lines() 相同
+    )
 
     override fun render(
         blockEntity: PowerNodeBlockEntity,
@@ -43,7 +75,7 @@ class PowerNodeBlockEntityRenderer(
         for (toPos in connections) {
             if (fromPos >= toPos) continue // 避免重复
 
-//            Mindustry.LOGGER.debug("Rendering laser from {} to {}", fromPos, toPos)
+            Mindustry.LOGGER.debug("Rendering laser from {} to {}", fromPos, toPos)
             renderLaser(level, fromPos, toPos, poseStack, bufferSource, partialTick, packedLight, packedOverlay)
         }
     }
@@ -59,15 +91,15 @@ class PowerNodeBlockEntityRenderer(
         packedOverlay: Int
     ) {
         val fromCenter = Vector3f(
-            from.x + 0.5f,
-            from.y + 0.5f,
-            from.z + 0.5f
+            from.x + 0.5f - from.x,
+            from.y + 0.5f - from.y,
+            from.z + 0.5f - from.z
         )
 
         val toCenter = Vector3f(
-            to.x + 0.5f,
-            to.y + 0.5f,
-            to.z + 0.5f
+            to.x + 0.5f - from.x,
+            to.y + 0.5f- from.y,
+            to.z + 0.5f- from.z
         )
 
         // 获取顶点消费者（使用 RenderType.lines()）
@@ -85,18 +117,52 @@ class PowerNodeBlockEntityRenderer(
         poseStack.pushPose()
         val pose = poseStack.last()
         val matrix = pose.pose()
-        val normal = Vector3f(0f, 1f, 0f)
+
+        // 计算线条的方向向量，并归一化以作为法线
+        // 这对于 RenderType.lines 的光照计算很重要，避免使用零向量或常量向量
+        val direction = Vector3f(toCenter).sub(fromCenter)
+        if (direction.lengthSquared() > 0.0001f) { // 避免除以零或非常小的数
+            direction.normalize()
+        } else {
+            // 如果两点非常接近，使用一个默认方向（例如 Y 轴正方向）
+            direction.set(0f, 1f, 0f)
+        }
+        // 法线需要经过模型视图矩阵的变换
+        val normal = direction.normalize()
+//        val normal = Vector3f(0f, 1f, 0f)
+
         consumer.addVertex(matrix, fromCenter.x, fromCenter.y, fromCenter.z)
+            .setUv(0f, 0f)
             .setColor(r, g, b, a)
             .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
 //            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
-//            .setOverlay(packedOverlay)
+            .setLight(packedLight)
+            .setOverlay(packedOverlay)
 
         consumer.addVertex(matrix, toCenter.x, toCenter.y, toCenter.z)
+            .setUv(0f, 0f)
             .setColor(r, g, b, a)
             .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
 //            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
+            .setLight(packedLight)
+            .setOverlay(packedOverlay)
+
+//        consumer.addVertex(matrix, fromCenter.x + 0.2f, fromCenter.y + 0.2f, fromCenter.z + 0.2f)
+//            .setUv(0f, 0f)
+//            .setColor(r, g, b, a)
+//            .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
+////            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
+//            .setLight(packedLight)
 //            .setOverlay(packedOverlay)
+//
+//        consumer.addVertex(matrix, toCenter.x + 0.2f, toCenter.y + 0.2f, toCenter.z + 0.2f)
+//            .setUv(0f, 0f)
+//            .setColor(r, g, b, a)
+//            .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
+////            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
+//            .setLight(packedLight)
+//            .setOverlay(packedOverlay)
+
         poseStack.popPose()
     }
 }

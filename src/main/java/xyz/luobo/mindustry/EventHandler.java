@@ -20,7 +20,7 @@ public class EventHandler {
     public static class ClientModEvents implements IModBusEvent {
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {
-            LOGGER.info("HELLO FROM Clent SETUP");
+            LOGGER.info("HELLO FROM Client SETUP");
         }
         @SubscribeEvent // on the mod event bus only on the physical client
         public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
