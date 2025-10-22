@@ -129,39 +129,20 @@ class PowerNodeBlockEntityRenderer(
         }
         // 法线需要经过模型视图矩阵的变换
         val normal = direction.normalize()
-//        val normal = Vector3f(0f, 1f, 0f)
 
         consumer.addVertex(matrix, fromCenter.x, fromCenter.y, fromCenter.z)
             .setUv(0f, 0f)
             .setColor(r, g, b, a)
-            .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
-//            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
+            .setNormal(pose, normal.x(), normal.y(), normal.z())
             .setLight(packedLight)
             .setOverlay(packedOverlay)
 
         consumer.addVertex(matrix, toCenter.x, toCenter.y, toCenter.z)
             .setUv(0f, 0f)
             .setColor(r, g, b, a)
-            .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
-//            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
+            .setNormal(pose, normal.x(), normal.y(), normal.z())
             .setLight(packedLight)
             .setOverlay(packedOverlay)
-
-//        consumer.addVertex(matrix, fromCenter.x + 0.2f, fromCenter.y + 0.2f, fromCenter.z + 0.2f)
-//            .setUv(0f, 0f)
-//            .setColor(r, g, b, a)
-//            .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
-////            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
-//            .setLight(packedLight)
-//            .setOverlay(packedOverlay)
-//
-//        consumer.addVertex(matrix, toCenter.x + 0.2f, toCenter.y + 0.2f, toCenter.z + 0.2f)
-//            .setUv(0f, 0f)
-//            .setColor(r, g, b, a)
-//            .setNormal(pose, normal.x(), normal.y(), normal.z()) // 传递 PoseStack.Pose 对象
-////            .setUv2(packedLight and 0xFFFF, packedLight shr 16 and 0xFFFF)
-//            .setLight(packedLight)
-//            .setOverlay(packedOverlay)
 
         poseStack.popPose()
     }

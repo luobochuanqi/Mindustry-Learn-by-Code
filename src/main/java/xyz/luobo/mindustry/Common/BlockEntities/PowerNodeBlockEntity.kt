@@ -13,7 +13,8 @@ import net.minecraft.world.level.block.state.BlockState
 import xyz.luobo.mindustry.Common.ModBlockEntities
 import xyz.luobo.mindustry.Mindustry
 
-class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) : BlockEntity(ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get(), pos, state) {
+class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
+    BlockEntity(ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get(), pos, state) {
 
     // 存储相连的其他电力节点位置
     private val connectedNodes = mutableSetOf<BlockPos>()

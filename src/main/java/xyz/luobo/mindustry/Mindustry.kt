@@ -30,6 +30,7 @@ object Mindustry {
 
         // 添加自定义物品栏标签
         MOD_BUS.addListener(ModTabs::addCreative)
+        MOD_BUS.addListener(DataGen::generate)
 
         // 用于 S/C 的分布式执行器
         val obj = runForDist(

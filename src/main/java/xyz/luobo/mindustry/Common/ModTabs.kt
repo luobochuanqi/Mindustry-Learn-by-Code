@@ -30,7 +30,6 @@ object ModTabs {
 
     fun addCreative(event: BuildCreativeModeTabContentsEvent) {
         if (event.tabKey === EXAMPLE_TAB.getKey()) {
-//            event.accept(ModItems.EXAMPLE_ITEM.get())
             event.accept(ModItems.POWER_NODE_BLOCK_ENTITY_ITEM.get())
         }
     }
