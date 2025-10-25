@@ -9,6 +9,7 @@ import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import xyz.luobo.mindustry.common.ModBlocks
 import xyz.luobo.mindustry.common.ModItems
+import xyz.luobo.mindustry.common.items.Materials
 
 object DataGen {
     fun generate(event: GatherDataEvent) {
@@ -33,6 +34,9 @@ class ModLanguageProvider(output: PackOutput, locale: String): LanguageProvider(
 class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileHelper): ItemModelProvider(output, Mindustry.MOD_ID, existingFileHelper) {
     override fun registerModels() {
         this.basicItem(ModItems.EXAMPLE_ITEM.get())
+        Materials.ALL.forEach { material ->
+            this.basicItem(ModItems.getMaterial(material).get())
+        }
     }
 }
 

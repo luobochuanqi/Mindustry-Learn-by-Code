@@ -10,6 +10,7 @@ import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mindustry.Mindustry
+import xyz.luobo.mindustry.common.items.Materials
 import java.util.function.Supplier
 
 object ModTabs {
@@ -28,9 +29,13 @@ object ModTabs {
                 }.build()
         })
 
+    // 在这里添加物品到 创造标签页
     fun addCreative(event: BuildCreativeModeTabContentsEvent) {
         if (event.tabKey === EXAMPLE_TAB.getKey()) {
             event.accept(ModItems.POWER_NODE_BLOCK_ENTITY_ITEM.get())
+            Materials.ALL.forEach { material ->
+                event.accept(ModItems.getMaterial(material).get())
+            }
         }
     }
 

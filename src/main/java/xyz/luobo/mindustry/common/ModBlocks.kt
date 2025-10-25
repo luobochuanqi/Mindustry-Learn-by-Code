@@ -15,6 +15,5 @@ object ModBlocks {
 
     fun register() {
         MOD_BLOCKS.register(MOD_BUS)
-
     }
 }
