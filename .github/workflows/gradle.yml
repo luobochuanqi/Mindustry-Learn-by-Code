@@ -42,6 +42,6 @@ jobs:
     - name: Upload mod JAR
       uses: actions/upload-artifact@v4
       with:
-        name: my-mod-jar
+        name: mindustry
         path: build/libs/*.jar
         retention-days: 7
