@@ -1,4 +1,4 @@
-package xyz.luobo.mindustry.Common
+package xyz.luobo.mindustry.common
 
 import net.minecraft.core.registries.Registries
 import net.minecraft.network.chat.Component

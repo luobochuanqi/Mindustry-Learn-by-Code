@@ -7,8 +7,8 @@ import net.neoforged.neoforge.client.model.generators.ItemModelProvider
 import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
-import xyz.luobo.mindustry.Common.ModBlocks
-import xyz.luobo.mindustry.Common.ModItems
+import xyz.luobo.mindustry.common.ModBlocks
+import xyz.luobo.mindustry.common.ModItems
 
 object DataGen {
     fun generate(event: GatherDataEvent) {

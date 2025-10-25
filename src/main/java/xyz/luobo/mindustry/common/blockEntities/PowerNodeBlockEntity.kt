@@ -1,4 +1,4 @@
-package xyz.luobo.mindustry.Common.BlockEntities
+package xyz.luobo.mindustry.common.blockEntities
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
@@ -10,13 +10,11 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
-import xyz.luobo.mindustry.Client.Renderers.LaserRenderer
-import xyz.luobo.mindustry.Common.ModBlockEntities
-import xyz.luobo.mindustry.Mindustry
+import xyz.luobo.mindustry.client.renderers.LaserRenderer
+import xyz.luobo.mindustry.common.ModBlockEntities
 
 class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get(), pos, state) {
-
     // 存储相连的其他电力节点位置
     private val connectedNodes = mutableSetOf<BlockPos>()
 
@@ -27,30 +25,22 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     // 用于客户端渲染的标记
     var shouldRenderConnections = true
 
-    // 每个节点独立的发现冷却计时器
-    private var discoveryCooldown = 0
-    private val DISCOVERY_INTERVAL = 20 // 每 20 ticks（约 1 秒）执行一次发现
-
     companion object {
         fun serverTick(level: Level, pos: BlockPos, state: BlockState, powerNodeBE: PowerNodeBlockEntity) {
             // 确保只在服务端执行
             if (level.isClientSide) return
-            // 每隔一段时间执行一次发现逻辑
-            if (powerNodeBE.discoveryCooldown <= 0) {
-                powerNodeBE.discoverNearbyNodes(level)
-                powerNodeBE.discoveryCooldown = powerNodeBE.DISCOVERY_INTERVAL // 重置计时器
-            } else {
-                powerNodeBE.discoveryCooldown-- // 递减计时器
-            }
 
             // 定期验证连接是否仍然有效
-            if (level.gameTime % 20L == 0L) {
-                powerNodeBE.validateConnections()
-            }
+//            if (level.gameTime % 20L == 0L) {
+//                powerNodeBE.validateConnections()
+//            }
         }
 
         // 最大连接距离
-        const val MAX_CONNECTION_DISTANCE = 5.0
+        const val MAX_CONNECTION_DISTANCE = 6.0
+
+        // 最大连接数量
+        const val MAX_CONNECTION_NUMBER = 10
 
         // 每tick传输的能量
         const val ENERGY_TRANSFER_RATE = 100
@@ -68,6 +58,11 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
         if (level?.isClientSide == true) {
             // 当方块实体被移除时，从渲染列表中移除
             LaserRenderer.removeFromRenderList(worldPosition)
+
+        }
+        for (otherPos in connectedNodes.toList()) {
+            val blockEntity = level?.getBlockEntity(otherPos) as? PowerNodeBlockEntity
+            blockEntity?.removeConnection(worldPosition)
         }
         super.setRemoved()
     }
@@ -86,7 +81,7 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     // 添加连接
     fun addConnection(otherPos: BlockPos) {
         if (connectedNodes.add(otherPos)) {
-            Mindustry.LOGGER.debug("Added connection from {} to {}", worldPosition, otherPos)
+//            Mindustry.LOGGER.debug("Added connection from {} to {}", worldPosition, otherPos)
             setChanged()
             syncToClient()
         }
@@ -112,6 +107,12 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     // 检查是否可以连接到指定位置
     fun canConnectTo(otherPos: BlockPos, level: Level): Boolean {
         if (worldPosition == otherPos) return false
+        // 获取对方实体
+        val otherBE = level.getBlockEntity(otherPos) as? PowerNodeBlockEntity ?: return false
+        // 检查对方是否已达最大连接数
+        if (otherBE.connectedNodes.size >= MAX_CONNECTION_NUMBER) return false
+        // 检查自己是否已达到最大连接数
+        if (connectedNodes.size >= MAX_CONNECTION_NUMBER) return false
 
         val distance = worldPosition.distSqr(otherPos)
         if (distance > MAX_CONNECTION_DISTANCE * MAX_CONNECTION_DISTANCE) return false
@@ -119,7 +120,7 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
         return level.getBlockEntity(otherPos) is PowerNodeBlockEntity
     }
 
-    // 自动发现并连接附近的电力节点
+    // 在放置时 自动发现并连接附近的电力节点
     fun discoverNearbyNodes(level: Level) {
         val radius = MAX_CONNECTION_DISTANCE.toInt()
 

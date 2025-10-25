@@ -1,4 +1,4 @@
-package xyz.luobo.mindustry.Common.Blocks
+package xyz.luobo.mindustry.common.blocks
 
 import com.mojang.serialization.MapCodec
 import net.minecraft.core.BlockPos
@@ -9,16 +9,16 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import xyz.luobo.mindustry.Common.BlockEntities.PowerNodeBlockEntity
-import xyz.luobo.mindustry.Common.ModBlockEntities
+import xyz.luobo.mindustry.common.ModBlockEntities
+import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 
-class PowerNodeBlock: BaseEntityBlock(Properties.of().strength(2.0f).requiresCorrectToolForDrops()) {
-//    val CODEC: MapCodec<PowerNodeBlock?> = simpleCodec<PowerNodeBlock?>( { properties: Properties? -> PowerNodeBlock() })
+class PowerNodeBlock: BaseEntityBlock(Properties.of()
+    .lightLevel { state -> 15 }
+    .strength(2.0f)
+    .requiresCorrectToolForDrops()
+) {
 
-    // 定义一个公共的、不可变的 CODEC 实例
     companion object {
-        // 使用 simpleCodec 为 PowerNodeBlock 生成一个 MapCodec
-        // { properties -> PowerNodeBlock(properties) } 是一个 lambda，作为创建实例的工厂
         @JvmStatic
         val CODEC: MapCodec<PowerNodeBlock> = simpleCodec(
             { PowerNodeBlock() }, // 工厂函数，接收 Properties 并创建实例
@@ -31,19 +31,18 @@ class PowerNodeBlock: BaseEntityBlock(Properties.of().strength(2.0f).requiresCor
         return PowerNodeBlockEntity(pos = pos, state = state)
     }
 
-//    @Suppress("UNCHECKED_CAST")
     override fun <T : BlockEntity> getTicker(
         level: Level,
         state: BlockState,
         blockEntityType: BlockEntityType<T>
     ): BlockEntityTicker<T>? {
-        // **手动类型检查**
+        // 手动类型检查
         if (blockEntityType == ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get()) {
             // 确保只在服务器端返回服务器端 ticker
             if (level.isClientSide) {
                 return null // 客户端不需要服务器端 ticker
             }
-            // **关键：返回一个适配器，而不是直接转换函数引用**
+            // 关键：返回一个适配器，而不是直接转换函数引用
             // 这个 lambda 或匿名类需要符合 BlockEntityTicker<T> 的签名
             // 由于 T 已经被 blockEntityType 限定，这里 T 就是 PowerNodeBlockEntity
             // 所以我们可以安全地将传入的 blockEntity 向下转换为 PowerNodeBlockEntity
@@ -65,5 +64,15 @@ class PowerNodeBlock: BaseEntityBlock(Properties.of().strength(2.0f).requiresCor
 
     override fun getRenderShape(state: BlockState): RenderShape {
         return RenderShape.MODEL
+    }
+
+    override fun onPlace(state: BlockState, level: Level, pos: BlockPos, oldState: BlockState, movedByPiston: Boolean) {
+        super.onPlace(state, level, pos, oldState, movedByPiston)
+
+        // 只在服务端执行，并且不是替换已有方块的情况
+        if (!level.isClientSide && oldState.block != this) {
+            val blockEntity = level.getBlockEntity(pos) as? PowerNodeBlockEntity
+            blockEntity?.discoverNearbyNodes(level)
+        }
     }
 }

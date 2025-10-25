@@ -1,4 +1,4 @@
-package xyz.luobo.mindustry.Common
+package xyz.luobo.mindustry.common
 
 import net.minecraft.world.item.BlockItem
 import net.minecraft.world.item.Item

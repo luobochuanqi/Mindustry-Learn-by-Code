@@ -1,12 +1,12 @@
-package xyz.luobo.mindustry.Common
+package xyz.luobo.mindustry.common
 
 import net.minecraft.core.registries.Registries
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
-import xyz.luobo.mindustry.Common.BlockEntities.PowerNodeBlockEntity
 import xyz.luobo.mindustry.Mindustry
+import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 import java.util.function.Supplier
 
 object  ModBlockEntities {
