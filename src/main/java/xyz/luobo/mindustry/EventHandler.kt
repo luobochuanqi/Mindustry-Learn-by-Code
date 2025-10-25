@@ -1,18 +1,13 @@
 package xyz.luobo.mindustry
 
 import com.mojang.logging.LogUtils
-import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.event.IModBusEvent
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
 import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent
-import net.neoforged.neoforge.client.event.EntityRenderersEvent.RegisterRenderers
 import org.slf4j.Logger
-import xyz.luobo.mindustry.Client.Renderers.PowerNodeBlockEntityRenderer
-import xyz.luobo.mindustry.Common.BlockEntities.PowerNodeBlockEntity
-import xyz.luobo.mindustry.Common.ModBlockEntities.POWER_NODE_BLOCK_ENTITY
 
 object EventHandler {
     private val LOGGER: Logger = LogUtils.getLogger()
@@ -25,13 +20,13 @@ object EventHandler {
             LOGGER.info("HELLO FROM Client SETUP")
         }
 
-        @SubscribeEvent
-        fun registerEntityRenderers(event: RegisterRenderers) {
-            event.registerBlockEntityRenderer<PowerNodeBlockEntity>( // The block entity type to register the renderer for.
-                POWER_NODE_BLOCK_ENTITY.get(),  // A function of BlockEntityRendererProvider.Context to BlockEntityRenderer.
-                BlockEntityRendererProvider(::PowerNodeBlockEntityRenderer)
-            )
-        }
+//        @SubscribeEvent
+//        fun registerEntityRenderers(event: RegisterRenderers) {
+//            event.registerBlockEntityRenderer<PowerNodeBlockEntity>( // The block entity type to register the renderer for.
+//                POWER_NODE_BLOCK_ENTITY.get(),  // A function of BlockEntityRendererProvider.Context to BlockEntityRenderer.
+//                BlockEntityRendererProvider(::PowerNodeBlockEntityRenderer)
+//            )
+//        }
     }
 
     // 此为服务端事件总线订阅器

@@ -10,10 +10,11 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import xyz.luobo.mindustry.Client.Renderers.LaserRenderer
 import xyz.luobo.mindustry.Common.ModBlockEntities
 import xyz.luobo.mindustry.Mindustry
 
-class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
+class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get(), pos, state) {
 
     // 存储相连的其他电力节点位置
@@ -32,35 +33,20 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
 
     companion object {
         fun serverTick(level: Level, pos: BlockPos, state: BlockState, powerNodeBE: PowerNodeBlockEntity) {
-//            transferEnergy()
-            // Mindustry.LOGGER.debug("PowerNodeBlockEntity.tick()qwq")
-
             // 确保只在服务端执行
-            if (!level.isClientSide) {
-                // 每隔一段时间执行一次发现逻辑
-                if (powerNodeBE.discoveryCooldown <= 0) {
-                    powerNodeBE.discoverNearbyNodes(level)
-                    powerNodeBE.discoveryCooldown = powerNodeBE.DISCOVERY_INTERVAL // 重置计时器
-                } else {
-                    powerNodeBE.discoveryCooldown-- // 递减计时器
-                }
+            if (level.isClientSide) return
+            // 每隔一段时间执行一次发现逻辑
+            if (powerNodeBE.discoveryCooldown <= 0) {
+                powerNodeBE.discoverNearbyNodes(level)
+                powerNodeBE.discoveryCooldown = powerNodeBE.DISCOVERY_INTERVAL // 重置计时器
+            } else {
+                powerNodeBE.discoveryCooldown-- // 递减计时器
             }
 
             // 定期验证连接是否仍然有效
-            if (level.gameTime % 100L == 0L) {
-                val oldConnectionCount = powerNodeBE.connectedNodes.size // 记录之前的连接数
+            if (level.gameTime % 20L == 0L) {
                 powerNodeBE.validateConnections()
-                val newConnectionCount = powerNodeBE.connectedNodes.size // 记录现在的连接数
-
-                // 添加日志，打印验证后连接数量变化
-                if (oldConnectionCount != newConnectionCount) {
-                    Mindustry.LOGGER.debug("PowerNode at {} validated connections. Connections changed from {} to {}. Current connections: {}",
-                        powerNodeBE.worldPosition, oldConnectionCount, newConnectionCount, powerNodeBE.connectedNodes)
-                }
-
             }
-
-//            Mindustry.LOGGER.debug(this.connectedNodes)
         }
 
         // 最大连接距离
@@ -68,6 +54,30 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
 
         // 每tick传输的能量
         const val ENERGY_TRANSFER_RATE = 100
+    }
+
+    override fun onLoad() {
+        super.onLoad()
+        if (level?.isClientSide == true) {
+            // 当方块实体加载时，添加到渲染列表
+            LaserRenderer.addToRenderList(worldPosition)
+        }
+    }
+
+    override fun setRemoved() {
+        if (level?.isClientSide == true) {
+            // 当方块实体被移除时，从渲染列表中移除
+            LaserRenderer.removeFromRenderList(worldPosition)
+        }
+        super.setRemoved()
+    }
+
+    override fun onChunkUnloaded() {
+        if (level?.isClientSide == true) {
+            // 当区块卸载时，从渲染列表中移除
+            LaserRenderer.removeFromRenderList(worldPosition)
+        }
+        super.onChunkUnloaded()
     }
 
     // 获取所有连接的节点
