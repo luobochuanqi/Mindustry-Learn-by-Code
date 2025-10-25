@@ -1,0 +1,48 @@
+name: Build NeoForge Mod
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        cache-write-only: false
+
+    - name: Determine version
+      id: version
+      run: |
+        # 基于提交历史生成版本号，格式为：提交次数-最近提交的短SHA
+        COMMIT_COUNT=$(git rev-list --count HEAD)
+        COMMIT_SHA=$(git rev-parse --short HEAD)
+        echo "VERSION=${COMMIT_COUNT}-${COMMIT_SHA}" >> $GITHUB_OUTPUT
+
+    - name: Build with Gradle and new version
+      run: ./gradlew build -Pversion=${{ steps.version.outputs.VERSION }}
+
+    - name: Upload mod JAR
+      uses: actions/upload-artifact@v4
+      with:
+        name: mindustry
+        path: build/libs/*.jar
+        retention-days: 7
