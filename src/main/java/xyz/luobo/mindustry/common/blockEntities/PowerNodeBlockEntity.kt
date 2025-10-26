@@ -24,7 +24,7 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
 
     // 用于客户端渲染的标记
     var shouldRenderConnections = true
-    var isClicked = false
+    var isAwaitingConnection = false
 
     companion object {
         fun serverTick(level: Level, pos: BlockPos, state: BlockState, powerNodeBE: PowerNodeBlockEntity) {
@@ -75,7 +75,6 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     // 添加连接
     fun addConnection(otherPos: BlockPos) {
         if (connectedNodes.add(otherPos)) {
-//            Mindustry.LOGGER.debug("Added connection from {} to {}", worldPosition, otherPos)
             setChanged()
             syncToClient()
         }
@@ -145,6 +144,13 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
         invalidConnections.forEach { removeConnection(it) }
     }
 
+    // 切换待连接状态
+    fun toggleConnectionMode() {
+        isAwaitingConnection = !isAwaitingConnection
+        setChanged()
+        syncToClient()
+    }
+
     // 序列化数据
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)
@@ -165,6 +171,7 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
 
         // 保存渲染标记
         tag.putBoolean("renderConnections", shouldRenderConnections)
+        tag.putBoolean("awaitingConnection", isAwaitingConnection)
     }
 
     // 反序列化数据
@@ -190,6 +197,7 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
 
         // 加载渲染标记
         shouldRenderConnections = tag.getBoolean("renderConnections")
+        isAwaitingConnection = tag.getBoolean("awaitingConnection")
     }
 
     // 客户端同步数据包

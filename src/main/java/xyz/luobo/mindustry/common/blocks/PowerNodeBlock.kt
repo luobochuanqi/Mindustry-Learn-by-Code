@@ -2,6 +2,9 @@ package xyz.luobo.mindustry.common.blocks
 
 import com.mojang.serialization.MapCodec
 import net.minecraft.core.BlockPos
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.RenderShape
@@ -9,6 +12,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
 import xyz.luobo.mindustry.common.ModBlockEntities
 import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 
@@ -74,5 +78,22 @@ class PowerNodeBlock: BaseEntityBlock(Properties.of()
             val blockEntity = level.getBlockEntity(pos) as? PowerNodeBlockEntity
             blockEntity?.discoverNearbyNodes(level)
         }
+    }
+
+    override fun useWithoutItem(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hitResult: BlockHitResult
+    ): InteractionResult {
+        if (level.isClientSide) return InteractionResult.PASS
+        val itemInHand = player.getItemInHand(InteractionHand.MAIN_HAND)
+        if (itemInHand.isEmpty) {
+            val blockEntity = level.getBlockEntity(pos) as? PowerNodeBlockEntity
+            blockEntity?.toggleConnectionMode()
+            return InteractionResult.SUCCESS
+        }
+        return InteractionResult.PASS
     }
 }

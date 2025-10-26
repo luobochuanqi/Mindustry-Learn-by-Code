@@ -55,6 +55,12 @@ object LaserRenderer {
         val renderList = blockEntitiesToRender.toList()
 
         for (fromPos in renderList) {
+            val blockEntity = level.getBlockEntity(fromPos)
+            if (blockEntity !is PowerNodeBlockEntity) {
+                removeFromRenderList(fromPos)
+                continue
+            }
+
             // 检查方块是否还存在
             if (!level.isLoaded(fromPos) || level.getBlockState(fromPos).isAir) {
                 removeFromRenderList(fromPos)
@@ -65,9 +71,14 @@ object LaserRenderer {
             if (!isPositionWithinRenderDistance(fromPos, cameraPosVec)) {
                 continue
             }
-
-            val blockEntity = level.getBlockEntity(fromPos)
-            if (blockEntity is PowerNodeBlockEntity && blockEntity.shouldRenderConnections) {
+            // 渲染待连接状态
+            if (blockEntity.isAwaitingConnection) {
+                // 渲染黄色圆圈，半径为 MAX_CONNECTION_DISTANCE
+                renderCircle(fromPos, PowerNodeBlockEntity.MAX_CONNECTION_DISTANCE,
+                    poseStack, bufferSource)
+            }
+            // 渲染连接激光
+            if (blockEntity.shouldRenderConnections) {
                 for (to in blockEntity.getConnectedNodes()) {
                     // 额外检查 to 是否有效
                     if (!level.isLoaded(to) || level.getBlockState(to).isAir) {
@@ -84,6 +95,99 @@ object LaserRenderer {
                 }
             }
         }
+    }
+
+    // 渲染待连接状态的圆圈
+    private fun renderCircle(
+        pos: BlockPos,
+        maxConnectionDistance: Double,
+        poseStack: PoseStack,
+        bufferSource: MultiBufferSource.BufferSource
+    ) {
+        val cameraPos = Minecraft.getInstance().gameRenderer.mainCamera.position
+        var vc = bufferSource.getBuffer(RenderType.lightning())
+
+        poseStack.pushPose()
+        // 平移到方块中心并相对于相机坐标
+        poseStack.translate(
+            pos.x - cameraPos.x.toDouble(),
+            pos.y - cameraPos.y.toDouble(),
+            pos.z - cameraPos.z.toDouble()
+        )
+        // 移动到方块中心并稍微抬高以避免 Z-fighting
+        poseStack.translate(0.5, 0.51, 0.5)
+
+        val mat = poseStack.last().pose()
+        val normal = Vector3f(0f, 1f, 0f)
+
+        val segments = 30
+        val innerR = maxConnectionDistance.toFloat()
+        val thickness = 0.2f
+        val outerR = innerR + thickness
+
+        val y = 0f
+
+        // 边框厚度（围绕内外圈各自一小条黑边）
+        val borderThickness = 0.1f
+        val yBorder = y + 0.001f // 轻微抬高以避免 Z-fighting
+
+        for (i in 0 until segments) {
+            val a1 = (2.0 * kotlin.math.PI * i) / segments.toDouble()
+            val a2 = (2.0 * kotlin.math.PI * (i + 1)) / segments.toDouble()
+
+            val x1 = (kotlin.math.cos(a1) * innerR).toFloat()
+            val z1 = (kotlin.math.sin(a1) * innerR).toFloat()
+            val x2 = (kotlin.math.cos(a2) * innerR).toFloat()
+            val z2 = (kotlin.math.sin(a2) * innerR).toFloat()
+
+            val x3 = (kotlin.math.cos(a2) * outerR).toFloat()
+            val z3 = (kotlin.math.sin(a2) * outerR).toFloat()
+            val x4 = (kotlin.math.cos(a1) * outerR).toFloat()
+            val z4 = (kotlin.math.sin(a1) * outerR).toFloat()
+
+            // 黄色半透明环
+            quad(
+                normal, vc, mat,
+                x1, y, z1,
+                x2, y, z2,
+                x3, y, z3,
+                x4, y, z4,
+                1.0f, 0.85f, 0.0f, 0.6f
+            )
+
+//            vc = bufferSource.getBuffer(RenderType.solid())
+
+            // 内侧黑色边框（从 innerR - borderThickness 到 innerR）
+            val ix1 = (kotlin.math.cos(a1) * (innerR - borderThickness)).toFloat()
+            val iz1 = (kotlin.math.sin(a1) * (innerR - borderThickness)).toFloat()
+            val ix2 = (kotlin.math.cos(a2) * (innerR - borderThickness)).toFloat()
+            val iz2 = (kotlin.math.sin(a2) * (innerR - borderThickness)).toFloat()
+
+            quad(
+                normal, vc, mat,
+                ix1, yBorder, iz1,
+                ix2, yBorder, iz2,
+                x2, yBorder, z2,
+                x1, yBorder, z1,
+                0.1f, 0.1f, 0.1f, 1.0f
+            )
+
+            // 外侧黑色边框（从 outerR 到 outerR + borderThickness）
+            val ox1 = (kotlin.math.cos(a1) * (outerR + borderThickness)).toFloat()
+            val oz1 = (kotlin.math.sin(a1) * (outerR + borderThickness)).toFloat()
+            val ox2 = (kotlin.math.cos(a2) * (outerR + borderThickness)).toFloat()
+            val oz2 = (kotlin.math.sin(a2) * (outerR + borderThickness)).toFloat()
+
+            quad(
+                normal, vc, mat,
+                x4, yBorder, z4,
+                x3, yBorder, z3,
+                ox2, yBorder, oz2,
+                ox1, yBorder, oz1,
+                0.1f, 0.1f, 0.1f, 1.0f
+            )
+        }
+        poseStack.popPose()
     }
 
     /**
