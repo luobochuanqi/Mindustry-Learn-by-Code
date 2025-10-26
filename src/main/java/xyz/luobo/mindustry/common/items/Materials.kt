@@ -28,4 +28,7 @@ enum class Materials(
         // 用于 DataGen 遍历
         val ALL = entries.toList()
     }
+
+    val displayName: String
+        get() = id.split("_").joinToString(" ") { it.replaceFirstChar(Char::uppercase) }
 }

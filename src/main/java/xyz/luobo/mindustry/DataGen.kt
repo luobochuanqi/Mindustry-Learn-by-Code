@@ -28,6 +28,9 @@ class ModLanguageProvider(output: PackOutput, locale: String): LanguageProvider(
         this.add("itemGroup.mindustry", "Mindustry")
         this.add(ModBlocks.POWER_NODE_BLOCK.get(), "Power Node")
         this.add(ModItems.EXAMPLE_ITEM.get(), "Example Item")
+        Materials.ALL.forEach { material ->
+            this.add(ModItems.getMaterial(material).get(), material.displayName)
+        }
     }
 }
 

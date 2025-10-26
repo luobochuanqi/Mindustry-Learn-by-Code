@@ -24,24 +24,18 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
 
     // 用于客户端渲染的标记
     var shouldRenderConnections = true
+    var isClicked = false
 
     companion object {
         fun serverTick(level: Level, pos: BlockPos, state: BlockState, powerNodeBE: PowerNodeBlockEntity) {
             // 确保只在服务端执行
             if (level.isClientSide) return
-
-            // 定期验证连接是否仍然有效
-//            if (level.gameTime % 20L == 0L) {
-//                powerNodeBE.validateConnections()
-//            }
         }
 
         // 最大连接距离
         const val MAX_CONNECTION_DISTANCE = 6.0
-
         // 最大连接数量
         const val MAX_CONNECTION_NUMBER = 10
-
         // 每tick传输的能量
         const val ENERGY_TRANSFER_RATE = 100
     }
@@ -138,46 +132,6 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
                 }
             }
         }
-    }
-
-    // 能量传输逻辑
-    fun transferEnergy() {
-        level ?: return
-
-        for (connectedPos in connectedNodes) {
-            val targetEntity = level!!.getBlockEntity(connectedPos) as? PowerNodeBlockEntity ?: continue
-
-            if (energyStored > 0 && targetEntity.canReceiveEnergy()) {
-                val energyToTransfer = minOf(energyStored, ENERGY_TRANSFER_RATE, targetEntity.getEnergySpace())
-
-                if (energyToTransfer > 0) {
-                    energyStored -= energyToTransfer
-                    targetEntity.receiveEnergy(energyToTransfer)
-                    setChanged()
-                }
-            }
-        }
-    }
-
-    // 能量相关方法
-    fun getEnergyStored(): Int = energyStored
-    fun getMaxEnergyStored(): Int = maxEnergyStorage
-    fun getEnergySpace(): Int = maxEnergyStorage - energyStored
-
-    fun canReceiveEnergy(): Boolean = energyStored < maxEnergyStorage
-
-    fun receiveEnergy(amount: Int): Int {
-        val energyReceived = minOf(amount, getEnergySpace())
-        energyStored += energyReceived
-        setChanged()
-        return energyReceived
-    }
-
-    fun extractEnergy(amount: Int): Int {
-        val energyExtracted = minOf(amount, energyStored)
-        energyStored -= energyExtracted
-        setChanged()
-        return energyExtracted
     }
 
     // 验证所有连接是否仍然有效
