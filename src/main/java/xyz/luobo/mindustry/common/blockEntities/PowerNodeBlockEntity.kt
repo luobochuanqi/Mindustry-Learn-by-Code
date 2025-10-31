@@ -10,17 +10,20 @@ import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.neoforged.neoforge.energy.IEnergyStorage
 import xyz.luobo.mindustry.client.renderers.LaserRenderer
 import xyz.luobo.mindustry.common.ModBlockEntities
 
-class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
-    BlockEntity(ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get(), pos, state) {
+class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
+    BlockEntity(ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage{
     // 存储相连的其他电力节点位置
     private val connectedNodes = mutableSetOf<BlockPos>()
 
     // 能量相关变量
     private var energyStored = 0
-    private val maxEnergyStorage = 10000
+    private val capacity: Int = 10000
+    private val maxReceive: Int = 200  // 每次最多接收多少
+    private val maxExtract: Int = 200  // 每次最多提取多少
 
     // 用于客户端渲染的标记
     var shouldRenderConnections = true
@@ -226,5 +229,33 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
             level.sendBlockUpdated(worldPosition, blockState, blockState, 3)
             setChanged()
         }
+    }
+
+    override fun receiveEnergy(maxReceive: Int, simulate: Boolean): Int {
+        val energyReceived = minOf(maxReceive, maxReceive, capacity - energyStored)
+        if (!simulate) {
+            energyStored += energyReceived
+        }
+        return energyReceived
+    }
+
+    override fun extractEnergy(toExtract: Int, simulate: Boolean): Int {
+        TODO("Not yet implemented")
+    }
+
+    override fun getEnergyStored(): Int {
+        return energyStored
+    }
+
+    override fun getMaxEnergyStored(): Int {
+        return capacity
+    }
+
+    override fun canExtract(): Boolean {
+        return true
+    }
+
+    override fun canReceive(): Boolean {
+        return true
     }
 }
