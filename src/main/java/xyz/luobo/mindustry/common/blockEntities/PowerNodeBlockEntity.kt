@@ -7,12 +7,14 @@ import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.Tag
 import net.minecraft.network.Connection
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
+import net.minecraft.util.Mth
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.energy.IEnergyStorage
 import xyz.luobo.mindustry.client.renderers.LaserRenderer
 import xyz.luobo.mindustry.common.ModBlockEntities
+import kotlin.math.min
 
 class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
     BlockEntity(ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage{
@@ -20,8 +22,8 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
     private val connectedNodes = mutableSetOf<BlockPos>()
 
     // 能量相关变量
-    private var energyStored = 0
-    private val capacity: Int = 10000
+    private var energy = 0  // 当前存储的能量
+    private val capacity: Int = 24000  // 能量上限
     private val maxReceive: Int = 200  // 每次最多接收多少
     private val maxExtract: Int = 200  // 每次最多提取多少
 
@@ -170,7 +172,7 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
         tag.put("connections", connectionsList)
 
         // 保存能量
-        tag.putInt("energy", energyStored)
+        tag.putInt("energy", energy)
 
         // 保存渲染标记
         tag.putBoolean("renderConnections", shouldRenderConnections)
@@ -196,7 +198,7 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
         }
 
         // 加载能量
-        energyStored = tag.getInt("energy")
+        energy = tag.getInt("energy")
 
         // 加载渲染标记
         shouldRenderConnections = tag.getBoolean("renderConnections")
@@ -231,20 +233,34 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
         }
     }
 
-    override fun receiveEnergy(maxReceive: Int, simulate: Boolean): Int {
-        val energyReceived = minOf(maxReceive, maxReceive, capacity - energyStored)
-        if (!simulate) {
-            energyStored += energyReceived
+    // 能量相关方法
+
+    override fun receiveEnergy(toReceive: Int, simulate: Boolean): Int {
+        if (this.canReceive() && toReceive > 0) {
+            val energyReceived = Mth.clamp(this.capacity - this.energy, 0, min(this.maxReceive, toReceive))
+            if (!simulate) {
+                this.energy += energyReceived
+            }
+            return energyReceived
+        } else {
+            return 0
         }
-        return energyReceived
     }
 
     override fun extractEnergy(toExtract: Int, simulate: Boolean): Int {
-        TODO("Not yet implemented")
+        if (this.canExtract() && toExtract > 0) {
+            val energyExtracted = min(this.energy, min(this.maxExtract, toExtract))
+            if (!simulate) {
+                this.energy -= energyExtracted
+            }
+            return energyExtracted
+        } else {
+            return 0
+        }
     }
 
     override fun getEnergyStored(): Int {
-        return energyStored
+        return energy
     }
 
     override fun getMaxEnergyStored(): Int {
@@ -252,10 +268,10 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
     }
 
     override fun canExtract(): Boolean {
-        return true
+        return this.maxExtract > 0
     }
 
     override fun canReceive(): Boolean {
-        return true
+        return this.maxReceive > 0
     }
 }
