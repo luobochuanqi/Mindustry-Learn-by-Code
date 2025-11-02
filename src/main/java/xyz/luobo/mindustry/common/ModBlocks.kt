@@ -6,6 +6,7 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mindustry.Mindustry
 import xyz.luobo.mindustry.common.blocks.GraphitePressControllerBlock
+import xyz.luobo.mindustry.common.blocks.MultiBlockDummyBlock
 import xyz.luobo.mindustry.common.blocks.PowerNodeBlock
 
 object ModBlocks {
@@ -16,6 +17,9 @@ object ModBlocks {
 
     val GRAPHITE_PRESS_BLOCK: DeferredBlock<Block> =
         MOD_BLOCKS.registerBlock("graphite_press") { GraphitePressControllerBlock() }
+
+    val MULTI_BLOCK_DUMMY_BLOCK: DeferredBlock<Block> =
+        MOD_BLOCKS.registerBlock("multi_block_dummy_block") { MultiBlockDummyBlock() }
 
     fun register() {
         MOD_BLOCKS.register(MOD_BUS)

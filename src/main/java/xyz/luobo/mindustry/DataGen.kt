@@ -47,5 +47,6 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
 class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFileHelper): BlockStateProvider(output, Mindustry.MOD_ID, existingFileHelper) {
     override fun registerStatesAndModels() {
         this.simpleBlockWithItem(ModBlocks.POWER_NODE_BLOCK.get(), cubeAll(ModBlocks.POWER_NODE_BLOCK.get()))
+//        this.directionalBlock(ModBlocks.GRAPHITE_PRESS_BLOCK.get(),   )
     }
 }
