@@ -7,5 +7,4 @@ import xyz.luobo.mindustry.common.ModBlockEntities
 
 class GraphitePressController(pos: BlockPos, state: BlockState):
     BlockEntity(ModBlockEntities.GRAPHITE_PRESS_CONTROLLER.get(), pos, state) {
-
 }
