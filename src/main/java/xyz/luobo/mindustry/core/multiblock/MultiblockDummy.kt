@@ -13,20 +13,10 @@ import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 
 class MultiblockDummy(properties: Properties) : Block(properties) {
+    // 多方快的子方块无需渲染, 只渲染控制器的 Model.
     override fun getRenderShape(state: BlockState) = RenderShape.INVISIBLE
 
-    public fun use(
-        state: BlockState,
-        level: Level,
-        pos: BlockPos,
-        player: Player
-    ) {
-        // 自动转发到主控
-        MultiblockManager.findController(level, pos).let { controllerPos ->
-            //            level.getBlockState(controllerPos).use(level, player, hand, hit)
-        }
-    }
-
+    // 空手右键子方块时, 重定向逻辑到控制器的右键逻辑
     override fun useWithoutItem(
         state: BlockState,
         level: Level,
@@ -34,9 +24,17 @@ class MultiblockDummy(properties: Properties) : Block(properties) {
         player: Player,
         hitResult: BlockHitResult
     ): InteractionResult {
-        return super.useWithoutItem(state, level, pos, player, hitResult)
+        if (!level.isClientSide) {
+            val controllerPos = findController(level, pos)
+            if (controllerPos != null) {
+
+                return InteractionResult.SUCCESS
+            }
+        }
+        return InteractionResult.PASS
     }
 
+    // 拿着物品右键子方块时, 重定向逻辑到控制器的右键逻辑
     override fun useItemOn(
         stack: ItemStack,
         state: BlockState,
@@ -46,6 +44,12 @@ class MultiblockDummy(properties: Properties) : Block(properties) {
         hand: InteractionHand,
         hitResult: BlockHitResult
     ): ItemInteractionResult {
-        return super.useItemOn(stack, state, level, pos, player, hand, hitResult)
+        return ItemInteractionResult.SUCCESS
+    }
+
+    // 寻找控制器方块的 BlockPos
+    private fun findController(level: Level, pos: BlockPos): BlockPos? {
+        // 每个子方块在放置时就应该存储着控制器的 BlockPos, 直接返回即可.
+        return null
     }
 }

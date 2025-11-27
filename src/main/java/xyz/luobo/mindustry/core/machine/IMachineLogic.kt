@@ -2,9 +2,10 @@ package xyz.luobo.mindustry.core.machine
 
 import net.minecraft.world.level.block.entity.BlockEntity
 
+/**
+ * 用于规范机器的逻辑函数.
+ */
 interface IMachineLogic {
-    fun tick(be: BlockEntity)
-    fun getTooltipData(be: BlockEntity): Map<String, Any>
-    fun canProcess(be: BlockEntity): Boolean
-    fun process(be: BlockEntity)
+    fun serverTick(be: BlockEntity)
+    fun clientTick(be: BlockEntity)
 }

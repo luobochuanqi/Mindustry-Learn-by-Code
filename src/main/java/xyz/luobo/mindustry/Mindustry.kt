@@ -22,7 +22,7 @@ object Mindustry {
     init {
         LOGGER.info("Hello from Mindustry!")
 
-        // Register the KDeferredRegister to the mod-specific event bus
+        // Register the traditional blocks first
         ModBlocks.register()
         ModItems.register()
         ModBlockEntities.register()

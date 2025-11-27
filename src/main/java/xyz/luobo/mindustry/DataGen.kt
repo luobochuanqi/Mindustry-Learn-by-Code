@@ -27,7 +27,6 @@ class ModLanguageProvider(output: PackOutput, locale: String): LanguageProvider(
     override fun addTranslations() {
         this.add("itemGroup.mindustry", "Mindustry")
         this.add(ModBlocks.POWER_NODE_BLOCK.get(), "Power Node")
-        this.add(ModBlocks.GRAPHITE_PRESS_BLOCK.get(), "Graphite Press")
         this.add(ModItems.EXAMPLE_ITEM.get(), "Example Item")
         Materials.ALL.forEach { material ->
             this.add(ModItems.getMaterial(material).get(), material.displayName)
