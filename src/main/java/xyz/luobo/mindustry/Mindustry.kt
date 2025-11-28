@@ -8,7 +8,7 @@ import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import thedarkcolour.kotlinforforge.neoforge.forge.runForDist
 import xyz.luobo.mindustry.EventHandler.ClientModEvents.onClientSetup
 import xyz.luobo.mindustry.EventHandler.ServerModEvents.onDedicatedServerSetup
-import xyz.luobo.mindustry.common.ModBlockEntities
+import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import xyz.luobo.mindustry.common.ModBlocks
 import xyz.luobo.mindustry.common.ModItems
 import xyz.luobo.mindustry.common.ModTabs
@@ -25,7 +25,7 @@ object Mindustry {
         // Register the traditional blocks first
         ModBlocks.register()
         ModItems.register()
-        ModBlockEntities.register()
+        ModBlockEntityTypes.register()
         ModTabs.register()
 
         // 添加自定义物品栏标签

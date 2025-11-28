@@ -13,7 +13,7 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
-import xyz.luobo.mindustry.common.ModBlockEntities
+import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 
 class PowerNodeBlock: BaseEntityBlock(Properties.of()
@@ -41,7 +41,7 @@ class PowerNodeBlock: BaseEntityBlock(Properties.of()
         blockEntityType: BlockEntityType<T>
     ): BlockEntityTicker<T>? {
         // 手动类型检查
-        if (blockEntityType == ModBlockEntities.POWER_NODE_BLOCK_ENTITY.get()) {
+        if (blockEntityType == ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get()) {
             // 确保只在服务器端返回服务器端 ticker
             if (level.isClientSide) {
                 return null // 客户端不需要服务器端 ticker

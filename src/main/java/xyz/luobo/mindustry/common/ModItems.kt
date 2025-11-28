@@ -16,6 +16,9 @@ object ModItems {
     val POWER_NODE_BLOCK_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.POWER_NODE_BLOCK)
 
+    val GRAPHITE_PRESS_BLOCK_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.GRAPHITE_PRESS_BLOCK)
+
     val ALL_ITEMS = Materials.ALL.associateWith {
         material -> MOD_ITEMS.registerSimpleItem(material.id)
     }

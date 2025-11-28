@@ -5,7 +5,6 @@ import net.minecraft.core.Direction
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
-import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.material.FluidState
 
@@ -16,12 +15,8 @@ import net.minecraft.world.level.material.FluidState
  * 实现玩家右键逻辑
  * 调用 MultiblockManager 实现控制多方快的生命周期
  */
-abstract class MultiblockControllerBlock(properties: Properties) :
+abstract class MultiblockControllerBlock(properties: Properties, val manager: MultiblockManager) :
     BaseEntityBlock(properties) {
-
-    override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity? {
-        TODO("Not yet implemented")
-    }
 
     override fun onPlace(state: BlockState, level: Level, pos: BlockPos, oldState: BlockState, movedByPiston: Boolean) {
         TODO("Not yet implemented")

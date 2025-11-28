@@ -12,7 +12,8 @@ import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 
-class MultiblockDummy(properties: Properties) : Block(properties) {
+abstract class MultiblockDummy(properties: Properties) : Block(properties) {
+
     // 多方快的子方块无需渲染, 只渲染控制器的 Model.
     override fun getRenderShape(state: BlockState) = RenderShape.INVISIBLE
 

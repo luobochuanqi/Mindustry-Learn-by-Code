@@ -11,13 +11,14 @@ object MachineRegistry {
         machines[id] = definition
     }
 
-    fun get(id: ResourceLocation): MachineDefinition? = machines[id]
+    fun getDefinition(id: ResourceLocation): MachineDefinition? = machines[id]
 }
 
 data class MachineDefinition(
-    val size: Int,                  // 2 = 2x2, 3 = 3x3
+    val size: Int,
     val controllerBlock: () -> Block,
+    val block: () -> Block,
     val energyCapacity: Int = 0,
     val inventorySlots: Int = 0,
-    val logic: IMachineLogic       // 机器行为
+    val logic: IMachineLogic
 )
