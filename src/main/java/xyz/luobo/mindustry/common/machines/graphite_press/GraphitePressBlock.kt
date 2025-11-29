@@ -9,7 +9,7 @@ import xyz.luobo.mindustry.core.multiblock.MultiblockControllerBlock
 
 class GraphitePressBlock : MultiblockControllerBlock(
     Properties.of()
-        .strength(3.0f), TODO()
+        .strength(3.0f)
 ) {
 
     companion object {

@@ -8,6 +8,7 @@ import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mindustry.Mindustry
 import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 import xyz.luobo.mindustry.common.machines.graphite_press.GraphitePressBlockEntity
+import xyz.luobo.mindustry.common.machines.graphite_press.GraphitePressDummyBlockEntity
 import java.util.function.Supplier
 
 object ModBlockEntityTypes {
@@ -29,6 +30,17 @@ object ModBlockEntityTypes {
                 ModBlocks.GRAPHITE_PRESS_BLOCK.get()
             ).build(null)
         })
+
+    val GRAPHITE_PRESS_PART_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<GraphitePressDummyBlockEntity>> =
+        BLOCK_ENTITY_TYPES.register("graphite_press_part", Supplier {
+            BlockEntityType.Builder.of(
+                { pos, state -> GraphitePressDummyBlockEntity(pos, state) },
+                ModBlocks.GRAPHITE_DUMMY_BLOCK.get()
+            ).build(null)
+        })
+
+    fun registerBy() {
+    }
 
     fun register() {
         BLOCK_ENTITY_TYPES.register(MOD_BUS)

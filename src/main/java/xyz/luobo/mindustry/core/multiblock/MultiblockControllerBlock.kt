@@ -15,11 +15,21 @@ import net.minecraft.world.level.material.FluidState
  * 实现玩家右键逻辑
  * 调用 MultiblockManager 实现控制多方快的生命周期
  */
-abstract class MultiblockControllerBlock(properties: Properties, val manager: MultiblockManager) :
+abstract class MultiblockControllerBlock(properties: Properties) :
     BaseEntityBlock(properties) {
 
+    private val multiblockManager = MultiblockManager()
+
     override fun onPlace(state: BlockState, level: Level, pos: BlockPos, oldState: BlockState, movedByPiston: Boolean) {
-        TODO("Not yet implemented")
+        super.onPlace(state, level, pos, oldState, movedByPiston)
+
+        // 尝试形成多方块结构
+        if (!level.isClientSide) {
+            val machineDef = xyz.luobo.mindustry.core.registry.MachineRegistry.getDefinitionByBlock(this)
+            if (machineDef != null) {
+                multiblockManager.attemptFormStructure(level, pos, machineDef.size)
+            }
+        }
     }
 
     override fun onDestroyedByPlayer(
@@ -30,7 +40,15 @@ abstract class MultiblockControllerBlock(properties: Properties, val manager: Mu
         willHarvest: Boolean,
         fluid: FluidState
     ): Boolean {
-        TODO("Not yet implemented")
+        // 破坏多方块结构
+        if (!level.isClientSide) {
+            val machineDef = xyz.luobo.mindustry.core.registry.MachineRegistry.getDefinitionByBlock(this)
+            if (machineDef != null) {
+                multiblockManager.breakStructure(level, pos, machineDef.size)
+            }
+        }
+
+        return super.onDestroyedByPlayer(state, level, pos, player, willHarvest, fluid)
     }
 
     override fun onDestroyedByPushReaction(
@@ -40,6 +58,14 @@ abstract class MultiblockControllerBlock(properties: Properties, val manager: Mu
         pushDirection: Direction,
         fluid: FluidState
     ) {
-        TODO("Not yet implemented")
+        // 破坏多方块结构
+        if (!level.isClientSide) {
+            val machineDef = xyz.luobo.mindustry.core.registry.MachineRegistry.getDefinitionByBlock(this)
+            if (machineDef != null) {
+                multiblockManager.breakStructure(level, pos, machineDef.size)
+            }
+        }
+
+        super.onDestroyedByPushReaction(state, level, pos, pushDirection, fluid)
     }
 }

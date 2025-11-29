@@ -12,7 +12,7 @@ import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 
-abstract class MultiblockDummy(properties: Properties) : Block(properties) {
+abstract class MultiblockDummyBlock(properties: Properties) : Block(properties) {
 
     // 多方快的子方块无需渲染, 只渲染控制器的 Model.
     override fun getRenderShape(state: BlockState) = RenderShape.INVISIBLE
@@ -28,8 +28,12 @@ abstract class MultiblockDummy(properties: Properties) : Block(properties) {
         if (!level.isClientSide) {
             val controllerPos = findController(level, pos)
             if (controllerPos != null) {
-
-                return InteractionResult.SUCCESS
+                // 重定向到控制器
+                val controllerEntity = level.getBlockEntity(controllerPos)
+                if (controllerEntity is IMultiblockControllerBlockEntity) {
+                    controllerEntity.doUseWithoutItem(state, level, pos, player, hitResult)
+                    return InteractionResult.SUCCESS
+                }
             }
         }
         return InteractionResult.PASS
@@ -45,12 +49,27 @@ abstract class MultiblockDummy(properties: Properties) : Block(properties) {
         hand: InteractionHand,
         hitResult: BlockHitResult
     ): ItemInteractionResult {
-        return ItemInteractionResult.SUCCESS
+        if (!level.isClientSide) {
+            val controllerPos = findController(level, pos)
+            if (controllerPos != null) {
+                // 重定向到控制器
+                val controllerEntity = level.getBlockEntity(controllerPos)
+                if (controllerEntity is IMultiblockControllerBlockEntity) {
+                    controllerEntity.doUseItemOn(stack, state, level, pos, player, hand, hitResult)
+                    return ItemInteractionResult.SUCCESS
+                }
+            }
+        }
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
     }
 
     // 寻找控制器方块的 BlockPos
     private fun findController(level: Level, pos: BlockPos): BlockPos? {
         // 每个子方块在放置时就应该存储着控制器的 BlockPos, 直接返回即可.
+        val blockEntity = level.getBlockEntity(pos)
+        if (blockEntity is MultiblockDummyBlockEntity) {
+            return blockEntity.getControllerPos()
+        }
         return null
     }
 }

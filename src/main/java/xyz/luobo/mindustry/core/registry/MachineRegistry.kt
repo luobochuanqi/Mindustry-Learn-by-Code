@@ -7,11 +7,29 @@ import xyz.luobo.mindustry.core.machine.IMachineLogic
 object MachineRegistry {
     val machines = mutableMapOf<ResourceLocation, MachineDefinition>()
 
-    fun register(id: ResourceLocation, definition: MachineDefinition) {
-        machines[id] = definition
+    fun registerDeferredMachine(id: ResourceLocation, definition: MachineDefinition) {
+        machines.put(id, definition)
     }
 
-    fun getDefinition(id: ResourceLocation): MachineDefinition? = machines[id]
+    fun getDefinitionByBlock(block: Block): MachineDefinition? {
+        return machines.values.find {
+            it.controllerBlock().javaClass == block.javaClass ||
+                    it.block().javaClass == block.javaClass
+        }
+    }
+
+    fun getDefinitionByPath(path: String): MachineDefinition? {
+        return machines.values.find {
+            it.controllerBlock().javaClass.name == path ||
+                    it.block().javaClass.name == path
+        }
+    }
+
+    fun register() {
+        machines.forEach {
+            MultiblockRegistry.registerMultiblock(it.value)
+        }
+    }
 }
 
 data class MachineDefinition(

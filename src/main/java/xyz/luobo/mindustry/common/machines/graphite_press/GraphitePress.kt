@@ -4,6 +4,7 @@ import net.minecraft.resources.ResourceLocation
 import xyz.luobo.mindustry.Mindustry
 import xyz.luobo.mindustry.core.machine.IMachine
 import xyz.luobo.mindustry.core.registry.MachineDefinition
+import xyz.luobo.mindustry.core.registry.MachineRegistry
 
 object GraphitePress : IMachine {
 
@@ -26,6 +27,6 @@ object GraphitePress : IMachine {
     }
 
     override fun registerMachine() {
-        TODO("Not yet implemented")
+        MachineRegistry.registerDeferredMachine(MACHINE_ID, getMachineDefinition())
     }
 }

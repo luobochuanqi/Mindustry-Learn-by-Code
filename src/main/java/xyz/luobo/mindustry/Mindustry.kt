@@ -12,6 +12,8 @@ import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import xyz.luobo.mindustry.common.ModBlocks
 import xyz.luobo.mindustry.common.ModItems
 import xyz.luobo.mindustry.common.ModTabs
+import xyz.luobo.mindustry.core.registry.MachineRegistry
+import xyz.luobo.mindustry.core.registry.MultiblockRegistry
 
 @Mod(Mindustry.MOD_ID)
 object Mindustry {
@@ -27,6 +29,11 @@ object Mindustry {
         ModItems.register()
         ModBlockEntityTypes.register()
         ModTabs.register()
+
+        // 注册机器
+        MachineRegistry.register()
+        // 注册多块结构
+        MultiblockRegistry.register()
 
         // 添加自定义物品栏标签
         MOD_BUS.addListener(ModTabs::addCreative)
