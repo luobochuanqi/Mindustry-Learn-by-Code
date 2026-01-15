@@ -43,7 +43,7 @@ abstract class MultiblockControllerBlock(properties: Properties) :
     ): Boolean {
         // 破坏多方块结构
         if (!level.isClientSide) {
-            val machineDef = xyz.luobo.mindustry.core.registry.MachineRegistry.getDefinitionByBlock(this)
+            val machineDef = MachineRegistry.getDefinitionByBlock(this)
             if (machineDef != null) {
                 multiblockManager.breakStructure(level, pos, machineDef.size)
             }
@@ -61,7 +61,7 @@ abstract class MultiblockControllerBlock(properties: Properties) :
     ) {
         // 破坏多方块结构
         if (!level.isClientSide) {
-            val machineDef = xyz.luobo.mindustry.core.registry.MachineRegistry.getDefinitionByBlock(this)
+            val machineDef = MachineRegistry.getDefinitionByBlock(this)
             if (machineDef != null) {
                 multiblockManager.breakStructure(level, pos, machineDef.size)
             }

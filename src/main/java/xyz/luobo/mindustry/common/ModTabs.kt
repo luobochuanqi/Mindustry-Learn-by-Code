@@ -24,7 +24,7 @@ object ModTabs {
                 .title(Component.translatable("itemGroup.mindustry"))
                 .withTabsBefore(CreativeModeTabs.COMBAT)
                 .icon { ModItems.EXAMPLE_ITEM.get().defaultInstance }
-                .displayItems { parameters: ItemDisplayParameters?, output: CreativeModeTab.Output? ->
+                .displayItems { _: ItemDisplayParameters?, output: CreativeModeTab.Output? ->
                     output!!.accept(ModItems.EXAMPLE_ITEM.get())
                 }.build()
         })
