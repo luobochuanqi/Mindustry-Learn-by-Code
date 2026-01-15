@@ -6,6 +6,7 @@ import net.neoforged.neoforge.registries.DeferredItem
 import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mindustry.Mindustry
+import xyz.luobo.mindustry.common.items.DebugBaconItem
 import xyz.luobo.mindustry.common.items.Materials
 
 object ModItems {
@@ -15,6 +16,9 @@ object ModItems {
 
     val POWER_NODE_BLOCK_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.POWER_NODE_BLOCK)
+
+    val DEBUG_BACON: DeferredItem<DebugBaconItem> =
+        MOD_ITEMS.registerItem<DebugBaconItem>("debug_bacon", ::DebugBaconItem)
 
     val ALL_ITEMS = Materials.ALL.associateWith {
         material -> MOD_ITEMS.registerSimpleItem(material.id)

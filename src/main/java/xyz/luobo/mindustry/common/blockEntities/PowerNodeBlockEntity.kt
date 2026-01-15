@@ -119,7 +119,7 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
     }
 
     // 在放置时 自动发现并连接附近的电力节点
-    fun discoverNearbyNodes(level: Level) {
+    fun discoverAndConnectNearbyNodes(level: Level) {
         val radius = MAX_CONNECTION_DISTANCE.toInt()
 
         for (x in -radius..radius) {

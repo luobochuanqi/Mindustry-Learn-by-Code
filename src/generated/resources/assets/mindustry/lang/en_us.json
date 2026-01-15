@@ -1,11 +1,11 @@
 {
-  "block.mindustry.graphite_press": "Graphite Press",
   "block.mindustry.power_node_block": "Power Node",
   "item.mindustry.beryllium": "Beryllium",
   "item.mindustry.blast_compound": "Blast Compound",
   "item.mindustry.carbide": "Carbide",
   "item.mindustry.coal": "Coal",
   "item.mindustry.copper": "Copper",
+  "item.mindustry.debug_bacon": "Debug Bacon",
   "item.mindustry.example_item": "Example Item",
   "item.mindustry.graphite": "Graphite",
   "item.mindustry.lead": "Lead",

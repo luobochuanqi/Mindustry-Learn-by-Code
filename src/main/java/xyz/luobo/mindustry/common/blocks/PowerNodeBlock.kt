@@ -76,7 +76,7 @@ class PowerNodeBlock: BaseEntityBlock(Properties.of()
         // 只在服务端执行，并且不是替换已有方块的情况
         if (!level.isClientSide && oldState.block != this) {
             val blockEntity = level.getBlockEntity(pos) as? PowerNodeBlockEntity
-            blockEntity?.discoverNearbyNodes(level)
+            blockEntity?.discoverAndConnectNearbyNodes(level)
         }
     }
 

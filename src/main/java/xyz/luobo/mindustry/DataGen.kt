@@ -26,6 +26,7 @@ object DataGen {
 class ModLanguageProvider(output: PackOutput, locale: String): LanguageProvider(output, Mindustry.MOD_ID, locale) {
     override fun addTranslations() {
         this.add("itemGroup.mindustry", "Mindustry")
+        this.add(ModItems.DEBUG_BACON.get(), "Debug Bacon")
         this.add(ModBlocks.POWER_NODE_BLOCK.get(), "Power Node")
         this.add(ModItems.EXAMPLE_ITEM.get(), "Example Item")
         Materials.ALL.forEach { material ->
@@ -37,6 +38,7 @@ class ModLanguageProvider(output: PackOutput, locale: String): LanguageProvider(
 class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileHelper): ItemModelProvider(output, Mindustry.MOD_ID, existingFileHelper) {
     override fun registerModels() {
         this.basicItem(ModItems.EXAMPLE_ITEM.get())
+        this.basicItem(ModItems.DEBUG_BACON.get())
         Materials.ALL.forEach { material ->
             this.basicItem(ModItems.getMaterial(material).get())
         }
