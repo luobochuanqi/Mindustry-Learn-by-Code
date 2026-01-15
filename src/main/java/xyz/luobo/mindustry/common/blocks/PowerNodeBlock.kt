@@ -17,7 +17,7 @@ import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 
 class PowerNodeBlock: BaseEntityBlock(Properties.of()
-    .lightLevel { state -> 15 }
+    .lightLevel { _ -> 15 }
     .strength(2.0f)
     .requiresCorrectToolForDrops()
 ) {

@@ -18,7 +18,7 @@ import xyz.luobo.mindustry.common.screen.LDLib2_test_1.createModularUI
 
 
 class DebugBaconItem(properties: Properties) : Item(
-    Item.Properties()
+    Properties()
         .stacksTo(1)
         .rarity(Rarity.EPIC)
 ) {

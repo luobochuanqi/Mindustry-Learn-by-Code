@@ -11,8 +11,8 @@ import com.lowdragmc.lowdraglib2.gui.ui.styletemplate.Sprites
 import org.appliedenergistics.yoga.YogaFlexDirection
 
 object LDLib2_test_1 {
-    public fun createModularUI(): ModularUI {
-        val root = UIElement();
+    fun createModularUI(): ModularUI {
+        val root = UIElement()
         // logo
         val image: UIElement = UIElement().layout { layoutStyle ->
             layoutStyle.width(200f).height(50f)
@@ -24,10 +24,10 @@ object LDLib2_test_1 {
             layoutStyle.flexDirection(YogaFlexDirection.ROW)
         }.addChildren(
             Button().setText("+90°")
-                .setOnClick { event -> image.transform { transform2D -> transform2D.rotation(transform2D.rotation() + 90f) } },
+                .setOnClick { _ -> image.transform { transform2D -> transform2D.rotation(transform2D.rotation() + 90f) } },
             UIElement().layout { layoutStyle -> layoutStyle.flex(1f) },
             Button().setText("-90°")
-                .setOnClick { event -> image.transform { transform2D -> transform2D.rotation(transform2D.rotation() - 90f) } },
+                .setOnClick { _ -> image.transform { transform2D -> transform2D.rotation(transform2D.rotation() - 90f) } },
             UIElement().layout { layoutStyle -> layoutStyle.flex(1f) },
             Button().setText("QwQ")
         )
