@@ -57,7 +57,7 @@ abstract class MultiblockDummyBlock(properties: Properties) : Block(properties) 
                 if (controllerEntity is IMultiblockControllerBlockEntity) {
                     controllerEntity.doUseItemOn(stack, state, level, pos, player, hand, hitResult)
                     return ItemInteractionResult.SUCCESS
-                }
+                }//
             }
         }
         return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION

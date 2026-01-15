@@ -105,14 +105,14 @@ object LaserRenderer {
         bufferSource: MultiBufferSource.BufferSource
     ) {
         val cameraPos = Minecraft.getInstance().gameRenderer.mainCamera.position
-        var vc = bufferSource.getBuffer(RenderType.lightning())
+        val vc = bufferSource.getBuffer(RenderType.lightning())
 
         poseStack.pushPose()
         // 平移到方块中心并相对于相机坐标
         poseStack.translate(
-            pos.x - cameraPos.x.toDouble(),
-            pos.y - cameraPos.y.toDouble(),
-            pos.z - cameraPos.z.toDouble()
+            pos.x - cameraPos.x,
+            pos.y - cameraPos.y,
+            pos.z - cameraPos.z
         )
         // 移动到方块中心并稍微抬高以避免 Z-fighting
         poseStack.translate(0.5, 0.51, 0.5)

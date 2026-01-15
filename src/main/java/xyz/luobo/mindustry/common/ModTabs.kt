@@ -33,7 +33,6 @@ object ModTabs {
     fun addCreative(event: BuildCreativeModeTabContentsEvent) {
         if (event.tabKey === EXAMPLE_TAB.getKey()) {
             event.accept(ModItems.POWER_NODE_BLOCK_ITEM.get())
-            event.accept(ModItems.GRAPHITE_PRESS_BLOCK_ITEM.get())
             Materials.ALL.forEach { material ->
                 event.accept(ModItems.getMaterial(material).get())
             }

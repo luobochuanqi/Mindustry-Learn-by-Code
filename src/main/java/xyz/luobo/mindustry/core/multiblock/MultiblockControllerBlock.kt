@@ -7,6 +7,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.material.FluidState
+import xyz.luobo.mindustry.core.registry.MachineRegistry
 
 /**
  * 多方快控制器方块
@@ -25,7 +26,7 @@ abstract class MultiblockControllerBlock(properties: Properties) :
 
         // 尝试形成多方块结构
         if (!level.isClientSide) {
-            val machineDef = xyz.luobo.mindustry.core.registry.MachineRegistry.getDefinitionByBlock(this)
+            val machineDef = MachineRegistry.getDefinitionByBlock(this)
             if (machineDef != null) {
                 multiblockManager.attemptFormStructure(level, pos, machineDef.size)
             }
