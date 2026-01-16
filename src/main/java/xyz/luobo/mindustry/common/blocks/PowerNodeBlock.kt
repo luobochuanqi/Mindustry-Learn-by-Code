@@ -16,10 +16,11 @@ import net.minecraft.world.phys.BlockHitResult
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 
-class PowerNodeBlock: BaseEntityBlock(Properties.of()
-    .lightLevel { _ -> 15 }
-    .strength(2.0f)
-    .requiresCorrectToolForDrops()
+class PowerNodeBlock : BaseEntityBlock(
+    Properties.of()
+        .lightLevel { _ -> 15 }
+        .strength(2.0f)
+        .requiresCorrectToolForDrops()
 ) {
 
     companion object {

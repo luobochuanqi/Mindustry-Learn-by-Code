@@ -3,7 +3,7 @@ pluginManagement {
         maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
         maven { url 'https://mirrors.cloud.tencent.com/nexus/repository/maven-public' }
         gradlePluginPortal()
-        maven { url = 'https://maven.neoforged.net/releases' }
+        maven { url 'https://maven.neoforged.net/releases' }
     }
 }
 

@@ -14,7 +14,7 @@ import net.minecraft.world.item.Rarity
 import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.Level
 import xyz.luobo.mindustry.Mindustry
-import xyz.luobo.mindustry.common.screen.LDLib2_test_1.createModularUI
+import xyz.luobo.mindustry.client.screens.LDLib2_test_1.createModularUI
 
 
 class DebugBaconItem(properties: Properties) : Item(
