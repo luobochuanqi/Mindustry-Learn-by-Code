@@ -13,6 +13,7 @@ import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.neoforge.client.event.RenderLevelStageEvent
 import org.joml.Matrix4f
 import org.joml.Vector3f
+import xyz.luobo.mindustry.ClientConfig
 import xyz.luobo.mindustry.Mindustry
 import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 import java.util.*
@@ -20,10 +21,6 @@ import kotlin.math.acos
 
 @EventBusSubscriber(modid = Mindustry.MOD_ID, value = [Dist.CLIENT])
 object LaserRenderer {
-    // 渲染距离配置（以方块为单位）
-    private const val MAX_RENDER_DISTANCE = 64.0 // 最大渲染距离
-    private const val MAX_RENDER_DISTANCE_SQUARED = MAX_RENDER_DISTANCE * MAX_RENDER_DISTANCE
-
     // 使用线程安全的集合存储所有需要渲染的 PowerNode 位置
     private val blockEntitiesToRender: MutableSet<BlockPos> = Collections.synchronizedSet(mutableSetOf<BlockPos>())
 
@@ -198,6 +195,10 @@ object LaserRenderer {
         val dy = pos.y + 0.5 - cameraPos.y
         val dz = pos.z + 0.5 - cameraPos.z
         val distanceSquared = dx * dx + dy * dy + dz * dz
+
+        // 渲染距离配置（以方块为单位）
+        val MAX_RENDER_DISTANCE = ClientConfig.maxRenderDistance.get() // 最大渲染距离
+        val MAX_RENDER_DISTANCE_SQUARED = MAX_RENDER_DISTANCE * MAX_RENDER_DISTANCE
 
         return distanceSquared <= MAX_RENDER_DISTANCE_SQUARED
     }

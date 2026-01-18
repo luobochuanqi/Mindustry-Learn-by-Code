@@ -20,9 +20,10 @@ object ModItems {
     val DEBUG_BACON: DeferredItem<DebugBaconItem> =
         MOD_ITEMS.registerItem<DebugBaconItem>("debug_bacon", ::DebugBaconItem)
 
-    val ALL_ITEMS = Materials.ALL.associateWith {
-        material -> MOD_ITEMS.registerSimpleItem(material.id)
+    val ALL_ITEMS = Materials.ALL.associateWith { material ->
+        MOD_ITEMS.registerSimpleItem(material.id)
     }
+
     fun getMaterial(material: Materials): DeferredItem<Item> = ALL_ITEMS[material]!!
 
     fun register() {

@@ -16,7 +16,7 @@ import xyz.luobo.mindustry.client.renderers.LaserRenderer
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import kotlin.math.min
 
-class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
+class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     BlockEntity(ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage {
     // 存储相连的其他电力节点位置
     private val connectedNodes = mutableSetOf<BlockPos>()
@@ -39,8 +39,10 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState):
 
         // 最大连接距离
         const val MAX_CONNECTION_DISTANCE = 6.0
+
         // 最大连接数量
         const val MAX_CONNECTION_NUMBER = 10
+
         // 每tick传输的能量
         const val ENERGY_TRANSFER_RATE = 100
     }

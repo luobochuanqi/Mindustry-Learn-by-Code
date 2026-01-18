@@ -1,22 +1,36 @@
 package xyz.luobo.mindustry
 
-import net.neoforged.bus.api.SubscribeEvent
-import net.neoforged.fml.common.EventBusSubscriber
 import net.neoforged.fml.event.IModBusEvent
-import net.neoforged.fml.event.config.ModConfigEvent
 import net.neoforged.neoforge.common.ModConfigSpec
 
-@EventBusSubscriber(modid = Mindustry.MOD_ID)
-object Config: IModBusEvent {
+object Config : IModBusEvent {
     val BUILDER: ModConfigSpec.Builder = ModConfigSpec.Builder()
+    val SPEC: ModConfigSpec
 
-    val IS_DEBUG_MODE: ModConfigSpec.BooleanValue = BUILDER.comment("Is Debug Mode?")
-        .define("isDebugMode", true)
+    var isDebugMode: ModConfigSpec.BooleanValue
 
-    var isDebugMode: Boolean = false
+    init {
+        isDebugMode = BUILDER
+            .comment("Is Debug Mode?")
+            .define("isDebugMode", false)
 
-    @SubscribeEvent
-    fun onLoad(event: ModConfigEvent?) {
-        isDebugMode = IS_DEBUG_MODE.get()
+        SPEC = BUILDER.build()
     }
 }
+
+object ClientConfig : IModBusEvent {
+    val BUILDER: ModConfigSpec.Builder = ModConfigSpec.Builder()
+    val SPEC: ModConfigSpec
+
+    var maxRenderDistance: ModConfigSpec.ConfigValue<Int>
+
+    init {
+        maxRenderDistance = BUILDER
+            .comment("Max render distance for power laser")
+            .define("maxRenderDistance", 64)
+
+        SPEC = BUILDER.build()
+    }
+}
+
+//object ServerConfig : IModBusEvent { }

@@ -25,13 +25,20 @@ object DataGen {
 
 class ModLanguageProvider(output: PackOutput, locale: String): LanguageProvider(output, Mindustry.MOD_ID, locale) {
     override fun addTranslations() {
+        // Item Group
         this.add("itemGroup.mindustry", "Mindustry")
+
+        // Items
         this.add(ModItems.DEBUG_BACON.get(), "Debug Bacon")
         this.add(ModBlocks.POWER_NODE_BLOCK.get(), "Power Node")
         this.add(ModItems.EXAMPLE_ITEM.get(), "Example Item")
         Materials.ALL.forEach { material ->
             this.add(ModItems.getMaterial(material).get(), material.displayName)
         }
+
+        // Configs
+        this.add("mindustry.configuration.isDebugMode", "Debug Mode")
+        this.add("mindustry.configuration.maxRenderDistance", "Max Laser Render Distance")
     }
 }
 

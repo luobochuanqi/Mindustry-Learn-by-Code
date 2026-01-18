@@ -22,5 +22,7 @@
   "item.mindustry.thorium": "Thorium",
   "item.mindustry.titanium": "Titanium",
   "item.mindustry.tungsten": "Tungsten",
-  "itemGroup.mindustry": "像素工厂"
+  "itemGroup.mindustry": "像素工厂",
+  "mindustry.configuration.isDebugMode": "Debug Mode",
+  "mindustry.configuration.maxRenderDistance": "Max Laser Render Distance"
 }
