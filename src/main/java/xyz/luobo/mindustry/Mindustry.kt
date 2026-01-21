@@ -46,6 +46,8 @@ object Mindustry {
         MOD_BUS.addListener(ModTabs::addCreative)
         // 数据生成
         MOD_BUS.addListener(DataGen::generate)
+        // 注册 Cap
+        MOD_BUS.addListener(EventHandler::registerCapabilities)
 
         // 注册配置
         MOD_CONTAINER.registerConfig(ModConfig.Type.COMMON, Config.SPEC)

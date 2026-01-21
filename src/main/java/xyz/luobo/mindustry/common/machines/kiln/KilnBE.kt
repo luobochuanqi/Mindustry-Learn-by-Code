@@ -1,20 +1,45 @@
 package xyz.luobo.mindustry.common.machines.kiln
 
 import net.minecraft.core.BlockPos
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.items.ItemStackHandler
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import xyz.luobo.mindustry.common.ModItems
 import xyz.luobo.mindustry.common.items.Materials
+import xyz.luobo.mindustry.core.energy.MachineEnergyStorage
+import xyz.luobo.mindustry.core.itemHandler.MachineItemHandler
 import xyz.luobo.mindustry.core.machine.BaseMachineBE
 
 class KilnBE(
     pos: BlockPos,
     state: BlockState
 ) : BaseMachineBE(ModBlockEntityTypes.KILN_BLOCK_ENTITY.get(), pos, state) {
+    // 缓存物品引用以提高性能
+    private val leadItem by lazy { ModItems.getMaterial(Materials.LEAD).get() }
+    private val sandItem by lazy { ModItems.getMaterial(Materials.SAND).get() }
+    private val metaglassItem by lazy { ModItems.getMaterial(Materials.METAGLASS).get() }
+    
     // 两输入 一输出
-    override val itemHandler: ItemStackHandler
-        get() = ItemStackHandler(3)
+    public override val itemHandler: ItemStackHandler = object : MachineItemHandler(3, this) {
+        override fun isItemValid(slot: Int, stack: ItemStack): Boolean {
+            when (slot) {
+                0 -> {
+                    return stack.item == leadItem
+                }
+
+                1 -> {
+                    return stack.item == sandItem
+                }
+
+                2 -> {
+                    return false  // 输出槽不能手动插入物品
+                }
+            }
+            return super.isItemValid(slot, stack)
+        }
+    }
+    public override val energyStorage = object : MachineEnergyStorage(40, this) {}
     override val maxProgress: Int
         get() = 10
     override val energyPerTick: Int
@@ -29,11 +54,7 @@ class KilnBE(
             return false
         }
 
-        // 预先获取材料项以提高性能
-        val leadItem = ModItems.getMaterial(Materials.LEAD)
-        val sandItem = ModItems.getMaterial(Materials.SAND)
-
-        // 使用明确的括号确保逻辑正确
+        // 使用缓存的物品引用进行比较
         return ((itemStack0.item == leadItem && itemStack1.item == sandItem) ||
                 (itemStack0.item == sandItem && itemStack1.item == leadItem))
     }
@@ -47,11 +68,20 @@ class KilnBE(
             itemHandler.extractItem(0, 1, false)
             itemHandler.extractItem(1, 1, false)
 
-            // 获取输出物品的 ItemStack
-            val outputItemStack = ModItems.getMaterial(Materials.METAGLASS).toStack(1)
+            // 使用缓存的物品引用创建 ItemStack
+            val outputItemStack = ItemStack(metaglassItem, 1)
 
             // 尝试插入到输出槽位（索引为2）
             itemHandler.insertItem(2, outputItemStack, false)
         }
+    }
+
+    override fun isOutputSlot(slot: Int): Boolean {
+        when (slot) {
+            2 -> {
+                return true
+            }
+        }
+        return false
     }
 }

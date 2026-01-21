@@ -31,7 +31,7 @@ class KilnBlock : BaseMachineBlock<KilnBE>(Properties.of()) {
     override fun newBlockEntity(
         pos: BlockPos,
         state: BlockState
-    ): BlockEntity? {
+    ): BlockEntity {
         return KilnBE(pos = pos, state = state)
     }
 }

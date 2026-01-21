@@ -22,7 +22,7 @@ object ModTabs {
         Supplier {
             CreativeModeTab.builder()
                 .title(Component.translatable("itemGroup.mindustry"))
-                .withTabsBefore(CreativeModeTabs.COMBAT)
+                .withTabsBefore(CreativeModeTabs.SPAWN_EGGS)
                 .icon { ModItems.EXAMPLE_ITEM.get().defaultInstance }
                 .displayItems { _: ItemDisplayParameters?, output: CreativeModeTab.Output? ->
                     output!!.accept(ModItems.EXAMPLE_ITEM.get())

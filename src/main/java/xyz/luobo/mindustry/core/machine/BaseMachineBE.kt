@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.Capabilities
+import net.neoforged.neoforge.items.ItemHandlerHelper.insertItem
 import net.neoforged.neoforge.items.ItemStackHandler
 import xyz.luobo.mindustry.core.energy.MachineEnergyStorage
 
@@ -19,12 +20,7 @@ abstract class BaseMachineBE(
 ) : BlockEntity(type, pos, state) {
     // 组件
     // 能量存储 (核心特性：Mindustry 机器通常有内部缓冲)
-    protected open val energyStorage = object : MachineEnergyStorage(1) {
-        override fun onEnergyChanged() {
-            setChanged() // 标记脏数据，触发保存
-            syncData()   // 如果需要实时同步 GUI，可在此触发
-        }
-    }
+    protected abstract val energyStorage: MachineEnergyStorage
 
     // 物品存储 (输入/输出槽位)
     protected abstract val itemHandler: ItemStackHandler
@@ -91,11 +87,37 @@ abstract class BaseMachineBE(
             val neighborCap = level?.getCapability(Capabilities.ItemHandler.BLOCK, neighborPos, dir.opposite)
 
             if (neighborCap != null) {
-                TODO("尝试将输出槽的物品推入邻居")
+                // 遍历当前机器的所有槽位，尝试将物品输出到邻居
+                for (slotIndex in 0 until itemHandler.slots) {
+                    val stackInSlot = itemHandler.getStackInSlot(slotIndex)
+
+                    // 只处理非空且为输出槽的物品（这里假设输出槽有一些判断逻辑）
+                    if (isOutputSlot(slotIndex) && !stackInSlot.isEmpty) {
+                        // 尝试插入到邻居的物品处理器中
+                        val remainder = insertItem(neighborCap, stackInSlot, true)
+
+                        // 如果邻居能够接受部分或全部物品，则实际执行转移
+                        if (remainder != stackInSlot) {
+                            // 实际插入物品
+                            val extractedStack =
+                                itemHandler.extractItem(slotIndex, stackInSlot.count - remainder.count, false)
+                            val actualInserted = insertItem(neighborCap, extractedStack, false)
+
+                            // 如果有未能插入的部分，放回原槽位
+                            if (!actualInserted.isEmpty) {
+                                itemHandler.insertItem(slotIndex, actualInserted, false)
+                            }
+
+                            break // 一次只处理一个槽位，避免过度操作
+                        }
+                    }
+                }
                 // 具体实现需遍历 outputSlots 并 insertItem
             }
         }
     }
+
+    abstract fun isOutputSlot(slot: Int): Boolean
 
     protected open fun getOutputDirections(): List<Direction> = Direction.entries.toList()
 
