@@ -1,7 +1,9 @@
 package xyz.luobo.mindustry
 
+import net.minecraft.core.HolderLookup
 import net.minecraft.data.DataGenerator
 import net.minecraft.data.PackOutput
+import net.minecraft.data.recipes.RecipeProvider
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
 import net.neoforged.neoforge.common.data.ExistingFileHelper
@@ -10,6 +12,7 @@ import net.neoforged.neoforge.data.event.GatherDataEvent
 import xyz.luobo.mindustry.common.ModBlocks
 import xyz.luobo.mindustry.common.ModItems
 import xyz.luobo.mindustry.common.items.Materials
+import java.util.concurrent.CompletableFuture
 
 object DataGen {
     fun generate(event: GatherDataEvent) {
@@ -55,6 +58,12 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
 class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFileHelper): BlockStateProvider(output, Mindustry.MOD_ID, existingFileHelper) {
     override fun registerStatesAndModels() {
         this.simpleBlockWithItem(ModBlocks.POWER_NODE_BLOCK.get(), cubeAll(ModBlocks.POWER_NODE_BLOCK.get()))
+        this.simpleBlockWithItem(ModBlocks.KILN_BLOCK.get(), cubeAll(ModBlocks.KILN_BLOCK.get()))
 //        this.directionalBlock(ModBlocks.GRAPHITE_PRESS_BLOCK.get(),   )
     }
+}
+
+class ModRecipeProvider(output: PackOutput, provider: CompletableFuture<HolderLookup.Provider>) :
+    RecipeProvider(output, provider) {
+
 }

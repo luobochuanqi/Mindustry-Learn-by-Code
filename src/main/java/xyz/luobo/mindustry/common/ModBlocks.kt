@@ -6,12 +6,16 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mindustry.Mindustry
 import xyz.luobo.mindustry.common.blocks.PowerNodeBlock
+import xyz.luobo.mindustry.common.machines.kiln.KilnBlock
 
 object ModBlocks {
     val MOD_BLOCKS: DeferredRegister.Blocks = DeferredRegister.createBlocks(Mindustry.MOD_ID)
 
     val POWER_NODE_BLOCK: DeferredBlock<Block> =
         MOD_BLOCKS.registerBlock("power_node_block") { PowerNodeBlock() }
+
+    val KILN_BLOCK: DeferredBlock<Block> =
+        MOD_BLOCKS.registerBlock("kiln_block") { KilnBlock() }
 
     fun register() {
         MOD_BLOCKS.register(MOD_BUS)

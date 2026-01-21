@@ -2,6 +2,7 @@ package xyz.luobo.mindustry.core.machine
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.Direction
+import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.world.level.block.entity.BlockEntity
@@ -86,7 +87,7 @@ abstract class BaseMachineBE(
 
         for (dir in ejectDirs) {
             val neighborPos = worldPosition.relative(dir)
-            // 获取邻居的 ItemHandler Capability (Neoforge 1.21 新写法)
+            // 获取邻居的 ItemHandler Capability
             val neighborCap = level?.getCapability(Capabilities.ItemHandler.BLOCK, neighborPos, dir.opposite)
 
             if (neighborCap != null) {
@@ -104,14 +105,14 @@ abstract class BaseMachineBE(
 
     // --- 数据同步 (Packets & NBT) ---
 
-    override fun saveAdditional(tag: CompoundTag, registries: net.minecraft.core.HolderLookup.Provider) {
+    override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)
         tag.putInt("Energy", energyStorage.energyStored)
         tag.putInt("Progress", progress)
         tag.put("Inventory", itemHandler.serializeNBT(registries))
     }
 
-    override fun loadAdditional(tag: CompoundTag, registries: net.minecraft.core.HolderLookup.Provider) {
+    override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.loadAdditional(tag, registries)
         if (tag.contains("Energy")) energyStorage.receiveEnergy(tag.getInt("Energy"), false)
         progress = tag.getInt("Progress")
@@ -123,7 +124,7 @@ abstract class BaseMachineBE(
         return ClientboundBlockEntityDataPacket.create(this)
     }
 
-    override fun getUpdateTag(registries: net.minecraft.core.HolderLookup.Provider): CompoundTag {
+    override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag {
         return saveWithoutMetadata(registries)
     }
 

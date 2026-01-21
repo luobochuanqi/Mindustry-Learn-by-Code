@@ -7,6 +7,7 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mindustry.Mindustry
 import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
+import xyz.luobo.mindustry.common.machines.kiln.KilnBE
 import java.util.function.Supplier
 
 object ModBlockEntityTypes {
@@ -19,6 +20,14 @@ object ModBlockEntityTypes {
                 { pos, state -> PowerNodeBlockEntity(pos, state) },
                 ModBlocks.POWER_NODE_BLOCK.get()
             ).build(null) // dataType 为 null, 使用 NBT, 拒绝使用 Minecraft 1.20.5+ 引入的 数据组件(Data Components) 特性
+        })
+
+    val KILN_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<KilnBE>> =
+        BLOCK_ENTITY_TYPES.register("kiln", Supplier {
+            BlockEntityType.Builder.of(
+                { pos, state -> KilnBE(pos, state) },
+                ModBlocks.KILN_BLOCK.get()
+            ).build(null)
         })
 
     fun registerBy() {
