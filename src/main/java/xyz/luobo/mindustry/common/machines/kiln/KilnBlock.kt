@@ -13,11 +13,7 @@ class KilnBlock : BaseMachineBlock<KilnBE>(Properties.of()) {
 
     companion object {
         @JvmStatic
-        val CODEC: MapCodec<KilnBlock> = simpleCodec(
-            { KilnBlock() }, // 工厂函数，接收 Properties 并创建实例
-            // 可选：为 codec 指定一个字段名，如果不指定，默认可能是 "properties" 或类似
-            // 如果你的方块构造函数有其他参数，或者需要更复杂的序列化，这里需要调整
-        )
+        val CODEC: MapCodec<KilnBlock> = simpleCodec({ KilnBlock() })
     }
 
     override fun codec(): MapCodec<out BaseEntityBlock?> {

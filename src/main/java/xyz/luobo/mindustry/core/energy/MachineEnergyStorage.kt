@@ -6,7 +6,7 @@ import xyz.luobo.mindustry.core.machine.BaseMachineBE
 open class MachineEnergyStorage(
     capability: Int,
     val be: BaseMachineBE
-) : EnergyStorage(capability, capability, 0, 0) {
+) : EnergyStorage(capability, capability, be.energyPerTick, 0) {
     open fun onEnergyChanged() {
         be.setChanged()
         be.syncData()

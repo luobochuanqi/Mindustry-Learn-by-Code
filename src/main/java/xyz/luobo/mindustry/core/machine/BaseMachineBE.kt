@@ -18,6 +18,8 @@ abstract class BaseMachineBE(
     pos: BlockPos,
     state: BlockState
 ) : BlockEntity(type, pos, state) {
+    var isWorking: Boolean = false
+
     // 组件
     // 能量存储 (核心特性：Mindustry 机器通常有内部缓冲)
     protected abstract val energyStorage: MachineEnergyStorage
@@ -43,11 +45,13 @@ abstract class BaseMachineBE(
         // 1. 验证是否激活 (Mindustry 逻辑: 只有满足条件才工作)
         if (!canWork()) {
             if (progress > 0) decayProgress()
+            isWorking = false
             return
         }
 
         // 2. 消耗能量
         if (energyStorage.energyStored >= energyPerTick) {
+            isWorking = true
             energyStorage.extractEnergy(energyPerTick, false)
             progress++
 
