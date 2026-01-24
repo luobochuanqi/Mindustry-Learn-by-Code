@@ -101,6 +101,7 @@ class KilnBE(
         return false
     }
 
+    // 未来可能转移到基类中
     override fun onLoad() {
         super.onLoad()
         MachineRenderer.addToRenderList(worldPosition)
