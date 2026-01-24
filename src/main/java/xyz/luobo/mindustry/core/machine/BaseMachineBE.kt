@@ -135,6 +135,7 @@ abstract class BaseMachineBE(
         super.saveAdditional(tag, registries)
         tag.putInt("Energy", energyStorage.energyStored)
         tag.putInt("Progress", progress)
+        tag.putBoolean("IsWorking", isWorking)
         tag.put("Inventory", itemHandler.serializeNBT(registries))
     }
 
@@ -142,6 +143,7 @@ abstract class BaseMachineBE(
         super.loadAdditional(tag, registries)
         if (tag.contains("Energy")) energyStorage.receiveEnergy(tag.getInt("Energy"), false)
         progress = tag.getInt("Progress")
+        isWorking = tag.getBoolean("IsWorking")
         itemHandler.deserializeNBT(registries, tag.getCompound("Inventory"))
     }
 
