@@ -15,7 +15,7 @@ import org.joml.Vector3f
 import xyz.luobo.mindustry.common.blockEntities.PowerNodeBlockEntity
 import kotlin.math.acos
 
-@Deprecated(message = "this class is outdated")
+@Deprecated(message = "The class has been changed to use RenderLevelStageEvent implementation.")
 class PowerNodeBlockEntityRenderer(
     ctx: BlockEntityRendererProvider.Context
 ) : BlockEntityRenderer<PowerNodeBlockEntity> {

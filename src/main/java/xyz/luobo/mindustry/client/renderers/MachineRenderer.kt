@@ -19,6 +19,9 @@ import xyz.luobo.mindustry.ClientConfig
 import xyz.luobo.mindustry.Mindustry
 import java.util.*
 
+// Why not use BlockEntityRenderer?
+// I'm so stupid.
+@Deprecated(message = "This class will be re-implemented using BERenderer.")
 @EventBusSubscriber(modid = Mindustry.MOD_ID, value = [Dist.CLIENT])
 object MachineRenderer {
     // 使用线程安全的集合存储所有需要渲染的 BE 位置
