@@ -1,0 +1,7 @@
+{
+  "credit": "Made with Blockbench",
+  "parent": "builtin/entity",
+  "textures": {
+    "particle": "mindustry:block/duo"
+  }
+}

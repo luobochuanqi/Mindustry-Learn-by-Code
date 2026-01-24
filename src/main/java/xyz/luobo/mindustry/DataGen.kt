@@ -49,6 +49,8 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
     override fun registerModels() {
         this.basicItem(ModItems.EXAMPLE_ITEM.get())
         this.basicItem(ModItems.DEBUG_BACON.get())
+
+        this.simpleBlockItem(ModBlocks.DUO_BLOCK.get())
         Materials.ALL.forEach { material ->
             this.basicItem(ModItems.getMaterial(material).get())
         }
@@ -59,6 +61,7 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
     override fun registerStatesAndModels() {
         this.simpleBlockWithItem(ModBlocks.POWER_NODE_BLOCK.get(), cubeAll(ModBlocks.POWER_NODE_BLOCK.get()))
         this.simpleBlockWithItem(ModBlocks.KILN_BLOCK.get(), cubeAll(ModBlocks.KILN_BLOCK.get()))
+//        this.simpleBlockWithItem(ModBlocks.DUO_BLOCK.get(), )
 //        this.directionalBlock(ModBlocks.GRAPHITE_PRESS_BLOCK.get(),   )
     }
 }

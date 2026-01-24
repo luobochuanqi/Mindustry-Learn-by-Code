@@ -35,6 +35,7 @@ object ModTabs {
             event.accept(ModItems.DEBUG_BACON)
             event.accept(ModItems.POWER_NODE_BLOCK_ITEM.get())
             event.accept(ModItems.KILN_BLOCK_ITEM.get())
+            event.accept(ModItems.DUO_BLOCK_ITEM.get())
             Materials.ALL.forEach { material ->
                 event.accept(ModItems.getMaterial(material).get())
             }

@@ -9,9 +9,13 @@ import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent
 import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
+import net.neoforged.neoforge.client.event.EntityRenderersEvent
 import org.slf4j.Logger
+import software.bernie.geckolib.renderer.GeoBlockRenderer
+import xyz.luobo.mindustry.client.geoModels.DuoModel
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import xyz.luobo.mindustry.common.machines.kiln.KilnBE
+import xyz.luobo.mindustry.common.turrets.duo.DuoBE
 
 object EventHandler {
     private val LOGGER: Logger = LogUtils.getLogger()
@@ -24,13 +28,10 @@ object EventHandler {
             LOGGER.info("HELLO FROM Client SETUP")
         }
 
-//        @SubscribeEvent
-//        fun registerEntityRenderers(event: RegisterRenderers) {
-//            event.registerBlockEntityRenderer<PowerNodeBlockEntity>( // The block entity type to register the renderer for.
-//                POWER_NODE_BLOCK_ENTITY.get(),  // A function of BlockEntityRendererProvider.Context to BlockEntityRenderer.
-//                BlockEntityRendererProvider(::PowerNodeBlockEntityRenderer)
-//            )
-//        }
+        @SubscribeEvent
+        fun registerEntityRenderers(event: EntityRenderersEvent.RegisterRenderers) {
+            event.registerBlockEntityRenderer(ModBlockEntityTypes.DUO_Block_Entity.get()) { DuoRenderer() }
+        }
     }
 
     // 此为服务端事件总线订阅器
@@ -62,3 +63,9 @@ object EventHandler {
         )
     }
 }
+
+class DuoRenderer :
+    GeoBlockRenderer<DuoBE>(
+//        DefaultedBlockGeoModel(ResourceLocation.fromNamespaceAndPath(Mindustry.MOD_ID, "duo"))
+        DuoModel()
+    )

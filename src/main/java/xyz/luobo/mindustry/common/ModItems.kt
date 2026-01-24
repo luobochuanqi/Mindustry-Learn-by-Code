@@ -17,8 +17,13 @@ object ModItems {
     val POWER_NODE_BLOCK_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.POWER_NODE_BLOCK)
 
+    // machines items
     val KILN_BLOCK_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.KILN_BLOCK)
+
+    // turrets items
+    val DUO_BLOCK_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.DUO_BLOCK)
 
     val DEBUG_BACON: DeferredItem<DebugBaconItem> =
         MOD_ITEMS.registerItem<DebugBaconItem>("debug_bacon", ::DebugBaconItem)
