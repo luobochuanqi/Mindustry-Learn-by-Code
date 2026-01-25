@@ -2,17 +2,24 @@ package xyz.luobo.mindustry.common.turrets.duo
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
+import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.protocol.Packet
 import net.minecraft.network.protocol.game.ClientGamePacketListener
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.sounds.SoundEvents
+import net.minecraft.sounds.SoundSource
 import net.minecraft.util.Mth
 import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.monster.Monster
 import net.minecraft.world.entity.player.Player
+import net.minecraft.world.entity.projectile.LargeFireball
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
 import software.bernie.geckolib.animatable.GeoBlockEntity
 import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache
 import software.bernie.geckolib.animation.AnimatableManager
@@ -23,6 +30,7 @@ import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.sign
+import kotlin.math.sqrt
 
 
 class DuoBE(
@@ -35,8 +43,12 @@ class DuoBE(
     var targetYaw: Float = 0f      // 目标方向
     var currentYaw: Float = 0f     // 当前实际方向
 
+    // attack 暂时
+    var attackCooldown: Int = 0
+    private val ATTACK_COOLDOWN_TICKS = 5
+
     companion object {
-        const val ROTATION_SPEED = 40.0f // 每秒最大旋转角度（度）
+        const val ROTATION_SPEED = 180.0f // 每秒最大旋转角度（度）
     }
 
     // 返回动画控制器/
@@ -80,6 +92,86 @@ class DuoBE(
             setChanged()
             syncData()
         }
+
+        // 5.攻击 target
+        if (target != null && abs(deltaYaw) <= 30f) {
+            if (attackCooldown <= 0) {
+                // 发射火焰弹
+                fireGhastFireball(level, pos, target)
+                attackCooldown = ATTACK_COOLDOWN_TICKS
+            } else {
+                attackCooldown--
+            }
+        } else {
+            // 没有目标或角度不对时重置冷却
+            attackCooldown = 0
+        }
+    }
+
+    /**
+     * 发射恶魂火焰弹
+     * @param level 世界
+     * @param pos 炮台位置
+     * @param target 目标实体
+     */
+    private fun fireGhastFireball(level: Level, pos: BlockPos, target: LivingEntity) {
+        // 炮口位置（方块中心向上1.5格）
+        val fireballPos = pos.center.add(0.0, 1.5, 0.0)
+
+        // 计算到目标的方向向量
+        val dx = target.x - fireballPos.x
+        val dy = (target.eyeY - 1.0) - fireballPos.y // 瞄准眼睛位置
+        val dz = target.z - fireballPos.z
+
+        // 归一化并设置速度（0.5倍速，可调）
+        val distance = sqrt(dx * dx + dy * dy + dz * dz)
+        if (distance == 0.0) return // 防止除零
+
+        val velocityX = (dx / distance) * 0.5
+        val velocityY = (dy / distance) * 0.5
+        val velocityZ = (dz / distance) * 0.5
+
+        // 创建恶魂火焰弹（发射者设为null，BlockEntity不是LivingEntity）
+        // 暂时设置为几几打叽叽
+        val fireball = LargeFireball(level, target, Vec3(velocityX, velocityY, velocityZ), 0)
+        fireball.setPos(fireballPos)
+
+        // 添加到世界
+        level.addFreshEntity(fireball)
+
+        // 播放发射音效
+        level.playSound(
+            null, // 玩家
+            pos,
+            SoundEvents.GHAST_SHOOT,
+            SoundSource.BLOCKS,
+            2.0f, // 音量
+            1.0f  // 音调
+        )
+
+        // 在ServerLevel添加粒子效果
+        if (level is ServerLevel) {
+            level.sendParticles(
+                ParticleTypes.FLAME,  // 火焰粒子
+                fireballPos.x,
+                fireballPos.y,
+                fireballPos.z,
+                15,              // 数量
+                0.1, 0.1, 0.1,   // X/Y/Z偏移
+                0.05             // 速度
+            )
+
+            // 添加烟雾效果
+            level.sendParticles(
+                ParticleTypes.LARGE_SMOKE,
+                fireballPos.x,
+                fireballPos.y,
+                fireballPos.z,
+                10,
+                0.1, 0.1, 0.1,
+                0.01
+            )
+        }
     }
 
     // 计算到目标的偏航角
@@ -95,7 +187,7 @@ class DuoBE(
         val enemies = level.getEntitiesOfClass(
             LivingEntity::class.java,
             area
-        ) { e -> e.isAlive && e is Player }
+        ) { e -> e.isAlive && (e is Monster || e is Player) }
 
         return enemies.minByOrNull { it.distanceToSqr(pos.center) }
     }
