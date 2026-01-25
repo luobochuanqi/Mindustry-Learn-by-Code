@@ -32,7 +32,7 @@ class PowerNodeBlock : BaseEntityBlock(
         )
     }
 
-    override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity? {
+    override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity {
         return PowerNodeBlockEntity(pos = pos, state = state)
     }
 

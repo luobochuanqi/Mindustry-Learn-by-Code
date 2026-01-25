@@ -43,9 +43,9 @@ object LDLib2_test_1 {
                 .setOnClick { image.transform { it.rotation(it.rotation() + 90f) } }
         )
 
-        val stylesheetSelector: UIElement = Selector<ResourceLocation>()
+        Selector<ResourceLocation>()
             .setSelected(StylesheetManager.GDP, false)
-            .setCandidates(StylesheetManager.INSTANCE.getAllPackStylesheets().toList())
+            .setCandidates(StylesheetManager.INSTANCE.allPackStylesheets.toList())
             .setOnValueChanged { selected ->
                 // switch to the selected stylesheet
                 val mui = root.modularUI

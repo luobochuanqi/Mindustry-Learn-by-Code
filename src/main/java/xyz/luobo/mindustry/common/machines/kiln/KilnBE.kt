@@ -20,7 +20,7 @@ class KilnBE(
     private val leadItem by lazy { ModItems.getMaterial(Materials.LEAD).get() }
     private val sandItem by lazy { ModItems.getMaterial(Materials.SAND).get() }
     private val metaglassItem by lazy { ModItems.getMaterial(Materials.METAGLASS).get() }
-    
+
     // 两输入 一输出
     public override val itemHandler: ItemStackHandler = object : MachineItemHandler(3, this) {
         override fun isItemValid(slot: Int, stack: ItemStack): Boolean {

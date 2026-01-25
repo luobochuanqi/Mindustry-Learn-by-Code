@@ -71,8 +71,10 @@ object LaserRenderer {
             // 渲染待连接状态
             if (blockEntity.isAwaitingConnection) {
                 // 渲染黄色圆圈，半径为 MAX_CONNECTION_DISTANCE
-                renderCircle(fromPos, PowerNodeBlockEntity.MAX_CONNECTION_DISTANCE,
-                    poseStack, bufferSource)
+                renderCircle(
+                    fromPos, PowerNodeBlockEntity.MAX_CONNECTION_DISTANCE,
+                    poseStack, bufferSource
+                )
             }
             // 渲染连接激光
             if (blockEntity.shouldRenderConnections) {

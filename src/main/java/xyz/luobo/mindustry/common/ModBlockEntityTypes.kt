@@ -16,7 +16,7 @@ object ModBlockEntityTypes {
         DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, Mindustry.MOD_ID)
 
     val POWER_NODE_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<PowerNodeBlockEntity>> =
-        BLOCK_ENTITY_TYPES.register("power_node", Supplier{
+        BLOCK_ENTITY_TYPES.register("power_node", Supplier {
             BlockEntityType.Builder.of(
                 { pos, state -> PowerNodeBlockEntity(pos, state) },
                 ModBlocks.POWER_NODE_BLOCK.get()

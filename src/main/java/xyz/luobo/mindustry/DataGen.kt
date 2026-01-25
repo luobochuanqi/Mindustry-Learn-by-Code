@@ -26,7 +26,7 @@ object DataGen {
     }
 }
 
-class ModLanguageProvider(output: PackOutput, locale: String): LanguageProvider(output, Mindustry.MOD_ID, locale) {
+class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider(output, Mindustry.MOD_ID, locale) {
     override fun addTranslations() {
         // Item Group
         this.add("itemGroup.mindustry", "Mindustry")
@@ -45,7 +45,8 @@ class ModLanguageProvider(output: PackOutput, locale: String): LanguageProvider(
     }
 }
 
-class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileHelper): ItemModelProvider(output, Mindustry.MOD_ID, existingFileHelper) {
+class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileHelper) :
+    ItemModelProvider(output, Mindustry.MOD_ID, existingFileHelper) {
     override fun registerModels() {
         this.basicItem(ModItems.EXAMPLE_ITEM.get())
         this.basicItem(ModItems.DEBUG_BACON.get())
@@ -57,7 +58,8 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
     }
 }
 
-class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFileHelper): BlockStateProvider(output, Mindustry.MOD_ID, existingFileHelper) {
+class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFileHelper) :
+    BlockStateProvider(output, Mindustry.MOD_ID, existingFileHelper) {
     override fun registerStatesAndModels() {
         this.simpleBlockWithItem(ModBlocks.POWER_NODE_BLOCK.get(), cubeAll(ModBlocks.POWER_NODE_BLOCK.get()))
         this.simpleBlockWithItem(ModBlocks.KILN_BLOCK.get(), cubeAll(ModBlocks.KILN_BLOCK.get()))
@@ -67,6 +69,4 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
 }
 
 class ModRecipeProvider(output: PackOutput, provider: CompletableFuture<HolderLookup.Provider>) :
-    RecipeProvider(output, provider) {
-
-}
+    RecipeProvider(output, provider)

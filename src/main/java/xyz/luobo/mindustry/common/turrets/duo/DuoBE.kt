@@ -109,7 +109,7 @@ class DuoBE(
     override fun getUpdatePacket(): Packet<ClientGamePacketListener?>? {
         // The packet uses the CompoundTag returned by #getUpdateTag. An alternative overload of #create exists
         // that allows you to specify a custom update tag, including the ability to omit data the client might not need.
-        return ClientboundBlockEntityDataPacket.create(this);
+        return ClientboundBlockEntityDataPacket.create(this)
     }
 
     // 简单的同步触发器
