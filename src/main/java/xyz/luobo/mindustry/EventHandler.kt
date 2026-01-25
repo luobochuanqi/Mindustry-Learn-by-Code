@@ -1,6 +1,11 @@
 package xyz.luobo.mindustry
 
+import com.mojang.blaze3d.vertex.PoseStack
+import com.mojang.blaze3d.vertex.VertexConsumer
 import com.mojang.logging.LogUtils
+import net.minecraft.client.renderer.MultiBufferSource
+import net.minecraft.client.renderer.RenderType
+import net.minecraft.util.Mth
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
 import net.neoforged.fml.common.EventBusSubscriber
@@ -11,6 +16,7 @@ import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
 import org.slf4j.Logger
+import software.bernie.geckolib.cache.`object`.GeoBone
 import software.bernie.geckolib.renderer.GeoBlockRenderer
 import xyz.luobo.mindustry.client.geoModels.DuoModel
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
@@ -47,20 +53,18 @@ object EventHandler {
         // 注册窑炉的物品处理器 Capability
         event.registerBlockEntity(
             Capabilities.ItemHandler.BLOCK,
-            ModBlockEntityTypes.KILN_BLOCK_ENTITY.get(),
-            { be, _ ->
-                if (be is KilnBE) be.itemHandler else null
-            }
-        )
+            ModBlockEntityTypes.KILN_BLOCK_ENTITY.get()
+        ) { be, _ ->
+            if (be is KilnBE) be.itemHandler else null
+        }
 
         // 注册窑炉的能量存储 Capability
         event.registerBlockEntity(
             Capabilities.EnergyStorage.BLOCK,
-            ModBlockEntityTypes.KILN_BLOCK_ENTITY.get(),
-            { be, _ ->
-                if (be is KilnBE) be.energyStorage else null
-            }
-        )
+            ModBlockEntityTypes.KILN_BLOCK_ENTITY.get()
+        ) { be, _ ->
+            if (be is KilnBE) be.energyStorage else null
+        }
     }
 }
 
@@ -68,4 +72,39 @@ class DuoRenderer :
     GeoBlockRenderer<DuoBE>(
 //        DefaultedBlockGeoModel(ResourceLocation.fromNamespaceAndPath(Mindustry.MOD_ID, "duo"))
         DuoModel()
-    )
+    ) {
+    override fun renderRecursively(
+        poseStack: PoseStack?,
+        animatable: DuoBE?,
+        bone: GeoBone?,
+        renderType: RenderType?,
+        bufferSource: MultiBufferSource?,
+        buffer: VertexConsumer?,
+        isReRender: Boolean,
+        partialTick: Float,
+        packedLight: Int,
+        packedOverlay: Int,
+        colour: Int
+    ) {
+        if (bone != null && bone.name.equals("turret")) {
+            if (animatable != null) {
+                // 获取当前Yaw并转换为弧度
+                val yawRad = -(animatable.currentYaw * Mth.DEG_TO_RAD)
+                bone.setRotY(yawRad)
+            }
+        }
+        super.renderRecursively(
+            poseStack,
+            animatable,
+            bone,
+            renderType,
+            bufferSource,
+            buffer,
+            isReRender,
+            partialTick,
+            packedLight,
+            packedOverlay,
+            colour
+        )
+    }
+}
