@@ -8,6 +8,7 @@ import xyz.luobo.mindustry.core.registry.MachineDefinition
  * 只需调用该文件 register 即可同步注册 Controller, Dummy, BlockItem, BlockEntity.
  * 注意 Machine 全为需实现多方快接口
  */
+@Deprecated("已用 BaseMachineBE 实现")
 interface IMachine {
     fun getMachineDefinition(): MachineDefinition
     fun getMachineID(): ResourceLocation

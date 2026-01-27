@@ -32,10 +32,6 @@ abstract class BaseMachineBE(
     abstract val maxProgress: Int // 来自配方或配置
     abstract val energyPerTick: Int
 
-    // 缓存配置：容量等
-    protected open val capacity: Int = 10000
-    protected open val maxTransfer: Int = 100
-
     // --- 核心 Tick 逻辑 ---
 
     /**
@@ -79,10 +75,10 @@ abstract class BaseMachineBE(
     protected abstract fun finishWork()
 
     /**
-     * Mindustry 特有的自动向周围/指定方向弹出物品逻辑
+     * 自动向周围弹出物品
      */
     protected open fun tryAutoEject() {
-        // 获取输出方向 (Mindustry 机器通常有固定输出口，或全向输出)
+        // 获取输出方向
         val ejectDirs = getOutputDirections()
 
         for (dir in ejectDirs) {
@@ -116,7 +112,6 @@ abstract class BaseMachineBE(
                         }
                     }
                 }
-                // 具体实现需遍历 outputSlots 并 insertItem
             }
         }
     }
