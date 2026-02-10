@@ -12,16 +12,13 @@ import xyz.luobo.mindustry.common.turrets.duo.DuoBlock
 object ModBlocks {
     val MOD_BLOCKS: DeferredRegister.Blocks = DeferredRegister.createBlocks(Mindustry.MOD_ID)
 
-    val POWER_NODE_BLOCK: DeferredBlock<Block> =
-        MOD_BLOCKS.registerBlock("power_node_block") { PowerNodeBlock() }
+    val POWER_NODE_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("power_node_block") { PowerNodeBlock() }
 
     // Machines
-    val KILN_BLOCK: DeferredBlock<Block> =
-        MOD_BLOCKS.registerBlock("kiln_block") { KilnBlock() }
+    val KILN_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("kiln_block") { KilnBlock() }
 
     // Turrets
-    val DUO_BLOCK: DeferredBlock<Block> =
-        MOD_BLOCKS.registerBlock("duo") { DuoBlock() }
+    val DUO_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("duo") { DuoBlock() }
 
     fun register() {
         MOD_BLOCKS.register(MOD_BUS)
