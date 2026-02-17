@@ -9,7 +9,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.items.ItemHandlerHelper.insertItem
-import xyz.luobo.mindustry.core.ModBlockEntity
+import xyz.luobo.mindustry.core.MindustryModBlockEntity
 import xyz.luobo.mindustry.core.capability.IEnergyCapability
 import xyz.luobo.mindustry.core.capability.IItemCapability
 import xyz.luobo.mindustry.core.capability.impl.EnergyCapabilityImpl
@@ -24,7 +24,7 @@ abstract class BaseMachineBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : ModBlockEntity(type, pos, state) {
+) : MindustryModBlockEntity(type, pos, state) {
     var isWorking: Boolean = false
 
     // ========== 状态数据 ==========

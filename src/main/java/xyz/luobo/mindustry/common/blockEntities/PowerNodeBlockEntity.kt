@@ -12,11 +12,11 @@ import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.energy.IEnergyStorage
 import xyz.luobo.mindustry.client.renderers.LaserRenderer
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
-import xyz.luobo.mindustry.core.ModBlockEntity
+import xyz.luobo.mindustry.core.MindustryModBlockEntity
 import xyz.luobo.mindustry.core.capability.IEnergyCapability
 
 class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
-    ModBlockEntity(ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage {
+    MindustryModBlockEntity(ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage {
     // 存储相连的其他电力节点位置
     private val connectedNodes = mutableSetOf<BlockPos>()
 

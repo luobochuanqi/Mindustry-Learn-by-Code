@@ -5,7 +5,7 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.material.Fluids
-import xyz.luobo.mindustry.core.ModBlockEntity
+import xyz.luobo.mindustry.core.MindustryModBlockEntity
 
 /**
  * ModBlockEntity 使用示例
@@ -22,7 +22,7 @@ class EnergyOnlyBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : ModBlockEntity(type, pos, state) {
+) : MindustryModBlockEntity(type, pos, state) {
 
     // 提供能量 Capability
     override val energyCapability = createEnergyCapability(
@@ -58,7 +58,7 @@ class FluidOnlyBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : ModBlockEntity(type, pos, state) {
+) : MindustryModBlockEntity(type, pos, state) {
 
     // 提供液体 Capability
     override val fluidCapability = createFluidCapability(
@@ -87,7 +87,7 @@ class ItemOnlyBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : ModBlockEntity(type, pos, state) {
+) : MindustryModBlockEntity(type, pos, state) {
 
     // 提供物品 Capability（27 个槽位，类似箱子）
     override val itemCapability = createItemCapability(
@@ -119,7 +119,7 @@ class EnergyFluidBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : ModBlockEntity(type, pos, state) {
+) : MindustryModBlockEntity(type, pos, state) {
 
     // 提供能量 Capability
     override val energyCapability = createEnergyCapability(
@@ -159,7 +159,7 @@ class MachineBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : ModBlockEntity(type, pos, state) {
+) : MindustryModBlockEntity(type, pos, state) {
 
     // 提供能量 Capability
     override val energyCapability = createEnergyCapability(
@@ -223,7 +223,7 @@ class AdvancedMachineBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : ModBlockEntity(type, pos, state) {
+) : MindustryModBlockEntity(type, pos, state) {
 
     // 提供能量 Capability
     override val energyCapability = createEnergyCapability(

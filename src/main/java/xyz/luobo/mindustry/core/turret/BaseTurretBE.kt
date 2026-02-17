@@ -15,7 +15,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.AABB
-import xyz.luobo.mindustry.core.ModBlockEntity
+import xyz.luobo.mindustry.core.MindustryModBlockEntity
 import xyz.luobo.mindustry.core.capability.IEnergyCapability
 import xyz.luobo.mindustry.core.capability.IFluidCapability
 import xyz.luobo.mindustry.core.capability.IItemCapability
@@ -37,7 +37,7 @@ abstract class BaseTurretBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : ModBlockEntity(type, pos, state) {
+) : MindustryModBlockEntity(type, pos, state) {
 
     // ========== 配置系统 ==========
 
@@ -314,6 +314,7 @@ abstract class BaseTurretBE(
 
     /**
      * 检查是否有弹药
+     * 非弹药炮台直接返回 true
      */
     protected open fun hasAmmo(): Boolean {
         if (!config.hasAmmoSystem) return true

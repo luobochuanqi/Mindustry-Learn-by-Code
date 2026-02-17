@@ -16,7 +16,7 @@ import xyz.luobo.mindustry.core.capability.impl.FluidCapabilityImpl
 import xyz.luobo.mindustry.core.capability.impl.ItemCapabilityImpl
 
 /**
- * Mod 方块实体基类
+ * Mindustry Mod 方块实体基类
  * 使用组合方式管理 Capability（能量、液体、物品）
  *
  * 子类可以根据需要选择启用哪些 Capability：
@@ -24,7 +24,7 @@ import xyz.luobo.mindustry.core.capability.impl.ItemCapabilityImpl
  * - 液体系统：通过 fluidCapability 属性访问
  * - 物品系统：通过 itemCapability 属性访问
  */
-abstract class ModBlockEntity(
+abstract class MindustryModBlockEntity(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
