@@ -7,29 +7,46 @@ import net.minecraft.nbt.ListTag
 import net.minecraft.nbt.Tag
 import net.minecraft.network.Connection
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
-import net.minecraft.util.Mth
 import net.minecraft.world.level.Level
-import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.energy.IEnergyStorage
 import xyz.luobo.mindustry.client.renderers.LaserRenderer
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
-import kotlin.math.min
+import xyz.luobo.mindustry.core.ModBlockEntity
+import xyz.luobo.mindustry.core.capability.IEnergyCapability
 
 class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
-    BlockEntity(ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage {
+    ModBlockEntity(ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage {
     // 存储相连的其他电力节点位置
     private val connectedNodes = mutableSetOf<BlockPos>()
 
-    // 能量相关变量
-    private var energy = 0  // 当前存储的能量
-    private val capacity: Int = 24000  // 能量上限
+    // 能量配置
+    private val energyCapacity: Int = 24000  // 能量上限
     private val maxReceive: Int = 200  // 每次最多接收多少
     private val maxExtract: Int = 200  // 每次最多提取多少
 
     // 用于客户端渲染的标记
     var shouldRenderConnections = true
     var isAwaitingConnection = false
+
+    // ========== Capability 配置 ==========
+
+    /**
+     * 能量 Capability
+     */
+    override val energyCapability by lazy {
+        createEnergyCapability(
+            capacity = energyCapacity,
+            maxReceive = maxReceive,
+            maxExtract = maxExtract
+        )
+    }
+
+    /**
+     * 便捷访问能量存储
+     */
+    private val energyStorage: IEnergyCapability
+        get() = energyCapability!!
 
     companion object {
         fun serverTick(level: Level, pos: BlockPos, state: BlockState, powerNodeBE: PowerNodeBlockEntity) {
@@ -173,12 +190,11 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
         }
         tag.put("connections", connectionsList)
 
-        // 保存能量
-        tag.putInt("energy", energy)
-
         // 保存渲染标记
         tag.putBoolean("renderConnections", shouldRenderConnections)
         tag.putBoolean("awaitingConnection", isAwaitingConnection)
+
+        // 能量数据由 ModBlockEntity 自动保存
     }
 
     // 反序列化数据
@@ -199,12 +215,11 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
             }
         }
 
-        // 加载能量
-        energy = tag.getInt("energy")
-
         // 加载渲染标记
         shouldRenderConnections = tag.getBoolean("renderConnections")
         isAwaitingConnection = tag.getBoolean("awaitingConnection")
+
+        // 能量数据由 ModBlockEntity 自动加载
     }
 
     // 客户端同步数据包
@@ -235,45 +250,30 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
         }
     }
 
-    // 能量相关方法
+    // ========== IEnergyStorage 接口实现 ==========
 
+    // 委托给 energyCapability
     override fun receiveEnergy(toReceive: Int, simulate: Boolean): Int {
-        if (this.canReceive() && toReceive > 0) {
-            val energyReceived = Mth.clamp(this.capacity - this.energy, 0, min(this.maxReceive, toReceive))
-            if (!simulate) {
-                this.energy += energyReceived
-            }
-            return energyReceived
-        } else {
-            return 0
-        }
+        return energyStorage.receiveEnergy(toReceive, simulate)
     }
 
     override fun extractEnergy(toExtract: Int, simulate: Boolean): Int {
-        if (this.canExtract() && toExtract > 0) {
-            val energyExtracted = min(this.energy, min(this.maxExtract, toExtract))
-            if (!simulate) {
-                this.energy -= energyExtracted
-            }
-            return energyExtracted
-        } else {
-            return 0
-        }
+        return energyStorage.extractEnergy(toExtract, simulate)
     }
 
     override fun getEnergyStored(): Int {
-        return energy
+        return energyStorage.currentEnergy
     }
 
     override fun getMaxEnergyStored(): Int {
-        return capacity
+        return energyStorage.energyCapacity
     }
 
     override fun canExtract(): Boolean {
-        return this.maxExtract > 0
+        return energyStorage.canExtract()
     }
 
     override fun canReceive(): Boolean {
-        return this.maxReceive > 0
+        return energyStorage.canReceive()
     }
 }

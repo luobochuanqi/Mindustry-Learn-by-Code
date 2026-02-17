@@ -55,7 +55,7 @@ object EventHandler {
             Capabilities.ItemHandler.BLOCK,
             ModBlockEntityTypes.KILN_BLOCK_ENTITY.get()
         ) { be, _ ->
-            if (be is KilnBE) be.itemHandler else null
+            if (be is KilnBE) be.itemCapability else null
         }
 
         // 注册窑炉的能量存储 Capability
@@ -63,7 +63,7 @@ object EventHandler {
             Capabilities.EnergyStorage.BLOCK,
             ModBlockEntityTypes.KILN_BLOCK_ENTITY.get()
         ) { be, _ ->
-            if (be is KilnBE) be.energyStorage else null
+            if (be is KilnBE) be.energyCapability else null
         }
     }
 }

@@ -5,34 +5,92 @@ import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
-import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.items.ItemHandlerHelper.insertItem
-import net.neoforged.neoforge.items.ItemStackHandler
-import xyz.luobo.mindustry.core.energy.MachineEnergyStorage
+import xyz.luobo.mindustry.core.ModBlockEntity
+import xyz.luobo.mindustry.core.capability.IEnergyCapability
+import xyz.luobo.mindustry.core.capability.IItemCapability
+import xyz.luobo.mindustry.core.capability.impl.EnergyCapabilityImpl
+import xyz.luobo.mindustry.core.capability.impl.ItemCapabilityImpl
 
+/**
+ * 机器方块实体基类
+ * 使用组合方式管理 Capability（能量、物品）
+ * 提供通用的机器功能：进度跟踪、能量消耗、物品处理
+ */
 abstract class BaseMachineBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : BlockEntity(type, pos, state) {
+) : ModBlockEntity(type, pos, state) {
     var isWorking: Boolean = false
 
-    // 组件
-    // 能量存储 (核心特性：Mindustry 机器通常有内部缓冲)
-    protected abstract val energyStorage: MachineEnergyStorage
+    // ========== 状态数据 ==========
 
-    // 物品存储 (输入/输出槽位)
-    protected abstract val itemHandler: ItemStackHandler
-
-    // --- 状态数据 ---
+    /** 当前进度 */
     var progress: Int = 0
-    abstract val maxProgress: Int // 来自配方或配置
+
+    /** 最大进度（来自配方或配置） */
+    abstract val maxProgress: Int
+
+    /** 每tick能量消耗 */
     abstract val energyPerTick: Int
 
-    // --- 核心 Tick 逻辑 ---
+    /** 物品槽位数 */
+    abstract val itemSlotCount: Int
+
+    /** 能量容量 */
+    abstract val energyCapacity: Int
+
+    /** 能量最大输入速率 */
+    open val maxEnergyReceive: Int = 100
+
+    /** 能量最大输出速率（通常为0） */
+    open val maxEnergyExtract: Int = 0
+
+    // ========== Capability 配置 ==========
+
+    /**
+     * 能量 Capability
+     * 使用 ModBlockEntity 的能量系统
+     */
+    override val energyCapability: EnergyCapabilityImpl by lazy {
+        createEnergyCapability(
+            capacity = energyCapacity,
+            maxReceive = maxEnergyReceive,
+            maxExtract = maxEnergyExtract
+        )
+    }
+
+    /**
+     * 物品 Capability
+     * 使用 ModBlockEntity 的物品系统
+     */
+    override val itemCapability: ItemCapabilityImpl by lazy {
+        createItemCapability(
+            slotCount = itemSlotCount,
+            canInsert = { slot -> isInputSlot(slot) },
+            canExtract = { slot -> isOutputSlot(slot) }
+        )
+    }
+
+    // ========== 便捷访问 ==========
+
+    /**
+     * 能量存储便捷访问
+     */
+    protected val energyStorage: IEnergyCapability
+        get() = energyCapability!!
+
+    /**
+     * 物品处理便捷访问
+     */
+    protected val itemHandler: IItemCapability
+        get() = itemCapability!!
+
+    // ========== 核心 Tick 逻辑 ==========
 
     /**
      * 服务端 Tick：处理逻辑、生产、能量消耗
@@ -46,7 +104,7 @@ abstract class BaseMachineBE(
         }
 
         // 2. 消耗能量
-        if (energyStorage.energyStored >= energyPerTick) {
+        if (energyStorage.hasEnergy(energyPerTick)) {
             isWorking = true
             energyStorage.extractEnergy(energyPerTick, false)
             progress++
@@ -88,10 +146,10 @@ abstract class BaseMachineBE(
 
             if (neighborCap != null) {
                 // 遍历当前机器的所有槽位，尝试将物品输出到邻居
-                for (slotIndex in 0 until itemHandler.slots) {
-                    val stackInSlot = itemHandler.getStackInSlot(slotIndex)
+                for (slotIndex in 0 until itemHandler.slotCount) {
+                    val stackInSlot = itemHandler.getStack(slotIndex)
 
-                    // 只处理非空且为输出槽的物品（这里假设输出槽有一些判断逻辑）
+                    // 只处理非空且为输出槽的物品
                     if (isOutputSlot(slotIndex) && !stackInSlot.isEmpty) {
                         // 尝试插入到邻居的物品处理器中
                         val remainder = insertItem(neighborCap, stackInSlot, true)
@@ -105,7 +163,7 @@ abstract class BaseMachineBE(
 
                             // 如果有未能插入的部分，放回原槽位
                             if (!actualInserted.isEmpty) {
-                                itemHandler.insertItem(slotIndex, actualInserted, false)
+                                itemHandler.setStack(slotIndex, actualInserted)
                             }
 
                             break // 一次只处理一个槽位，避免过度操作
@@ -116,43 +174,41 @@ abstract class BaseMachineBE(
         }
     }
 
-    abstract fun isOutputSlot(slot: Int): Boolean
-
+    /**
+     * 获取输出方向
+     */
     protected open fun getOutputDirections(): List<Direction> = Direction.entries.toList()
 
+    /**
+     * 进度衰减（未工作时调用）
+     */
     private fun decayProgress() {
         if (progress > 0) progress--
     }
 
-    // --- 数据同步 (Packets & NBT) ---
+    // ========== 数据保存 ==========
 
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)
-        tag.putInt("Energy", energyStorage.energyStored)
         tag.putInt("Progress", progress)
         tag.putBoolean("IsWorking", isWorking)
-        tag.put("Inventory", itemHandler.serializeNBT(registries))
+        // 能量和物品数据由 ModBlockEntity 自动保存
     }
 
     override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.loadAdditional(tag, registries)
-        if (tag.contains("Energy")) energyStorage.receiveEnergy(tag.getInt("Energy"), false)
         progress = tag.getInt("Progress")
         isWorking = tag.getBoolean("IsWorking")
-        itemHandler.deserializeNBT(registries, tag.getCompound("Inventory"))
+        // 能量和物品数据由 ModBlockEntity 自动加载
     }
 
-    // 用于客户端同步的简化包
+    // ========== 数据同步 ==========
+
     override fun getUpdatePacket(): ClientboundBlockEntityDataPacket? {
         return ClientboundBlockEntityDataPacket.create(this)
     }
 
     override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag {
         return saveWithoutMetadata(registries)
-    }
-
-    // 简单的同步触发器
-    fun syncData() {
-        level?.sendBlockUpdated(worldPosition, blockState, blockState, 3)
     }
 }
