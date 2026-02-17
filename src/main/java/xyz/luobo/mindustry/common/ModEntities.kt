@@ -23,7 +23,7 @@ object ModEntities {
             )
                 .sized(0.25f, 0.25f) // 设置实体大小
                 .clientTrackingRange(4) // 客户端跟踪范围
-                .updateInterval(1) // 更新间隔
+                .updateInterval(20) // 更新间隔
                 .build(ResourceLocation.fromNamespaceAndPath(Mindustry.MOD_ID, "duo_bullet").toString())
         })
 
