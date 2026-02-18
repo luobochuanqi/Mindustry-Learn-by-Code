@@ -2,14 +2,18 @@ package xyz.luobo.mindustry.common.items
 
 import com.lowdragmc.lowdraglib2.gui.factory.HeldItemUIMenuType
 import com.lowdragmc.lowdraglib2.gui.ui.ModularUI
+import net.minecraft.core.BlockPos
 import net.minecraft.server.level.ServerPlayer
 import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
 import net.minecraft.world.InteractionResultHolder
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Rarity
+import net.minecraft.world.item.context.UseOnContext
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.entity.BlockEntity
 import xyz.luobo.mindustry.client.screens.LDLib2_test_1.createModularUI
 
 
@@ -29,6 +33,19 @@ class DebugBaconItem(properties: Properties) : Item(
             HeldItemUIMenuType.openUI(player, usedHand)
         }
         return super.use(level, player, usedHand)
+    }
+
+    override fun useOn(context: UseOnContext): InteractionResult {
+        val blockPos: BlockPos = context.clickedPos
+        val level: Level = context.level
+
+        val be: BlockEntity? = level.getBlockEntity(blockPos)
+
+//        if (be != null && be as ) {
+//
+//        }
+
+        return super.useOn(context)
     }
 
     override fun createUI(holder: HeldItemUIMenuType.HeldItemUIHolder?): ModularUI {

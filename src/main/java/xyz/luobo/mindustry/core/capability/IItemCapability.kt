@@ -115,11 +115,36 @@ interface IItemCapability : IItemHandler {
 
     /**
      * 检查物品是否有效
+     * 
+     * 根据 NeoForge 规范：
+     * - 返回 false 表示这个槽位永远不能插入这种物品
+     * - 返回 true 表示可能在某些情况下可以插入（需要进一步模拟）
+     * - 不考虑当前的库存状态、满度或其他状态
+     * 
+     * @param slot 要查询的槽位
+     * @param stack 要测试的物品栈
+     * @return true 如果槽位可以在某些情况下插入该物品，false 如果永远不能插入
      */
     override fun isItemValid(slot: Int, stack: ItemStack): Boolean {
         if (slot !in 0..<slotCount) return false
-        return !stack.isEmpty
+        if (stack.isEmpty) return false
+        if (!canInsert(slot)) return false
+
+        // 调用子类的物品验证方法
+        return isValidItemForSlot(slot, stack)
     }
+
+    /**
+     * 检查物品是否可以插入到指定槽位（不考虑当前库存状态）
+     * 子类可以重写此方法来限制可以插入的物品类型
+     * 
+     * 默认实现：所有物品都可以插入
+     * 
+     * @param slot 槽位索引
+     * @param stack 要插入的物品栈
+     * @return true 如果该物品类型可以被插入到该槽位
+     */
+    fun isValidItemForSlot(slot: Int, stack: ItemStack): Boolean = true
 
     /**
      * 检查是否可以插入（子类可重写）

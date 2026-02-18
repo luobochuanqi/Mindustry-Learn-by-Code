@@ -192,7 +192,7 @@ class AdvancedMachineBE(
         }
 
         // 检查能量充足
-        return energyStorage.hasEnergy(energyPerTick)
+        return energyCapability.hasEnergy(energyPerTick)
     }
 
     // 完成工作逻辑

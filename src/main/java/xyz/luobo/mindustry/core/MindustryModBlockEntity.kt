@@ -178,13 +178,15 @@ abstract class MindustryModBlockEntity(
     protected fun createItemCapability(
         slotCount: Int,
         canInsert: (slot: Int) -> Boolean = { true },
-        canExtract: (slot: Int) -> Boolean = { true }
+        canExtract: (slot: Int) -> Boolean = { true },
+        isValidItem: (slot: Int, stack: ItemStack) -> Boolean = { _, _ -> true }
     ): ItemCapabilityImpl {
         return ItemCapabilityImpl(
             slotCount = slotCount,
             onContentsChangedCallback = { slot -> onContentsChanged(slot) },
             canInsertCallback = canInsert,
-            canExtractCallback = canExtract
+            canExtractCallback = canExtract,
+            isValidItemCallback = isValidItem
         )
     }
 

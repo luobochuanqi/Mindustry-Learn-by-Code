@@ -5,12 +5,12 @@ import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.items.ItemHandlerHelper.insertItem
 import xyz.luobo.mindustry.core.MindustryModBlockEntity
-import xyz.luobo.mindustry.core.capability.IEnergyCapability
 import xyz.luobo.mindustry.core.capability.IItemCapability
 import xyz.luobo.mindustry.core.capability.impl.EnergyCapabilityImpl
 import xyz.luobo.mindustry.core.capability.impl.ItemCapabilityImpl
@@ -72,17 +72,12 @@ abstract class BaseMachineBE(
         createItemCapability(
             slotCount = itemSlotCount,
             canInsert = { slot -> isInputSlot(slot) },
-            canExtract = { slot -> isOutputSlot(slot) }
+            canExtract = { slot -> isOutputSlot(slot) },
+            isValidItem = { slot, stack -> isValidItemForSlot(slot, stack) }
         )
     }
 
     // ========== 便捷访问 ==========
-
-    /**
-     * 能量存储便捷访问
-     */
-    protected val energyStorage: IEnergyCapability
-        get() = energyCapability!!
 
     /**
      * 物品处理便捷访问
@@ -96,7 +91,7 @@ abstract class BaseMachineBE(
      * 服务端 Tick：处理逻辑、生产、能量消耗
      */
     open fun tickServer() {
-        // 1. 验证是否激活 (Mindustry 逻辑: 只有满足条件才工作)
+        // 1. 验证是否激活 (只有满足条件才工作)
         if (!canWork()) {
             if (progress > 0) decayProgress()
             isWorking = false
@@ -104,9 +99,9 @@ abstract class BaseMachineBE(
         }
 
         // 2. 消耗能量
-        if (energyStorage.hasEnergy(energyPerTick)) {
+        if (energyCapability.hasEnergy(energyPerTick)) {
             isWorking = true
-            energyStorage.extractEnergy(energyPerTick, false)
+            energyCapability.extractEnergy(energyPerTick, false)
             progress++
 
             // 3. 完成工作
@@ -141,13 +136,13 @@ abstract class BaseMachineBE(
 
         for (dir in ejectDirs) {
             val neighborPos = worldPosition.relative(dir)
-            // 获取邻居的 ItemHandler Capability
+            // 获取邻居的 itemCapability Capability
             val neighborCap = level?.getCapability(Capabilities.ItemHandler.BLOCK, neighborPos, dir.opposite)
 
             if (neighborCap != null) {
                 // 遍历当前机器的所有槽位，尝试将物品输出到邻居
-                for (slotIndex in 0 until itemHandler.slotCount) {
-                    val stackInSlot = itemHandler.getStack(slotIndex)
+                for (slotIndex in 0 until itemCapability.slotCount) {
+                    val stackInSlot = itemCapability.getStack(slotIndex)
 
                     // 只处理非空且为输出槽的物品
                     if (isOutputSlot(slotIndex) && !stackInSlot.isEmpty) {
@@ -158,12 +153,12 @@ abstract class BaseMachineBE(
                         if (remainder != stackInSlot) {
                             // 实际插入物品
                             val extractedStack =
-                                itemHandler.extractItem(slotIndex, stackInSlot.count - remainder.count, false)
+                                itemCapability.extractItem(slotIndex, stackInSlot.count - remainder.count, false)
                             val actualInserted = insertItem(neighborCap, extractedStack, false)
 
                             // 如果有未能插入的部分，放回原槽位
                             if (!actualInserted.isEmpty) {
-                                itemHandler.setStack(slotIndex, actualInserted)
+                                itemCapability.setStack(slotIndex, actualInserted)
                             }
 
                             break // 一次只处理一个槽位，避免过度操作
@@ -178,6 +173,18 @@ abstract class BaseMachineBE(
      * 获取输出方向
      */
     protected open fun getOutputDirections(): List<Direction> = Direction.entries.toList()
+
+    /**
+     * 检查物品是否可以插入到指定槽位（不考虑当前库存状态）
+     * 子类可以重写此方法来限制可以插入的物品类型
+     * 
+     * 默认实现：输入槽和输出槽都接受所有物品
+     * 
+     * @param slot 槽位索引
+     * @param stack 要插入的物品栈
+     * @return true 如果该物品类型可以被插入到该槽位
+     */
+    protected open fun isValidItemForSlot(slot: Int, stack: ItemStack): Boolean = true
 
     /**
      * 进度衰减（未工作时调用）

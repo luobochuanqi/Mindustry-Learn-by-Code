@@ -9,93 +9,149 @@ import xyz.luobo.mindustry.common.ModItems
 import xyz.luobo.mindustry.common.items.Materials
 import xyz.luobo.mindustry.core.machine.BaseMachineBE
 
+/**
+ * 窑炉方块实体
+ * 将铅和沙子合成为金属玻璃
+ */
 class KilnBE(
     pos: BlockPos,
     state: BlockState
 ) : BaseMachineBE(ModBlockEntityTypes.KILN_BLOCK_ENTITY.get(), pos, state) {
-    // 缓存物品引用以提高性能
+
+    companion object {
+        // 配置常量
+        const val INPUT_SLOT_1 = 0
+        const val INPUT_SLOT_2 = 1
+        const val OUTPUT_SLOT = 2
+
+        const val ENERGY_CAPACITY = 10000
+        const val ENERGY_PER_TICK = 2
+        const val MAX_PROGRESS = 10
+        const val MAX_OUTPUT_STACK_SIZE = 64
+    }
+
+    // ========== 配置属性 ==========
+
+    override val itemSlotCount: Int = 3
+    override val energyCapacity: Int = ENERGY_CAPACITY
+    override val maxProgress: Int = MAX_PROGRESS
+    override val energyPerTick: Int = ENERGY_PER_TICK
+
+    override val maxEnergyReceive: Int = 200
+    override val maxEnergyExtract: Int = 200
+
+    // ========== 物品引用缓存 ==========
+
     private val leadItem by lazy { ModItems.getMaterial(Materials.LEAD).get() }
     private val sandItem by lazy { ModItems.getMaterial(Materials.SAND).get() }
     private val metaglassItem by lazy { ModItems.getMaterial(Materials.METAGLASS).get() }
 
-    // 配置属性
-    override val itemSlotCount: Int = 3 // 两输入 + 一输出
-    override val energyCapacity: Int = 10000
-    override val maxProgress: Int = 10
-    override val energyPerTick: Int = 2
+    // ========== 槽位配置 ==========
 
-    // 重写物品验证
     override fun isInputSlot(slot: Int): Boolean {
-        return slot == 0 || slot == 1
+        return slot == INPUT_SLOT_1 || slot == INPUT_SLOT_2
     }
 
     override fun isOutputSlot(slot: Int): Boolean {
-        return slot == 2
+        return slot == OUTPUT_SLOT
     }
 
-    // 重写物品槽验证逻辑（在 tickServer 中使用）
-    override fun tickServer() {
-        // 在工作前检查物品有效性
-        val itemStack0 = itemHandler.getStack(0)
-        val itemStack1 = itemHandler.getStack(1)
+    /**
+     * 检查物品是否可以插入到指定槽位（不考虑当前库存状态）
+     * 输入槽只能接受铅和沙子，输出槽不能插入
+     */
+    override fun isValidItemForSlot(slot: Int, stack: ItemStack): Boolean {
+        if (stack.isEmpty) return false
 
-        // 验证物品类型
-        if (!itemStack0.isEmpty && itemStack0.item != leadItem && itemStack0.item != sandItem) {
-            // 无效物品，弹出
-            itemHandler.extractItem(0, itemStack0.count, false)
-        }
-        if (!itemStack1.isEmpty && itemStack1.item != leadItem && itemStack1.item != sandItem) {
-            // 无效物品，弹出
-            itemHandler.extractItem(1, itemStack1.count, false)
-        }
+        return when (slot) {
+            INPUT_SLOT_1, INPUT_SLOT_2 -> {
+                // 输入槽只能接受铅或沙子
+                stack.item == leadItem || stack.item == sandItem
+            }
 
-        super.tickServer()
+            OUTPUT_SLOT -> {
+                // 输出槽不允许插入
+                false
+            }
+
+            else -> true
+        }
     }
+
+    // ========== 工作逻辑 ==========
 
     override fun canWork(): Boolean {
-        val itemStack0 = itemHandler.getStack(0)
-        val itemStack1 = itemHandler.getStack(1)
-        val itemStack2 = itemHandler.getStack(2)
+        // 检查能量是否充足
+        if (!energyCapability.hasEnergy(energyPerTick)) {
+            return false
+        }
 
-        // 检查物品栈是否为空
-        if (itemStack0.isEmpty || itemStack1.isEmpty) {
+        val stack1 = itemCapability.getStack(INPUT_SLOT_1)
+        val stack2 = itemCapability.getStack(INPUT_SLOT_2)
+        val outputStack = itemCapability.getStack(OUTPUT_SLOT)
+
+        // 检查输入槽位是否有物品
+        if (stack1.isEmpty || stack2.isEmpty) {
             return false
         }
 
         // 检查输出槽位是否已满
-        if (itemStack2.count >= 64) {
+        if (outputStack.count >= MAX_OUTPUT_STACK_SIZE) {
             return false
         }
 
-        // 使用缓存的物品引用进行比较
-        return (itemStack0.item == leadItem && itemStack1.item == sandItem) ||
-                (itemStack0.item == sandItem && itemStack1.item == leadItem)
+        // 检查配方是否匹配（铅 + 沙子）
+        return hasValidRecipe(stack1, stack2)
+    }
+
+    /**
+     * 检查是否有有效的配方
+     */
+    private fun hasValidRecipe(stack1: ItemStack, stack2: ItemStack): Boolean {
+        val isLeadAndSand = (stack1.item == leadItem && stack2.item == sandItem)
+        val isSandAndLead = (stack1.item == sandItem && stack2.item == leadItem)
+        return isLeadAndSand || isSandAndLead
     }
 
     override fun finishWork() {
-        // 验证输入槽位是否有足够的物品
-        val itemStack0 = itemHandler.getStack(0)
-        val itemStack1 = itemHandler.getStack(1)
+        val stack1 = itemCapability.getStack(INPUT_SLOT_1)
+        val stack2 = itemCapability.getStack(INPUT_SLOT_2)
 
-        if (itemStack0.count >= 1 && itemStack1.count >= 1) {
-            // 消耗输入物品
-            itemHandler.extractItem(0, 1, false)
-            itemHandler.extractItem(1, 1, false)
-
-            // 添加输出物品
-            val itemStack2 = itemHandler.getStack(2)
-            if (itemStack2.isEmpty) {
-                itemHandler.setStack(2, ItemStack(metaglassItem, 1))
-            } else {
-                itemHandler.setStack(2, ItemStack(metaglassItem, itemStack2.count + 1))
-            }
+        // 再次验证配方
+        if (!hasValidRecipe(stack1, stack2)) {
+            return
         }
+
+        // 消耗输入物品（直接修改物品栈，因为输入槽不允许 extractItem）
+        stack1.shrink(1)
+        if (stack1.isEmpty) {
+            itemCapability.setStack(INPUT_SLOT_1, ItemStack.EMPTY)
+        }
+
+        stack2.shrink(1)
+        if (stack2.isEmpty) {
+            itemCapability.setStack(INPUT_SLOT_2, ItemStack.EMPTY)
+        }
+
+        // 添加输出物品
+        val outputStack = itemCapability.getStack(OUTPUT_SLOT)
+        if (outputStack.isEmpty) {
+            itemCapability.setStack(OUTPUT_SLOT, ItemStack(metaglassItem, 1))
+        } else {
+            outputStack.grow(1)
+        }
+
+        // 标记为已更改
+        setChanged()
     }
 
-    // 渲染相关
+    // ========== 渲染相关 ==========
+
     override fun onLoad() {
         super.onLoad()
-        MachineRenderer.addToRenderList(worldPosition)
+        if (level?.isClientSide == true) {
+            MachineRenderer.addToRenderList(worldPosition)
+        }
     }
 
     override fun setRemoved() {
