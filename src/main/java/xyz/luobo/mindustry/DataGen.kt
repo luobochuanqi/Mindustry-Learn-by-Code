@@ -6,12 +6,14 @@ import net.minecraft.data.PackOutput
 import net.minecraft.data.recipes.RecipeProvider
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
+import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import xyz.luobo.mindustry.common.ModBlocks
 import xyz.luobo.mindustry.common.ModItems
 import xyz.luobo.mindustry.common.items.Materials
+import xyz.luobo.mindustry.common.liquids.Liquids
 import java.util.concurrent.CompletableFuture
 
 object DataGen {
@@ -39,6 +41,11 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
             this.add(ModItems.getMaterial(material).get(), material.displayName)
         }
 
+        // Liquids
+        Liquids.ALL.forEach { liquid ->
+            this.add(ModItems.getLiquid(liquid).get(), liquid.displayName)
+        }
+
         // Configs
         this.add("mindustry.configuration.isDebugMode", "Debug Mode")
         this.add("mindustry.configuration.maxRenderDistance", "Max Laser Render Distance")
@@ -52,8 +59,18 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
         this.basicItem(ModItems.DEBUG_BACON.get())
 
         this.simpleBlockItem(ModBlocks.DUO_BLOCK.get())
+
+        // Materials
         Materials.ALL.forEach { material ->
             this.basicItem(ModItems.getMaterial(material).get())
+        }
+
+        // Liquids
+        Liquids.ALL.forEach { liquid ->
+//            this.basicItem(modLoc("liquid/" + liquid.id))
+            getBuilder(liquid.id)
+                .parent(ModelFile.UncheckedModelFile("item/generated"))
+                .texture("layer0", modLoc("item/liquid/" + liquid.id))
         }
     }
 }

@@ -121,6 +121,9 @@ dependencies {
     runtimeOnly("mekanism:Mekanism:${mekanism_version}:tools")// Mekanism: Tools
     // Create for testing
     runtimeOnly("curse.maven:Create-328085:7408951")
+    // KubeJS for testing
+    runtimeOnly("curse.maven:KubeJS-238086:7278501")
+    runtimeOnly("curse.maven:Rhino-416294:7104526")
 
     // Example mod dependency using a mod jar from ./libs with a flat dir repository
     // This maps to ./libs/coolmod-${mc_version}-${coolmod_version}.jar

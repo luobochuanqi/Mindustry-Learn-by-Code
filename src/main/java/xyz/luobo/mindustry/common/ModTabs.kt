@@ -11,6 +11,7 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mindustry.Mindustry
 import xyz.luobo.mindustry.common.items.Materials
+import xyz.luobo.mindustry.common.liquids.Liquids
 import java.util.function.Supplier
 
 object ModTabs {
@@ -38,6 +39,9 @@ object ModTabs {
             event.accept(ModItems.DUO_BLOCK_ITEM.get())
             Materials.ALL.forEach { material ->
                 event.accept(ModItems.getMaterial(material).get())
+            }
+            Liquids.ALL.forEach { liquid ->
+                event.accept(ModItems.getLiquid(liquid).get())
             }
         }
     }

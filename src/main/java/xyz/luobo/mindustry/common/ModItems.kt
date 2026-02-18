@@ -8,6 +8,7 @@ import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mindustry.Mindustry
 import xyz.luobo.mindustry.common.items.DebugBaconItem
 import xyz.luobo.mindustry.common.items.Materials
+import xyz.luobo.mindustry.common.liquids.Liquids
 
 object ModItems {
     val MOD_ITEMS: DeferredRegister.Items = DeferredRegister.createItems(Mindustry.MOD_ID)
@@ -32,7 +33,13 @@ object ModItems {
         MOD_ITEMS.registerSimpleItem(material.id)
     }
 
+    val ALL_LIQUIDS = Liquids.ALL.associateWith { liquid ->
+        MOD_ITEMS.registerSimpleItem(liquid.id)
+    }
+
     fun getMaterial(material: Materials): DeferredItem<Item> = ALL_ITEMS[material]!!
+
+    fun getLiquid(liquid: Liquids): DeferredItem<Item> = ALL_LIQUIDS[liquid]!!
 
     fun register() {
         MOD_ITEMS.register(MOD_BUS)
