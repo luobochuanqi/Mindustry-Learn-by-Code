@@ -22,7 +22,7 @@ import xyz.luobo.mindustry.core.capability.IItemCapability
 import xyz.luobo.mindustry.core.capability.impl.EnergyCapabilityImpl
 import xyz.luobo.mindustry.core.capability.impl.FluidCapabilityImpl
 import xyz.luobo.mindustry.core.turret.ammo.AmmoStats
-import xyz.luobo.mindustry.core.turret.laser.LaserStats
+import xyz.luobo.mindustry.core.turret.ammo.LaserStats
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.sign

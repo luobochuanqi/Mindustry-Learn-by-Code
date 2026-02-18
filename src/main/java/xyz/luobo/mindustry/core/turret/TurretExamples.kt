@@ -3,7 +3,7 @@ package xyz.luobo.mindustry.core.turret
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.material.Fluids
 import xyz.luobo.mindustry.core.turret.ammo.AmmoStats
-import xyz.luobo.mindustry.core.turret.laser.LaserStats
+import xyz.luobo.mindustry.core.turret.ammo.LaserStats
 import xyz.luobo.mindustry.core.turret.liquid.TurretLiquid
 
 /**

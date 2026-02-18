@@ -6,7 +6,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
 import xyz.luobo.mindustry.core.turret.BaseTurretBE
 import xyz.luobo.mindustry.core.turret.TurretConfig
-import xyz.luobo.mindustry.core.turret.laser.LaserStats
+import xyz.luobo.mindustry.core.turret.ammo.LaserStats
 
 /**
  * 激光炮台示例
@@ -29,7 +29,7 @@ class LaserTurretBE(
         .range(20f)
         .energyCapacity(15000)
         .energyConsumptionPerSecond(120f)
-        .laserStats(LaserStats.basic(15f, 0xFF0000.toInt())) // 红色激光，15伤害/秒
+        .laserStats(LaserStats.basic(15f, 0xFF0000)) // 红色激光，15伤害/秒
         .canAttackAir(true)
         .canAttackGround(true)
         .inaccuracy(0) // 激光无误差

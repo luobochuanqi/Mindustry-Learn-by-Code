@@ -11,7 +11,7 @@ import xyz.luobo.mindustry.core.machine.BaseMachineBE
 import xyz.luobo.mindustry.core.turret.BaseTurretBE
 import xyz.luobo.mindustry.core.turret.TurretConfig
 import xyz.luobo.mindustry.core.turret.ammo.AmmoStats
-import xyz.luobo.mindustry.core.turret.laser.LaserStats
+import xyz.luobo.mindustry.core.turret.ammo.LaserStats
 
 /**
  * 基类迁移指南

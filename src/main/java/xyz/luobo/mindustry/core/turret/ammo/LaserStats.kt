@@ -1,4 +1,4 @@
-package xyz.luobo.mindustry.core.turret.laser
+package xyz.luobo.mindustry.core.turret.ammo
 
 /**
  * 激光统计

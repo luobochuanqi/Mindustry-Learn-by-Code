@@ -3,7 +3,7 @@ package xyz.luobo.mindustry.core.turret
 import net.minecraft.world.item.Item
 import net.minecraft.world.level.material.Fluid
 import xyz.luobo.mindustry.core.turret.ammo.AmmoStats
-import xyz.luobo.mindustry.core.turret.laser.LaserStats
+import xyz.luobo.mindustry.core.turret.ammo.LaserStats
 import xyz.luobo.mindustry.core.turret.liquid.TurretLiquid
 
 /**
@@ -104,11 +104,11 @@ data class TurretConfig(
     val cooldownTicks: Int
         get() = if (fireRate > 0) (20f / fireRate).toInt() else Int.MAX_VALUE
 
+    // ========== 查询方法 ==========
+
     /** 每次射击的电力消耗（FE） */
     val energyConsumptionPerShot: Float
         get() = if (fireRate > 0) energyConsumptionPerSecond / fireRate else 0f
-
-    // ========== 查询方法 ==========
 
     /**
      * 获取物品对应的弹药统计
@@ -196,7 +196,7 @@ data class TurretConfig(
         fun ammoStats(stats: List<AmmoStats>) = apply { this.ammoStats = stats }
 
         fun addAmmo(stat: AmmoStats) = apply {
-            this.ammoStats = ammoStats + stat
+            this.ammoStats += stat
         }
 
         fun laserStats(stats: LaserStats) = apply { this.laserStats = stats }
