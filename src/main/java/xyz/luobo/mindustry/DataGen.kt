@@ -41,10 +41,23 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
             this.add(ModItems.getMaterial(material).get(), material.displayName)
         }
 
-        // Liquids
+        // Liquids (物品)
         Liquids.ALL.forEach { liquid ->
             this.add(ModItems.getLiquid(liquid).get(), liquid.displayName)
         }
+
+        // Fluids (流体)
+        this.add("fluid.mindustry.water", "Water")
+        this.add("fluid.mindustry.slag", "Slag")
+        this.add("fluid.mindustry.cyanogen", "Cyanogen")
+        this.add("fluid.mindustry.oil", "Oil")
+        this.add("fluid.mindustry.cryofluid", "Cryofluid")
+        this.add("fluid.mindustry.neoplasm", "Neoplasm")
+        this.add("fluid.mindustry.arkycite", "Arkycite")
+        this.add("fluid.mindustry.ozone", "Ozone")
+        this.add("fluid.mindustry.hydrogen", "Hydrogen")
+        this.add("fluid.mindustry.nitrogen", "Nitrogen")
+        this.add("fluid.mindustry.gallium", "Gallium")
 
         // Configs
         this.add("mindustry.configuration.isDebugMode", "Debug Mode")

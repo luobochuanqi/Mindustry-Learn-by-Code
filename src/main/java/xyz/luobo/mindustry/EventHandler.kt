@@ -5,6 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer
 import com.mojang.logging.LogUtils
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.RenderType
+import net.minecraft.resources.ResourceLocation
 import net.minecraft.util.Mth
 import net.neoforged.api.distmarker.Dist
 import net.neoforged.bus.api.SubscribeEvent
@@ -15,16 +16,22 @@ import net.neoforged.fml.event.lifecycle.FMLDedicatedServerSetupEvent
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
+import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent
 import org.slf4j.Logger
 import software.bernie.geckolib.cache.`object`.GeoBone
 import software.bernie.geckolib.renderer.GeoBlockRenderer
 import xyz.luobo.mindustry.client.geoModels.DuoModel
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
+import xyz.luobo.mindustry.common.ModFluids
 import xyz.luobo.mindustry.common.machines.kiln.KilnBE
 import xyz.luobo.mindustry.common.turrets.duo.DuoBE
 
 object EventHandler {
     private val LOGGER: Logger = LogUtils.getLogger()
+
+    // 原版水纹理
+    private val WATER_ORIGIN_STILL: ResourceLocation = ResourceLocation.withDefaultNamespace("block/water_still")
 
     // 此为客户端事件总线订阅器
     @EventBusSubscriber(modid = Mindustry.MOD_ID, value = [Dist.CLIENT])
@@ -37,6 +44,23 @@ object EventHandler {
         @SubscribeEvent
         fun registerEntityRenderers(event: EntityRenderersEvent.RegisterRenderers) {
             event.registerBlockEntityRenderer(ModBlockEntityTypes.DUO_Block_Entity.get()) { DuoRenderer() }
+        }
+
+        @SubscribeEvent
+        fun registerClientExtensions(event: RegisterClientExtensionsEvent) {
+            event.registerFluidType(object : IClientFluidTypeExtensions {
+                override fun getTintColor(): Int {
+                    return 0xFF1C274E.toInt()
+                }
+
+                override fun getFlowingTexture(): ResourceLocation {
+                    return WATER_ORIGIN_STILL
+                }
+
+                override fun getStillTexture(): ResourceLocation {
+                    return WATER_ORIGIN_STILL
+                }
+            }, ModFluids.WATER_TYPE.get())
         }
     }
 

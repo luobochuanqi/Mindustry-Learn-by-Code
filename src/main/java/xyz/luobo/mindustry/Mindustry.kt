@@ -31,6 +31,7 @@ object Mindustry {
         // Register the traditional blocks first
         ModBlocks.register()
         ModItems.register()
+        ModFluids.register()
         ModBlockEntityTypes.register()
         ModTabs.register()
         ModEntities.register()
