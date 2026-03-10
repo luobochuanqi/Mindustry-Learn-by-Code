@@ -106,7 +106,7 @@ class MeltdownTurretBlockEntity(
                 entity.hurt(level.damageSources().magic(), damage)
 
                 // 穿透不衰减，但记录伤害统计
-                totalDamageDealt += damage
+//                totalDamageDealt += damage
             }
         }
     }
@@ -179,7 +179,8 @@ class MeltdownTurretBlockEntity(
         super.onHitTarget(level, pos, target, damage)
 
         // 设置目标燃烧
-        target.setSecondsOnFire(4)
+//        target.setSharedFlagOnFire(true)
+//        target.setSecondsOnFire(4)
     }
 
     override fun onStopFiring() {
