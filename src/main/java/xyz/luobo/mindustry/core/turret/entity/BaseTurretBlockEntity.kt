@@ -234,6 +234,14 @@ abstract class BaseTurretBlockEntity(
     }
 
     /**
+     * 检查是否可以射击
+     * 子类可以重写此方法添加额外的射击条件
+     */
+    protected open fun canShoot(): Boolean {
+        return hasAmmo()
+    }
+
+    /**
      * 检查是否有弹药
      */
     protected open fun hasAmmo(): Boolean = currentAmmo > 0
@@ -294,13 +302,6 @@ abstract class BaseTurretBlockEntity(
 
     override fun getUpdatePacket(): Packet<ClientGamePacketListener?>? {
         return ClientboundBlockEntityDataPacket.create(this)
-    }
-
-    /**
-     * 同步数据到客户端
-     */
-    protected open fun syncData() {
-        level?.sendBlockUpdated(worldPosition, blockState, blockState, 3)
     }
 
     // ========== 数据保存 ==========

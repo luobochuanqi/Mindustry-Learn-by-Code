@@ -8,14 +8,13 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import xyz.luobo.mindustry.core.machine.BaseMachineBE
-import xyz.luobo.mindustry.core.turret.BaseTurretBE
-import xyz.luobo.mindustry.core.turret.TurretConfig
-import xyz.luobo.mindustry.core.turret.ammo.AmmoStats
-import xyz.luobo.mindustry.core.turret.ammo.LaserStats
+import xyz.luobo.mindustry.core.turret.bullet.BulletType
+import xyz.luobo.mindustry.core.turret.config.TurretConfig
+import xyz.luobo.mindustry.core.turret.entity.BaseTurretBlockEntity
 
 /**
  * 基类迁移指南
- * 展示如何使用新的 ModBlockEntity 基类创建机器和炮台
+ * 展示如何使用新的 MindustryModBlockEntity 基类创建机器和炮台
  */
 
 // ========== 示例 1: 创建简单的机器 ==========
@@ -85,7 +84,7 @@ class BasicTurretBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : BaseTurretBE(type, pos, state) {
+) : BaseTurretBlockEntity(type, pos, state) {
 
     // 炮台配置
     override val config: TurretConfig = TurretConfig.builder(
@@ -93,16 +92,23 @@ class BasicTurretBE(
         description = "基础弹药炮台"
     )
         .range(15f)
-        .fireRate(2f)
-        .inaccuracy(2)
-        .ammoCapacity(200)
-        .addAmmo(AmmoStats.basic(Items.COPPER_INGOT, 5f))
-        .canAttackAir(true)
-        .canAttackGround(true)
+        .reloadTime(10f)  // 10 ticks = 2 shots per second
+        .inaccuracy(2f)
+        .maxAmmo(200)
+        .targetAir(true)
+        .targetGround(true)
         .build()
 
     // 旋转速度
-    override val rotationSpeed: Float = 180f
+    protected val rotationSpeed: Float = 180f
+
+    // 尝试射击（抽象方法实现）
+    override fun tryShoot(level: Level, pos: BlockPos) {
+        if (currentTarget != null && canAttack()) {
+            fireProjectile(level, pos, currentTarget!!)
+            consumeAmmo()
+        }
+    }
 
     // 发射投射物
     override fun fireProjectile(level: Level, pos: BlockPos, target: LivingEntity) {
@@ -123,29 +129,35 @@ class LaserTurretBE(
     type: BlockEntityType<*>,
     pos: BlockPos,
     state: BlockState
-) : BaseTurretBE(type, pos, state) {
+) : BaseTurretBlockEntity(type, pos, state) {
 
     // 炮台配置
-    override val config: TurretConfig = TurretConfig.builder(
+    override val config: TurretConfig = TurretConfig.laser(
         identifier = "laser_turret",
         description = "激光炮台"
+    ).copy(
+        range = 20f
     )
-        .range(20f)
-        .energyCapacity(15000)
-        .energyConsumptionPerSecond(120f)
-        .laserStats(LaserStats.basic(15f, 0xFF0000.toInt()))
-        .canAttackAir(true)
-        .canAttackGround(true)
-        .inaccuracy(0)
-        .build()
+
+    // 激光子弹类型
+    val laserBulletType = BulletType.laser(
+        damagePerSecond = 15f,
+        color = 0xFF0000
+    )
 
     // 旋转速度
-    override val rotationSpeed: Float = 360f
+    protected val rotationSpeed: Float = 360f
 
-    // 激光炮台不需要实现 fireProjectile()
-    // 可以重写 fireLaser() 进行自定义渲染
-    override fun fireLaser(level: Level, pos: BlockPos, target: LivingEntity, laserStats: LaserStats) {
-        // 自定义激光渲染
+    // 尝试射击
+    override fun tryShoot(level: Level, pos: BlockPos) {
+        if (currentTarget != null && canAttack()) {
+            fireProjectile(level, pos, currentTarget!!)
+        }
+    }
+
+    // 发射投射物（激光）
+    override fun fireProjectile(level: Level, pos: BlockPos, target: LivingEntity) {
+        // 自定义激光渲染和伤害
         // 例如：渲染激光束、播放音效等
     }
 }
@@ -192,7 +204,7 @@ class AdvancedMachineBE(
         }
 
         // 检查能量充足
-        return energyCapability.hasEnergy(energyPerTick)
+        return energyCapability?.hasEnergy(energyPerTick) ?: false
     }
 
     // 完成工作逻辑
@@ -225,13 +237,19 @@ class AdvancedMachineBE(
 /**
  * 旧代码迁移步骤：
  *
- * 1. 将继承从 BlockEntity 改为 ModBlockEntity
+ * 1. 将继承从 BlockEntity 改为 MindustryModBlockEntity
  * 2. 移除手动管理的 energy/item/fluid 变量
  * 3. 实现必需的配置属性（itemSlotCount, energyCapacity 等）
  * 4. 重写槽位检查方法（isInputSlot, isOutputSlot）
  * 5. 更新数据保存/加载，移除手动保存的 capability 数据
  * 6. 更新代码以使用新的 API：
- *    - energyStorage.energyStored -> energyStorage.currentEnergy
- *    - itemHandler.getStackInSlot(i) -> itemHandler.getStack(i)
- *    - itemHandler.setStackInSlot(i, stack) -> itemHandler.setStack(i, stack)
+ *    - energyStorage.energyStored -> energyCapability?.currentEnergy
+ *    - itemHandler.getStackInSlot(i) -> itemCapability?.getStack(i)
+ *    - itemHandler.setStackInSlot(i, stack) -> itemCapability?.setStack(i, stack)
+ *
+ * 炮台系统迁移：
+ * 1. 继承 BaseTurretBlockEntity 或其子类（ReloadTurretBlockEntity, ItemTurretBlockEntity, PowerTurretBlockEntity）
+ * 2. 实现抽象方法 tryShoot() 和 fireProjectile()
+ * 3. 使用 TurretConfig 定义炮台属性
+ * 4. 使用 BulletType 定义弹药/攻击类型
  */

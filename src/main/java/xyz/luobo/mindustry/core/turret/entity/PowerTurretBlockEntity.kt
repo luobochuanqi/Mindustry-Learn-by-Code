@@ -1,16 +1,12 @@
 package xyz.luobo.mindustry.core.turret.entity
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import net.neoforged.neoforge.common.capabilities.Capability
-import net.neoforged.neoforge.common.capabilities.ForgeCapabilities
-import net.neoforged.neoforge.common.util.LazyOptional
-import net.neoforged.neoforge.energy.EnergyStorage
-import net.neoforged.neoforge.energy.IEnergyStorage
+import xyz.luobo.mindustry.core.capability.IEnergyCapability
+import xyz.luobo.mindustry.core.capability.impl.EnergyCapabilityImpl
 import xyz.luobo.mindustry.core.turret.bullet.BulletType
 
 /**
@@ -60,22 +56,21 @@ abstract class PowerTurretBlockEntity(
     // ========== 电力 Capability ==========
 
     /**
-     * 电力存储
+     * 能量 Capability 实现
      */
-    val energyStorage: EnergyStorage by lazy {
-        object : EnergyStorage(
-            powerCapacity,
-            maxPowerInput,
-            maxPowerOutput
-        ) {
-            override fun onEnergyChanged() {
-                this@PowerTurretBlockEntity.onEnergyChanged()
-            }
-        }
+    override val energyCapability: EnergyCapabilityImpl by lazy {
+        createEnergyCapability(
+            capacity = powerCapacity,
+            maxReceive = maxPowerInput,
+            maxExtract = maxPowerOutput
+        )
     }
 
-    private val energyStorageOptional: LazyOptional<IEnergyStorage> =
-        LazyOptional.of { energyStorage }
+    /**
+     * 能量处理便捷访问
+     */
+    protected val energyHandler: IEnergyCapability
+        get() = energyCapability
 
     // ========== 状态 ==========
 
@@ -83,7 +78,7 @@ abstract class PowerTurretBlockEntity(
      * 当前电力
      */
     val currentEnergy: Int
-        get() = energyStorage.energyStored
+        get() = energyHandler.currentEnergy
 
     /**
      * 电力填充百分比
@@ -99,7 +94,7 @@ abstract class PowerTurretBlockEntity(
      * @return 是否有足够电力
      */
     fun hasEnergy(amount: Int): Boolean {
-        return energyStorage.extractEnergy(amount, true) == amount
+        return energyHandler.extractEnergy(amount, true) == amount
     }
 
     /**
@@ -108,7 +103,7 @@ abstract class PowerTurretBlockEntity(
      * @return 实际消耗的电力
      */
     fun consumeEnergy(amount: Int): Int {
-        val consumed = energyStorage.extractEnergy(amount, false)
+        val consumed = energyHandler.extractEnergy(amount, false)
         if (consumed > 0) {
             setChanged()
         }
@@ -121,22 +116,18 @@ abstract class PowerTurretBlockEntity(
      * @return 实际添加的电力
      */
     fun receiveEnergy(amount: Int): Int {
-        val received = energyStorage.receiveEnergy(amount, false)
+        val received = energyHandler.receiveEnergy(amount, false)
         if (received > 0) {
             setChanged()
         }
         return received
     }
 
-    /**
-     * 电力变化回调
-     */
-    protected open fun onEnergyChanged() {
-        setChanged()
-    }
-
     // ========== 重写父类方法 ==========
 
+    /**
+     * 检查是否可以射击
+     */
     override fun canShoot(): Boolean {
         return super.canShoot() && hasEnergy(powerPerShot)
     }
@@ -157,35 +148,16 @@ abstract class PowerTurretBlockEntity(
         return shootType
     }
 
-    // ========== Capability ==========
-
-    override fun <T> getCapability(capability: Capability<T>, side: Direction?): LazyOptional<T> {
-        return if (capability == ForgeCapabilities.ENERGY) {
-            energyStorageOptional.cast()
-        } else {
-            super.getCapability(capability, side)
-        }
-    }
-
-    override fun invalidateCaps() {
-        super.invalidateCaps()
-        energyStorageOptional.invalidate()
-    }
-
     // ========== 数据保存 ==========
 
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)
-        tag.putInt("energy", energyStorage.energyStored)
+        // 能量数据由父类 MindustryModBlockEntity 自动保存
     }
 
     override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.loadAdditional(tag, registries)
-        if (tag.contains("energy")) {
-            val energy = tag.getInt("energy")
-            // 直接设置能量（注意：这里使用了反射或内部方法，实际实现可能需要调整）
-            energyStorage.receiveEnergy(energy, false)
-        }
+        // 能量数据由父类 MindustryModBlockEntity 自动加载
     }
 
     // ========== 便捷方法 ==========
@@ -201,7 +173,7 @@ abstract class PowerTurretBlockEntity(
      * 检查电力是否已满
      */
     fun isPowerFull(): Boolean {
-        return energyStorage.energyStored >= energyStorage.maxEnergyStored
+        return energyHandler.currentEnergy >= energyHandler.energyCapacity
     }
 
     /**

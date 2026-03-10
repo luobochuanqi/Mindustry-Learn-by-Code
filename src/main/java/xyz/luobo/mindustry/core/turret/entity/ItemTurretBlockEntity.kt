@@ -1,18 +1,13 @@
 package xyz.luobo.mindustry.core.turret.entity
 
 import net.minecraft.core.BlockPos
-import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.world.item.Item
-import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
-import net.neoforged.neoforge.common.capabilities.Capability
-import net.neoforged.neoforge.common.capabilities.ForgeCapabilities
-import net.neoforged.neoforge.common.util.LazyOptional
-import net.neoforged.neoforge.items.IItemHandler
-import net.neoforged.neoforge.items.ItemStackHandler
+import xyz.luobo.mindustry.core.capability.IItemCapability
+import xyz.luobo.mindustry.core.capability.impl.ItemCapabilityImpl
 import xyz.luobo.mindustry.core.turret.bullet.BulletType
 
 /**
@@ -61,22 +56,23 @@ abstract class ItemTurretBlockEntity(
     // ========== 物品 Capability ==========
 
     /**
-     * 物品存储处理器
+     * 物品 Capability 实现
      * 用于接收外部输入的弹药
      */
-    val itemHandler: ItemStackHandler by lazy {
-        object : ItemStackHandler(1) {
-            override fun isItemValid(slot: Int, stack: ItemStack): Boolean {
-                return acceptsAmmo(stack.item)
-            }
-
-            override fun onContentsChanged(slot: Int) {
-                this@ItemTurretBlockEntity.onContentsChanged(slot)
-            }
-        }
+    override val itemCapability: ItemCapabilityImpl by lazy {
+        createItemCapability(
+            slotCount = 1,
+            canInsert = { true },
+            canExtract = { false },
+            isValidItem = { _, stack -> acceptsAmmo(stack.item) }
+        )
     }
 
-    private val itemHandlerOptional: LazyOptional<IItemHandler> = LazyOptional.of { itemHandler }
+    /**
+     * 物品处理便捷访问
+     */
+    protected val itemHandler: IItemCapability
+        get() = itemCapability
 
     // ========== 初始化 ==========
 
@@ -133,7 +129,7 @@ abstract class ItemTurretBlockEntity(
      * @return 成功装填的数量
      */
     open fun autoReload(): Int {
-        val stack = itemHandler.getStackInSlot(0)
+        val stack = itemHandler.getStack(0)
         if (stack.isEmpty) return 0
 
         val item = stack.item
@@ -153,29 +149,17 @@ abstract class ItemTurretBlockEntity(
 
         // 装填
         currentAmmo += toLoad
-        stack.shrink(toLoad)
-
-        if (stack.isEmpty) {
-            itemHandler.setStackInSlot(0, ItemStack.EMPTY)
-        }
+        itemHandler.extractItem(0, toLoad, false)
 
         setChanged()
         return toLoad
     }
 
-    /**
-     * 内容变化回调
-     */
-    protected open fun onContentsChanged(slot: Int) {
-        setChanged()
-        // 尝试自动装填
-        if (currentAmmo < config.maxAmmo) {
-            autoReload()
-        }
-    }
-
     // ========== 重写父类方法 ==========
 
+    /**
+     * 检查是否可以射击
+     */
     override fun canShoot(): Boolean {
         return super.canShoot() &&
                 currentAmmoItem != null &&
@@ -195,22 +179,7 @@ abstract class ItemTurretBlockEntity(
     }
 
     override fun hasAmmo(): Boolean {
-        return currentAmmo > 0 || itemHandler.getStackInSlot(0).count > 0
-    }
-
-    // ========== Capability ==========
-
-    override fun <T> getCapability(capability: Capability<T>, side: Direction?): LazyOptional<T> {
-        return if (capability == ForgeCapabilities.ITEM_HANDLER) {
-            itemHandlerOptional.cast()
-        } else {
-            super.getCapability(capability, side)
-        }
-    }
-
-    override fun invalidateCaps() {
-        super.invalidateCaps()
-        itemHandlerOptional.invalidate()
+        return currentAmmo > 0 || itemHandler.getStack(0).count > 0
     }
 
     // ========== 数据保存 ==========
@@ -222,9 +191,6 @@ abstract class ItemTurretBlockEntity(
         currentAmmoItem?.let {
             tag.putString("currentAmmoItem", it.toString())
         }
-
-        // 保存物品栏
-        tag.put("inventory", itemHandler.serializeNBT(registries))
     }
 
     override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
@@ -237,11 +203,6 @@ abstract class ItemTurretBlockEntity(
             // 简化处理，实际实现需要完整解析
             val item = ammoTypes.keys.find { it.toString() == itemName }
             currentAmmoItem = item ?: defaultAmmo
-        }
-
-        // 恢复物品栏
-        if (tag.contains("inventory")) {
-            itemHandler.deserializeNBT(registries, tag.getCompound("inventory"))
         }
     }
 
