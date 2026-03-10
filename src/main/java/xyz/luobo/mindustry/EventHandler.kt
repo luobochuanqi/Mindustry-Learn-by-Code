@@ -16,13 +16,16 @@ import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsE
 import org.slf4j.Logger
 import xyz.luobo.mindustry.common.ModBlockEntityTypes
 import xyz.luobo.mindustry.common.ModFluids
+import xyz.luobo.mindustry.common.liquids.FluidRegistry
+import xyz.luobo.mindustry.common.liquids.Liquids
 import xyz.luobo.mindustry.common.machines.kiln.KilnBE
 
 object EventHandler {
     private val LOGGER: Logger = LogUtils.getLogger()
 
-    // 原版水纹理
-    private val WATER_ORIGIN_STILL: ResourceLocation = ResourceLocation.withDefaultNamespace("block/water_still")
+    // 原版水纹理（作为默认纹理）
+    private val WATER_STILL: ResourceLocation = ResourceLocation.withDefaultNamespace("block/water_still")
+    private val WATER_FLOW: ResourceLocation = ResourceLocation.withDefaultNamespace("block/water_flow")
 
     // 此为客户端事件总线订阅器
     @EventBusSubscriber(modid = Mindustry.MOD_ID, value = [Dist.CLIENT])
@@ -34,25 +37,49 @@ object EventHandler {
 
         @SubscribeEvent
         fun registerEntityRenderers(event: EntityRenderersEvent.RegisterRenderers) {
-            // TODO: 注册新的炮台渲染器
-            // event.registerBlockEntityRenderer(ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()) { DuoTurretRenderer() }
+            // 注册 Duo 炮台渲染器
         }
 
         @SubscribeEvent
         fun registerClientExtensions(event: RegisterClientExtensionsEvent) {
+            // 自动注册所有液体的客户端扩展
+            registerAllFluidClientExtensions(event)
+        }
+
+        /**
+         * 自动为所有液体注册客户端扩展
+         * 避免手动为每个液体写重复代码
+         */
+        private fun registerAllFluidClientExtensions(event: RegisterClientExtensionsEvent) {
+            // 遍历所有液体类型，自动注册
+            Liquids.ALL.forEach { liquid ->
+                val registry = ModFluids[liquid]
+                registerFluidClientExtension(event, registry)
+            }
+
+            LOGGER.info("Registered ${Liquids.ALL.size} fluid client extensions")
+        }
+
+        /**
+         * 为单个液体注册客户端扩展
+         */
+        private fun registerFluidClientExtension(
+            event: RegisterClientExtensionsEvent,
+            registry: FluidRegistry
+        ) {
             event.registerFluidType(object : IClientFluidTypeExtensions {
                 override fun getTintColor(): Int {
-                    return 0xFF1C274E.toInt()
+                    return registry.color
                 }
 
                 override fun getFlowingTexture(): ResourceLocation {
-                    return WATER_ORIGIN_STILL
+                    return registry.flowingTexture
                 }
 
                 override fun getStillTexture(): ResourceLocation {
-                    return WATER_ORIGIN_STILL
+                    return registry.stillTexture
                 }
-            }, ModFluids.WATER_TYPE.get())
+            }, registry.fluidType.get())
         }
     }
 
@@ -82,15 +109,6 @@ object EventHandler {
             if (be is KilnBE) be.energyCapability else null
         }
 
-        // TODO: 注册新的炮台 Capability
-        // 注册 Duo 炮台的物品处理器
-        // event.registerBlockEntity(Capabilities.ItemHandler.BLOCK, ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()) { be, _ ->
-        //     if (be is DuoTurretBlockEntity) be.itemHandler else null
-        // }
-
-        // 注册 Arc 和 Meltdown 炮台的能量存储
-        // event.registerBlockEntity(Capabilities.EnergyStorage.BLOCK, ModBlockEntityTypes.ARC_BLOCK_ENTITY.get()) { be, _ ->
-        //     if (be is ArcTurretBlockEntity) be.energyStorage else null
-        // }
+//        TODO("注册所有炮台的库存")
     }
 }
