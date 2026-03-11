@@ -38,6 +38,11 @@ object EventHandler {
         @SubscribeEvent
         fun registerEntityRenderers(event: EntityRenderersEvent.RegisterRenderers) {
             // 注册 Duo 炮台渲染器
+            event.registerBlockEntityRenderer(
+                ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
+            ) { context ->
+                xyz.luobo.mindustry.client.renderers.DuoRenderer(context)
+            }
         }
 
         @SubscribeEvent

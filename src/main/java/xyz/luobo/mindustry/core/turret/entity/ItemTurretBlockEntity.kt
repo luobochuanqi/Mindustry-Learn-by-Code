@@ -43,9 +43,26 @@ abstract class ItemTurretBlockEntity(
 
     /**
      * 当前使用的弹药物品
+     * 使用 lazy 初始化，避免在父类 init 块中访问子类尚未初始化的 ammoTypes
      */
     var currentAmmoItem: Item? = null
         private set
+
+    /**
+     * 是否已经初始化默认弹药
+     */
+    private var isAmmoInitialized: Boolean = false
+
+    /**
+     * 确保默认弹药已初始化
+     * 在第一次 tick 时调用
+     */
+    protected fun ensureDefaultAmmoInitialized() {
+        if (!isAmmoInitialized) {
+            currentAmmoItem = defaultAmmo
+            isAmmoInitialized = true
+        }
+    }
 
     /**
      * 当前弹药对应的 BulletType
@@ -74,12 +91,7 @@ abstract class ItemTurretBlockEntity(
     protected val itemHandler: IItemCapability
         get() = itemCapability
 
-    // ========== 初始化 ==========
 
-    init {
-        // 设置默认弹药
-        currentAmmoItem = defaultAmmo
-    }
 
     // ========== 弹药管理 ==========
 
@@ -103,6 +115,7 @@ abstract class ItemTurretBlockEntity(
      * @return 是否接受
      */
     fun acceptsAmmo(item: Item): Boolean {
+        ensureDefaultAmmoInitialized()
         return item in ammoTypes.keys
     }
 
@@ -119,6 +132,7 @@ abstract class ItemTurretBlockEntity(
      * 检查当前弹药是否有效
      */
     fun hasValidAmmo(): Boolean {
+        ensureDefaultAmmoInitialized()
         return currentAmmoItem != null && currentAmmo >= config.ammoPerShot
     }
 
@@ -129,6 +143,8 @@ abstract class ItemTurretBlockEntity(
      * @return 成功装填的数量
      */
     open fun autoReload(): Int {
+        ensureDefaultAmmoInitialized()
+
         val stack = itemHandler.getStack(0)
         if (stack.isEmpty) return 0
 
@@ -204,6 +220,8 @@ abstract class ItemTurretBlockEntity(
             val item = ammoTypes.keys.find { it.toString() == itemName }
             currentAmmoItem = item ?: defaultAmmo
         }
+        // 标记已初始化（即使从 NBT 加载失败，也不会再尝试初始化）
+        isAmmoInitialized = true
     }
 
     // ========== 便捷方法 ==========
@@ -234,6 +252,7 @@ abstract class ItemTurretBlockEntity(
      * @return 是否成功切换
      */
     fun switchToNextAmmo(): Boolean {
+        ensureDefaultAmmoInitialized()
         val keys = ammoTypes.keys.toList()
         if (keys.size <= 1) return false
 
