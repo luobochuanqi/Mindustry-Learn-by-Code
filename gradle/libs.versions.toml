@@ -1,0 +1,25 @@
+[versions]
+# Minecraft / NeoForge 平台
+minecraft = "1.21.1"
+neoForge = "21.1.248"
+parchmentMinecraft = "1.21.1"
+parchmentMappings = "2024.11.17"
+
+# 构建插件
+moddev = "2.0.144"
+kotlin = "2.4.10"
+
+# 运行时依赖(最小依赖集)
+kotlinForForge = "5.12.0"
+geckolib = "4.9.2"
+jade = "15.10.6+neoforge"
+
+[libraries]
+# 运行时依赖
+kotlinforforge = { module = "thedarkcolour:kotlinforforge-neoforge", version.ref = "kotlinForForge" }
+geckolib = { module = "software.bernie.geckolib:geckolib-neoforge-1.21.1", version.ref = "geckolib" }
+jade = { module = "maven.modrinth:jade", version.ref = "jade" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+moddev = { id = "net.neoforged.moddev", version.ref = "moddev" }
