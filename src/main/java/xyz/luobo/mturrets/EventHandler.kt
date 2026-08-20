@@ -126,5 +126,27 @@ object EventHandler {
         ) { be, _ ->
             if (be is xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity) be.itemCapability else null
         }
+
+        // 注册电力节点的能量存储 Capability(网络传输与外部注入/抽取入口)
+        event.registerBlockEntity(
+            Capabilities.EnergyStorage.BLOCK,
+            ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get()
+        ) { be, _ ->
+            if (be is xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity) be.energyCapability else null
+        }
+
+        // 注册能量炮台(Arc/Meltdown)的能量存储 Capability
+        event.registerBlockEntity(
+            Capabilities.EnergyStorage.BLOCK,
+            ModBlockEntityTypes.ARC_BLOCK_ENTITY.get()
+        ) { be, _ ->
+            if (be is xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity) be.energyCapability else null
+        }
+        event.registerBlockEntity(
+            Capabilities.EnergyStorage.BLOCK,
+            ModBlockEntityTypes.MELTDOWN_BLOCK_ENTITY.get()
+        ) { be, _ ->
+            if (be is xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity) be.energyCapability else null
+        }
     }
 }

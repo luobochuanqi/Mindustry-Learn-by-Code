@@ -1,6 +1,7 @@
 package xyz.luobo.mturrets.common.blockEntities
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.Direction
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.nbt.ListTag
@@ -9,12 +10,12 @@ import net.minecraft.network.Connection
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
+import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.energy.IEnergyStorage
 import xyz.luobo.mturrets.client.renderers.LaserRenderer
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.core.MTurretsModBlockEntity
 import xyz.luobo.mturrets.core.capability.IEnergyCapability
-
 class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     MTurretsModBlockEntity(ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage {
     // 存储相连的其他电力节点位置
@@ -46,12 +47,22 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
      * 便捷访问能量存储
      */
     private val energyStorage: IEnergyCapability
-        get() = energyCapability!!
+        get() = energyCapability
 
     companion object {
+        /**
+         * 服务端网络 tick:节点间按速率传输,并向相邻机器/炮台供电
+         */
         fun serverTick(level: Level, pos: BlockPos, state: BlockState, powerNodeBE: PowerNodeBlockEntity) {
             // 确保只在服务端执行
             if (level.isClientSide) return
+
+            // 周期性校验连接有效性(距离/连接数限制)
+            if (level.gameTime % 100 == 0L) {
+                powerNodeBE.validateConnections()
+            }
+
+            powerNodeBE.transferEnergyToNetwork(level)
         }
 
         // 最大连接距离
@@ -62,6 +73,56 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
 
         // 每tick传输的能量
         const val ENERGY_TRANSFER_RATE = 100
+    }
+
+    // ========== 能量传输 ==========
+
+    /**
+     * 向相连节点与相邻能量设备按速率传输能量
+     * 节点间:走 connectedNodes(距离/数量受控)
+     * 节点到设备:向 6 个相邻方块的能量能力注入(机器/炮台取电)
+     */
+    private fun transferEnergyToNetwork(level: Level) {
+        if (energyStorage.currentEnergy <= 0) return
+
+        // 1. 相连节点间传输
+        for (otherPos in connectedNodes) {
+            if (energyStorage.currentEnergy <= 0) break
+            val target = level.getCapability(Capabilities.EnergyStorage.BLOCK, otherPos, null)
+            if (target != null) {
+                transferTo(target)
+            }
+        }
+
+        // 2. 相邻机器/炮台供电(电力节点自身除外,节点走上面的网络通道)
+        if (energyStorage.currentEnergy <= 0) return
+        for (dir in Direction.entries) {
+            if (energyStorage.currentEnergy <= 0) break
+            val neighborPos = worldPosition.relative(dir)
+            if (level.getBlockEntity(neighborPos) is PowerNodeBlockEntity) continue
+            val target = level.getCapability(Capabilities.EnergyStorage.BLOCK, neighborPos, dir.opposite)
+            if (target != null) {
+                transferTo(target)
+            }
+        }
+    }
+
+    /**
+     * 向目标存储传输能量,受本节点/目标节点速率与容量限制
+     */
+    private fun transferTo(target: IEnergyStorage) {
+        val space = target.maxEnergyStored - target.energyStored
+        val toSend = minOf(ENERGY_TRANSFER_RATE, energyStorage.currentEnergy, space)
+        if (toSend <= 0) return
+
+        val extracted = energyStorage.extractEnergy(toSend, false)
+        if (extracted <= 0) return
+
+        val accepted = target.receiveEnergy(extracted, false)
+        // 理论上 accepted == extracted(空间已预先校验),差额返还
+        if (accepted < extracted) {
+            energyStorage.receiveEnergy(extracted - accepted, false)
+        }
     }
 
     override fun onLoad() {
