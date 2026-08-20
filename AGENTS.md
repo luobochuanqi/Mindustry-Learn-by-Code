@@ -8,7 +8,7 @@ MTurrets 是 Kotlin NeoForge 模组(MC 1.21.1),把 Mindustry 的炮台、机器�
 
 - mod id / 命名空间 / 包名仍是 `mindustry`——迁移到 `mturrets` 未执行,代码里见到 `mindustry` 是现状,不是错误
 - 构建仍是 Groovy DSL,依赖仍含 LDLib2/JEI 与调试项——裁剪与 Kotlin DSL 迁移未执行
-- `src/generated/resources` 仍被 gitignore 忽略、CI 不跑 `runData`——入库未执行
+- `src/generated/resources` 已解除 gitignore 忽略,但产物尚未全量生成入库、CI 不跑 `runData`——入库未执行
 
 ## 构建与运行
 
