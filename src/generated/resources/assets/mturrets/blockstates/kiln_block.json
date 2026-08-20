@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "mturrets:block/kiln_block"
+    }
+  }
+}

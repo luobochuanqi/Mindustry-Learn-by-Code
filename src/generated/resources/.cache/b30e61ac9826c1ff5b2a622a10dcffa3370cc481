@@ -1,0 +1,7 @@
+// 1.21.1	2026-08-20T17:38:11.0723723	Block States: mturrets
+9b351bafef7bb97b398c1a3303e5403fd3284daa assets/mturrets/blockstates/kiln_block.json
+60e397c013491c953fd3d2778f350aeb23b438ad assets/mturrets/blockstates/power_node_block.json
+7bcdb1d4ba9fb7172e5dad9bbf098b4faf88ee7f assets/mturrets/models/block/kiln_block.json
+beabc9f63574f67619c38540648ca091440f523e assets/mturrets/models/block/power_node_block.json
+ee5d0579d35d51b4784bbb1afd561e8716d060e5 assets/mturrets/models/item/kiln_block.json
+ee1745b466d4139b55ef18b6af2443e452f67692 assets/mturrets/models/item/power_node_block.json

@@ -22,6 +22,7 @@ runs/
 *.ipr
 *.iws
 .idea_modules/
+.vscode/
 
 # 日志与崩溃转储
 *.log
