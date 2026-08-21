@@ -27,7 +27,8 @@ abstract class BaseMachineBE(
 ) : MTurretsModBlockEntity(type, pos, state) {
     var isWorking: Boolean = false
 
-    // ========== 状态数据 ==========
+    /** 上次进度同步的 game time(节流) */
+    private var lastProgressSyncTick: Long = 0
 
     /** 当前进度 */
     var progress: Int = 0
@@ -85,15 +86,13 @@ abstract class BaseMachineBE(
     protected val itemHandler: IItemCapability
         get() = itemCapability!!
 
-    // ========== 核心 Tick 逻辑 ==========
-
     /**
-     * 服务端 Tick：处理逻辑、生产、能量消耗
+     * 服务端 Tick:处理逻辑、生产、能量消耗
+     * 条件不满足时停摆并保持进度(恢复条件后从当前进度继续)
      */
     open fun tickServer() {
         // 1. 验证是否激活 (只有满足条件才工作)
         if (!canWork()) {
-            if (progress > 0) decayProgress()
             isWorking = false
             return
         }
@@ -109,12 +108,22 @@ abstract class BaseMachineBE(
                 finishWork()
                 progress = 0
             }
+        } else {
+            // 能量不足:停摆,进度保持
+            isWorking = false
         }
 
-        // 4. 自动弹出产物 (MTurrets 特性)
+        // 4. 自动弹出产物 (Mindustry 特性)
         tryAutoEject()
 
         setChanged()
+
+        // 5. 进度/状态节流同步到客户端
+        val now = level?.gameTime ?: return
+        if (now - lastProgressSyncTick >= 5) {
+            lastProgressSyncTick = now
+            syncData()
+        }
     }
 
     /**
@@ -185,13 +194,6 @@ abstract class BaseMachineBE(
      * @return true 如果该物品类型可以被插入到该槽位
      */
     protected open fun isValidItemForSlot(slot: Int, stack: ItemStack): Boolean = true
-
-    /**
-     * 进度衰减（未工作时调用）
-     */
-    private fun decayProgress() {
-        if (progress > 0) progress--
-    }
 
     // ========== 数据保存 ==========
 
