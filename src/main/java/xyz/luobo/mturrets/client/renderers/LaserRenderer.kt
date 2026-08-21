@@ -4,6 +4,7 @@ import com.mojang.blaze3d.vertex.PoseStack
 import com.mojang.blaze3d.vertex.VertexConsumer
 import com.mojang.math.Axis
 import net.minecraft.client.Minecraft
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.client.renderer.MultiBufferSource
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.core.BlockPos
@@ -16,22 +17,36 @@ import org.joml.Vector3f
 import xyz.luobo.mturrets.ClientConfig
 import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
-import java.util.*
 import kotlin.math.acos
 
 @EventBusSubscriber(modid = MTurrets.MOD_ID, value = [Dist.CLIENT])
 object LaserRenderer {
-    // 使用线程安全的集合存储所有需要渲染的 PowerNode 位置
-    private val blockEntitiesToRender: MutableSet<BlockPos> = Collections.synchronizedSet(mutableSetOf<BlockPos>())
+    // 已发现的电力节点缓存:随区块加载/卸载事件维护
+    private val cachedNodes = mutableSetOf<PowerNodeBlockEntity>()
 
-    // 添加需要渲染的方块实体位置
-    fun addToRenderList(pos: BlockPos) {
-        blockEntitiesToRender.add(pos)
+    @SubscribeEvent
+    fun onChunkLoad(event: net.neoforged.neoforge.event.level.ChunkEvent.Load) {
+        val level = event.level as? ClientLevel ?: return
+        val chunk = event.chunk as? net.minecraft.world.level.chunk.LevelChunk ?: return
+        for (be in chunk.getBlockEntities().values) {
+            if (be is PowerNodeBlockEntity) {
+                cachedNodes.add(be)
+            }
+        }
     }
 
-    // 移除不需要渲染的方块实体位置
-    fun removeFromRenderList(pos: BlockPos) {
-        blockEntitiesToRender.remove(pos)
+    @SubscribeEvent
+    fun onChunkUnload(event: net.neoforged.neoforge.event.level.ChunkEvent.Unload) {
+        val level = event.level as? ClientLevel ?: return
+        val chunkPos = event.chunk.pos
+        val minX = chunkPos.minBlockX
+        val maxX = chunkPos.maxBlockX
+        val minZ = chunkPos.minBlockZ
+        val maxZ = chunkPos.maxBlockZ
+        cachedNodes.removeIf { node ->
+            val pos = node.blockPos
+            pos.x in minX..maxX && pos.z in minZ..maxZ
+        }
     }
 
     @SubscribeEvent
@@ -48,19 +63,17 @@ object LaserRenderer {
         // 提前计算相机位置的 Vector3f 用于距离计算
         val cameraPosVec = Vector3f(cameraPos.x.toFloat(), cameraPos.y.toFloat(), cameraPos.z.toFloat())
 
-        // 创建副本避免 ConcurrentModification
-        val renderList = blockEntitiesToRender.toList()
+        for (blockEntity in cachedNodes) {
+            val fromPos = blockEntity.blockPos
 
-        for (fromPos in renderList) {
-            val blockEntity = level.getBlockEntity(fromPos)
-            if (blockEntity !is PowerNodeBlockEntity) {
-                removeFromRenderList(fromPos)
+            // 节点方块已被替换/破坏则移除并跳过
+            if (level.getBlockEntity(fromPos) !== blockEntity) {
+                cachedNodes.remove(blockEntity)
                 continue
             }
 
             // 检查方块是否还存在
             if (!level.isLoaded(fromPos) || level.getBlockState(fromPos).isAir) {
-                removeFromRenderList(fromPos)
                 continue
             }
 
@@ -81,7 +94,6 @@ object LaserRenderer {
                 for (to in blockEntity.getConnectedNodes()) {
                     // 额外检查 to 是否有效
                     if (!level.isLoaded(to) || level.getBlockState(to).isAir) {
-                        blockEntity.removeConnection(to) // 客户端清理（虽不持久，但避免渲染）
                         continue
                     }
 
@@ -153,8 +165,6 @@ object LaserRenderer {
                 x4, y, z4,
                 1.0f, 0.85f, 0.0f, 0.6f
             )
-
-//            vc = bufferSource.getBuffer(RenderType.solid())
 
             // 内侧黑色边框（从 innerR - borderThickness 到 innerR）
             val ix1 = (kotlin.math.cos(a1) * (innerR - borderThickness)).toFloat()

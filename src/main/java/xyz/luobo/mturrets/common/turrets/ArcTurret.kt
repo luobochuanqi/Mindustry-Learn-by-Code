@@ -7,8 +7,6 @@ import net.minecraft.world.level.block.state.BlockState
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.core.turret.bullet.BulletType
 import xyz.luobo.mturrets.core.turret.bullet.EffectType
-import xyz.luobo.mturrets.core.turret.bullet.StatusEffect
-import xyz.luobo.mturrets.core.turret.bullet.StatusEffectInstance
 import xyz.luobo.mturrets.core.turret.config.TurretConfig
 import xyz.luobo.mturrets.core.turret.entity.PowerTurretBlockEntity
 
@@ -44,9 +42,6 @@ class ArcTurretBlockEntity(
         instant = true,
         lifetime = 1,
         color = 0x00FFFF,  // 青色电弧
-        statusEffects = listOf(
-            StatusEffectInstance(StatusEffect.ELECTRIFIED, 40, 0)
-        ),
         shootEffect = EffectType.ELECTRIC_SPARK,
         hitEffect = EffectType.ELECTRIC_SPARK
     )
