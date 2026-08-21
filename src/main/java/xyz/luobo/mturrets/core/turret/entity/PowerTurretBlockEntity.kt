@@ -90,21 +90,23 @@ abstract class PowerTurretBlockEntity(
 
     /**
      * 检查是否有足够电力
+     * 直接比较存量:炮台 maxExtract=0(不对外输出),不能走 extractEnergy 通道
      * @param amount 需要的电力
      * @return 是否有足够电力
      */
     fun hasEnergy(amount: Int): Boolean {
-        return energyHandler.extractEnergy(amount, true) == amount
+        return energyHandler.currentEnergy >= amount
     }
 
     /**
-     * 消耗电力
-     * @param amount 消耗的电力
+     * 消耗电力(内部扣减,不经对外输出接口)
+     * @param amount 需要的电力
      * @return 实际消耗的电力
      */
     fun consumeEnergy(amount: Int): Int {
-        val consumed = energyHandler.extractEnergy(amount, false)
+        val consumed = minOf(amount, energyHandler.currentEnergy)
         if (consumed > 0) {
+            energyHandler.currentEnergy = energyHandler.currentEnergy - consumed
             setChanged()
         }
         return consumed

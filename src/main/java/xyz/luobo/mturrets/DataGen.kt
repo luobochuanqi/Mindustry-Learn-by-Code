@@ -53,6 +53,11 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
 
         // Configs
         this.add("mturrets.configuration.maxRenderDistance", "Max Laser Render Distance")
+
+        // Jade tooltips
+        this.add("jade.mturrets.ammo", "Ammo: %s/%s")
+        this.add("jade.mturrets.energy", "Energy: %s/%s FE")
+        this.add("jade.mturrets.progress", "Progress: %s%%")
     }
 }
 

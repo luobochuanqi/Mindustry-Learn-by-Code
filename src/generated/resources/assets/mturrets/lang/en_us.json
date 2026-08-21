@@ -47,5 +47,8 @@
   "item.mturrets.tungsten": "Tungsten",
   "item.mturrets.water": "Water",
   "itemGroup.mturrets": "MTurrets",
+  "jade.mturrets.ammo": "Ammo: %s/%s",
+  "jade.mturrets.energy": "Energy: %s/%s FE",
+  "jade.mturrets.progress": "Progress: %s%%",
   "mturrets.configuration.maxRenderDistance": "Max Laser Render Distance"
 }
