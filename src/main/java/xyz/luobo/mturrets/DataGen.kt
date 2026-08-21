@@ -86,5 +86,11 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
     override fun registerStatesAndModels() {
         this.simpleBlockWithItem(ModBlocks.POWER_NODE_BLOCK.get(), cubeAll(ModBlocks.POWER_NODE_BLOCK.get()))
         this.simpleBlockWithItem(ModBlocks.KILN_BLOCK.get(), cubeAll(ModBlocks.KILN_BLOCK.get()))
+
+        // 静态模型炮台(贴图提取自 Mindustry 开源仓库,出处见 README)
+        val arc = ModBlocks.ARC_BLOCK.get()
+        this.simpleBlockWithItem(arc, this.cubeAll(arc))
+        val meltdown = ModBlocks.MELTDOWN_BLOCK.get()
+        this.simpleBlockWithItem(meltdown, this.cubeAll(meltdown))
     }
 }

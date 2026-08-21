@@ -12,7 +12,6 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.energy.IEnergyStorage
-import xyz.luobo.mturrets.client.renderers.LaserRenderer
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.core.MTurretsModBlockEntity
 import xyz.luobo.mturrets.core.capability.IEnergyCapability
@@ -127,18 +126,9 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
 
     override fun onLoad() {
         super.onLoad()
-        if (level?.isClientSide == true) {
-            // 当方块实体加载时，添加到渲染列表
-            LaserRenderer.addToRenderList(worldPosition)
-        }
     }
 
     override fun setRemoved() {
-        if (level?.isClientSide == true) {
-            // 当方块实体被移除时，从渲染列表中移除
-            LaserRenderer.removeFromRenderList(worldPosition)
-
-        }
         for (otherPos in connectedNodes.toList()) {
             val blockEntity = level?.getBlockEntity(otherPos) as? PowerNodeBlockEntity
             blockEntity?.removeConnection(worldPosition)
@@ -147,10 +137,6 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     }
 
     override fun onChunkUnloaded() {
-        if (level?.isClientSide == true) {
-            // 当区块卸载时，从渲染列表中移除
-            LaserRenderer.removeFromRenderList(worldPosition)
-        }
         super.onChunkUnloaded()
     }
 

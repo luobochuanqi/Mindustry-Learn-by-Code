@@ -8,6 +8,7 @@ import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 import xyz.luobo.mturrets.core.turret.bullet.BulletType
+import xyz.luobo.mturrets.core.turret.bullet.StatusEffect
 
 /**
  * 持续射击炮台实体（激光/光束炮台）
@@ -70,7 +71,7 @@ abstract class ContinuousTurretBlockEntity(
      * 当前目标累积受到的伤害（用于统计）
      */
     var totalDamageDealt: Float = 0f
-        private set
+        protected set
 
     // ========== Tick 逻辑 ==========
 
@@ -192,15 +193,29 @@ abstract class ContinuousTurretBlockEntity(
     }
 
     /**
-     * 应用状态效果
+     * 应用状态效果(BURNING/FREEZING/POISONED/SLOWED 映射到原版效果)
+     * 原版无对应效果的类型(如 ELECTRIFIED)不落地,已在炮台配置中移除
      */
     protected open fun applyStatusEffects(target: LivingEntity, bulletType: BulletType) {
-        // 实际实现需要将 StatusEffect 转换为 Minecraft 的 MobEffect
-        // 这里简化处理
         bulletType.statusEffects.forEach { statusEffect ->
-            // 应用效果逻辑
-            // 例如：燃烧 -> 设置实体燃烧
-            // 冰冻 -> 添加缓慢效果
+            val effect = when (statusEffect.effect) {
+                StatusEffect.BURNING -> {
+                    target.igniteForTicks(statusEffect.duration)
+                    return@forEach
+                }
+
+                StatusEffect.FREEZING -> net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN
+                StatusEffect.SLOWED -> net.minecraft.world.effect.MobEffects.MOVEMENT_SLOWDOWN
+                StatusEffect.POISONED -> net.minecraft.world.effect.MobEffects.POISON
+                else -> return@forEach
+            }
+            target.addEffect(
+                net.minecraft.world.effect.MobEffectInstance(
+                    effect,
+                    statusEffect.duration,
+                    statusEffect.strength
+                )
+            )
         }
     }
 

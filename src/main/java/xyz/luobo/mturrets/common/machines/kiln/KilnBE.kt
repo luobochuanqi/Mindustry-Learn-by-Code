@@ -3,7 +3,6 @@ package xyz.luobo.mturrets.common.machines.kiln
 import net.minecraft.core.BlockPos
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.block.state.BlockState
-import xyz.luobo.mturrets.client.renderers.MachineRenderer
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
@@ -145,26 +144,17 @@ class KilnBE(
         setChanged()
     }
 
-    // ========== 渲染相关 ==========
+    // ========== 生命周期 ==========
 
     override fun onLoad() {
         super.onLoad()
-        if (level?.isClientSide == true) {
-            MachineRenderer.addToRenderList(worldPosition)
-        }
     }
 
     override fun setRemoved() {
-        if (level?.isClientSide == true) {
-            MachineRenderer.removeFromRenderList(worldPosition)
-        }
         super.setRemoved()
     }
 
     override fun onChunkUnloaded() {
-        if (level?.isClientSide == true) {
-            MachineRenderer.removeFromRenderList(worldPosition)
-        }
         super.onChunkUnloaded()
     }
 }

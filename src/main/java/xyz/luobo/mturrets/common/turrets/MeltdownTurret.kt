@@ -69,44 +69,44 @@ class MeltdownTurretBlockEntity(
     override val minWarmupToFire = 0.8f
 
     override fun onContinuousFireTick(level: Level, pos: BlockPos, target: LivingEntity) {
-        // 创建激光渲染效果
+        // 只做激光视觉效果;伤害统一走 applyContinuousDamage 单一通道
         createLaserEffect(level, getShootPos(), target.position())
-
-        // 对激光路径上的所有实体造成伤害
-        damageEntitiesInLaserPath(level, pos, target)
     }
 
     /**
-     * 对激光路径上的所有实体造成伤害
+     * 持续伤害(单一通道):每伤害间隔对主目标与激光路径上所有敌人造成伤害
+     * 穿透不衰减,并应用状态效果(燃烧)
      */
-    private fun damageEntitiesInLaserPath(
-        level: Level,
-        pos: BlockPos,
-        primaryTarget: LivingEntity
-    ) {
+    override fun applyContinuousDamage(level: Level, pos: BlockPos, target: LivingEntity) {
+        val bulletType = shootType
+        val damagePerTick = bulletType.damage * damageInterval / 20f
+
         val start = getShootPos()
-        val end = primaryTarget.position()
-        val direction = end.subtract(start).normalize()
-
-        // 在激光路径上查找所有实体
+        val direction = target.position().subtract(start).normalize()
         val laserRange = config.range.toDouble()
-        val searchArea = net.minecraft.world.phys.AABB(start, end).inflate(1.0)
 
-        val entities = level.getEntitiesOfClass(
+        // 主目标 + 路径上的其他敌人
+        val searchArea = net.minecraft.world.phys.AABB(start, target.position()).inflate(1.0)
+        val targets = level.getEntitiesOfClass(
             LivingEntity::class.java,
             searchArea
-        ) { it != primaryTarget && it.isAlive && isValidTarget(it) }
+        ) { it.isAlive && isValidTarget(it) && isEntityInLaserPath(it, start, direction, laserRange) }
+            .toMutableList()
 
-        // 对路径上的实体造成伤害（穿透效果）
-        var damageMultiplier = 1f
-        entities.forEach { entity ->
-            // 检查实体是否在激光路径上
-            if (isEntityInLaserPath(entity, start, direction, laserRange)) {
-                val damage = (shootType.damage * damageInterval / 20f) * damageMultiplier
-                entity.hurt(level.damageSources().magic(), damage)
+        // 确保主目标一定在列表内(即使它暂时偏离路径)
+        if (targets.none { it === target } && target.isAlive) {
+            targets.add(target)
+        }
 
-                // 穿透不衰减，但记录伤害统计
-//                totalDamageDealt += damage
+        for (entity in targets) {
+            val actualDamage = entity.hurt(level.damageSources().magic(), damagePerTick)
+            if (actualDamage) {
+                totalDamageDealt += damagePerTick
+
+                // 应用状态效果(燃烧)
+                if (bulletType.hasStatusEffects) {
+                    applyStatusEffects(entity, bulletType)
+                }
             }
         }
     }
