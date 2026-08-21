@@ -35,7 +35,8 @@ jobs:
           || (echo "::error::datagen 产物过期:请本地运行 ./gradlew runData 并提交更新后的产物" && exit 1)
 
     - name: GameTest 回归
-      run: ./gradlew runGameTestServer --no-daemon
+      timeout-minutes: 20
+      run: ./gradlew runGameTestServer --no-daemon < /dev/null
 
     - name: 构建
       run: ./gradlew build --no-daemon
