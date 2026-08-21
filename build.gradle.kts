@@ -86,9 +86,11 @@ neoForge {
         configureEach {
             systemProperty("forge.logging.markers", "REGISTRIES")
 
-            logLevel = org.slf4j.event.Level.DEBUG
+            // DEBUG 会产生海量日志,拖慢 CI 与本地运行;需要时临时改为 DEBUG
+            logLevel = org.slf4j.event.Level.INFO
         }
     }
+
 
     mods {
         register(mod_id) {

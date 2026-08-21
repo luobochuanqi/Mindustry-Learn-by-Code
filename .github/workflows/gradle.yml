@@ -1,4 +1,4 @@
-name: Build NeoForge Mod
+name: CI
 
 on:
   push:
@@ -7,39 +7,41 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  verify-and-build:
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v5
       with:
         fetch-depth: 0
 
     - name: Set up JDK 21
-      uses: actions/setup-java@v4
+      uses: actions/setup-java@v5
       with:
         java-version: '21'
         distribution: 'temurin'
 
-    - name: Setup Gradle
+    - name: Setup Gradle(缓存 wrapper 与依赖)
       uses: gradle/actions/setup-gradle@v4
-      with:
-        gradle-version: '8.8'  # 指定 Gradle 版本
 
-    - name: Determine version
-      id: version
+    - name: Datagen 新鲜度校验
       run: |
-        COMMIT_COUNT=$(git rev-list --count HEAD)
-        COMMIT_SHA=$(git rev-parse --short HEAD)
-        echo "VERSION=${COMMIT_COUNT}-${COMMIT_SHA}" >> $GITHUB_OUTPUT
+        ./gradlew runData --no-daemon
+        # 产物过期(生成物与入库不一致)则失败;.cache 为 datagen 内部缓存,跨平台哈希可能抖动,不参与校验
+        git diff --exit-code -- src/generated/resources/assets \
+          || (echo "::error::datagen 产物过期:请本地运行 ./gradlew runData 并提交更新后的产物" && exit 1)
 
-    - name: Build with Gradle
-      run: gradle build -Pversion=${{ steps.version.outputs.VERSION }}
+    - name: GameTest 回归
+      timeout-minutes: 20
+      run: ./gradlew runGameTestServer --no-daemon < /dev/null
 
-    - name: Upload mod JAR
+    - name: 构建
+      run: ./gradlew build --no-daemon
+
+    - name: 上传 mod JAR
       uses: actions/upload-artifact@v4
       with:
         name: mturrets
