@@ -84,13 +84,12 @@ class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     private fun transferEnergyToNetwork(level: Level) {
         if (energyStorage.currentEnergy <= 0) return
 
-        // 1. 相连节点间传输
+        // 1. 相连节点间传输(只从高存量流向低存量,避免双向对推振荡)
         for (otherPos in connectedNodes) {
             if (energyStorage.currentEnergy <= 0) break
-            val target = level.getCapability(Capabilities.EnergyStorage.BLOCK, otherPos, null)
-            if (target != null) {
-                transferTo(target)
-            }
+            val otherBe = level.getBlockEntity(otherPos) as? PowerNodeBlockEntity ?: continue
+            if (otherBe.energyCapability.currentEnergy >= energyStorage.currentEnergy) continue
+            transferTo(otherBe.energyCapability)
         }
 
         // 2. 相邻机器/炮台供电(电力节点自身除外,节点走上面的网络通道)

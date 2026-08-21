@@ -137,3 +137,13 @@ idea {
         isDownloadJavadoc = true
     }
 }
+
+// GameTest 结构文件:NeoForge 从工作目录 gameteststructures/ 读取,构建时同步
+val copyGameTestStructures = tasks.register<Copy>("copyGameTestStructures") {
+    from("gameteststructures")
+    into("run/gameteststructures")
+}
+
+tasks.matching { it.name == "runGameTestServer" }.configureEach {
+    dependsOn(copyGameTestStructures)
+}

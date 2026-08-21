@@ -53,6 +53,16 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
 
         // Configs
         this.add("mturrets.configuration.maxRenderDistance", "Max Laser Render Distance")
+
+        // Jade tooltips
+        this.add("jade.mturrets.ammo", "Ammo: %s/%s")
+        this.add("jade.mturrets.energy", "Energy: %s/%s FE")
+        this.add("jade.mturrets.progress", "Progress: %s%%")
+
+        // Jade plugin config entries(缺失会导致客户端断言崩溃)
+        this.add("config.jade.plugin_mturrets.turret_data", "Turret Info")
+        this.add("config.jade.plugin_mturrets.kiln_data", "Kiln Info")
+        this.add("config.jade.plugin_mturrets.power_node_data", "Power Node Info")
     }
 }
 

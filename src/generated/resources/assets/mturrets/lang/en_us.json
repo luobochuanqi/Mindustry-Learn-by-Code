@@ -4,6 +4,9 @@
   "block.mturrets.kiln_block": "Kiln",
   "block.mturrets.meltdown": "Meltdown",
   "block.mturrets.power_node_block": "Power Node",
+  "config.jade.plugin_mturrets.kiln_data": "Kiln Info",
+  "config.jade.plugin_mturrets.power_node_data": "Power Node Info",
+  "config.jade.plugin_mturrets.turret_data": "Turret Info",
   "fluid.mturrets.arkycite": "Arkycite",
   "fluid.mturrets.cryofluid": "Cryofluid",
   "fluid.mturrets.cyanogen": "Cyanogen",
@@ -47,5 +50,8 @@
   "item.mturrets.tungsten": "Tungsten",
   "item.mturrets.water": "Water",
   "itemGroup.mturrets": "MTurrets",
+  "jade.mturrets.ammo": "Ammo: %s/%s",
+  "jade.mturrets.energy": "Energy: %s/%s FE",
+  "jade.mturrets.progress": "Progress: %s%%",
   "mturrets.configuration.maxRenderDistance": "Max Laser Render Distance"
 }
