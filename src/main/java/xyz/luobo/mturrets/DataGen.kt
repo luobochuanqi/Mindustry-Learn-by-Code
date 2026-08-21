@@ -102,5 +102,11 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         this.simpleBlockWithItem(arc, this.cubeAll(arc))
         val meltdown = ModBlocks.MELTDOWN_BLOCK.get()
         this.simpleBlockWithItem(meltdown, this.cubeAll(meltdown))
+
+        // Duo 为动画渲染(BESR),无方块模型;补一个 blockstate 引用手工模型,消除加载警告
+        this.simpleBlock(
+            ModBlocks.DUO_BLOCK.get(),
+            ModelFile.UncheckedModelFile("block/duo")
+        )
     }
 }
