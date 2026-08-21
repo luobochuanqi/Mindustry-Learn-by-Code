@@ -9,7 +9,7 @@
 
 ## 资产声明
 
-部分贴图等资产提取自 [Mindustry](https://github.com/Anuken/Mindustry)(GPL-3.0),提取说明见 [ATTRIBUTION.md](src/main/resources/assets/mturrets/textures/ATTRIBUTION.md)。本仓库整体以 GPL-3.0 发布。
+部分贴图等资产提取自 [Mindustry](https://github.com/Anuken/Mindustry)(GPL-3.0)。本仓库整体以 GPL-3.0 发布。
 
 ## 贡献
 
