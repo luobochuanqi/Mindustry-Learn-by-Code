@@ -11,7 +11,8 @@ import xyz.luobo.mturrets.core.turret.block.BaseTurretBlock
 
 /**
  * Duo 炮台方块
- * 使用 GeckoLib 动画渲染,共享 [BaseTurretBlock] 的 ticker/渲染形状逻辑
+ * 静态方块模型渲染(贴图来自 Mindustry 开源仓库,出处见 textures/ATTRIBUTION.md),
+ * 共享 [BaseTurretBlock] 的 ticker 逻辑
  */
 class DuoTurretBlock : BaseTurretBlock<DuoTurretBlockEntity>(
     Properties.of()

@@ -97,16 +97,12 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         this.simpleBlockWithItem(ModBlocks.POWER_NODE_BLOCK.get(), cubeAll(ModBlocks.POWER_NODE_BLOCK.get()))
         this.simpleBlockWithItem(ModBlocks.KILN_BLOCK.get(), cubeAll(ModBlocks.KILN_BLOCK.get()))
 
-        // 静态模型炮台(贴图提取自 Mindustry 开源仓库,出处见 README)
+        // 静态模型炮台(贴图提取自 Mindustry 开源仓库,出处见 textures/ATTRIBUTION.md)
         val arc = ModBlocks.ARC_BLOCK.get()
         this.simpleBlockWithItem(arc, this.cubeAll(arc))
         val meltdown = ModBlocks.MELTDOWN_BLOCK.get()
         this.simpleBlockWithItem(meltdown, this.cubeAll(meltdown))
-
-        // Duo 为动画渲染(BESR),无方块模型;补一个 blockstate 引用手工模型,消除加载警告
-        this.simpleBlock(
-            ModBlocks.DUO_BLOCK.get(),
-            ModelFile.UncheckedModelFile("block/duo")
-        )
+        val duo = ModBlocks.DUO_BLOCK.get()
+        this.simpleBlockWithItem(duo, this.cubeAll(duo))
     }
 }

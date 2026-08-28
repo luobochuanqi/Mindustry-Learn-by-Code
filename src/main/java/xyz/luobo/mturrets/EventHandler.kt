@@ -36,13 +36,6 @@ object EventHandler {
 
         @SubscribeEvent
         fun registerEntityRenderers(event: EntityRenderersEvent.RegisterRenderers) {
-            // 注册 Duo 炮台渲染器
-            event.registerBlockEntityRenderer(
-                ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
-            ) { context ->
-                xyz.luobo.mturrets.client.renderers.DuoRenderer(context)
-            }
-
             // 注册子弹实体渲染器
             event.registerEntityRenderer(
                 xyz.luobo.mturrets.common.ModEntities.TURRET_BULLET.get()

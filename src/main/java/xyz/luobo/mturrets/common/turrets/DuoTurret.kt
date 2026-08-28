@@ -6,10 +6,6 @@ import net.minecraft.world.item.Items
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.Vec3
-import software.bernie.geckolib.animatable.GeoBlockEntity
-import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache
-import software.bernie.geckolib.animation.AnimatableManager
-import software.bernie.geckolib.util.GeckoLibUtil
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.common.ModEntities
 import xyz.luobo.mturrets.common.entity.bullet.TurretBulletEntity
@@ -22,9 +18,7 @@ import xyz.luobo.mturrets.core.turret.logic.LeadCalculator
 /**
  * Duo 炮台
  * MTurrets 的经典双管炮台
- * 使用铜/铅作为弹药，射速快，伤害适中
- *
- * 实现 GeoBlockEntity 以支持 Geckolib 动画
+ * 使用铜/铁/金作为弹药，射速快，伤害适中
  */
 class DuoTurretBlockEntity(
     pos: BlockPos,
@@ -33,17 +27,7 @@ class DuoTurretBlockEntity(
     ModBlockEntityTypes.DUO_BLOCK_ENTITY.get(),
     pos,
     state
-), GeoBlockEntity {
-
-    // Geckolib 4 实例缓存
-    private val cache: AnimatableInstanceCache = GeckoLibUtil.createInstanceCache(this)
-
-    override fun registerControllers(controllers: AnimatableManager.ControllerRegistrar) {
-        // 纯代码驱动视角不需要注册动画控制器
-        // 瞄准动画完全由代码控制(通过 Renderer 更新骨骼旋转)
-    }
-
-    override fun getAnimatableInstanceCache(): AnimatableInstanceCache = cache
+) {
 
     override val config = TurretConfig(
         identifier = "duo",

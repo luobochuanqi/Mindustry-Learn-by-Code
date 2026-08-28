@@ -16,7 +16,7 @@ val mod_description: String by project
 val minecraft_version_range: String by project
 val neo_version_range: String by project
 val loader_version_range: String by project
-val geckolib_version_range: String by project
+val flywheel_version_range: String by project
 val jade_version_range: String by project
 
 version = mod_version
@@ -24,10 +24,10 @@ group = mod_group_id
 
 repositories {
     maven {
-        name = "GeckoLib"
-        url = uri("https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/")
+        name = "CreateMod"
+        url = uri("https://maven.createmod.net")
         content {
-            includeGroup("software.bernie.geckolib")
+            includeGroup("dev.engine-room.flywheel")
         }
     }
     maven {
@@ -104,7 +104,8 @@ mainSourceSet.resources.srcDir("src/generated/resources")
 
 dependencies {
     implementation(libs.kotlinforforge)
-    implementation(libs.geckolib)
+    compileOnly(libs.flywheel.api)
+    runtimeOnly(libs.flywheel)
     implementation(libs.jade)
 }
 
@@ -115,7 +116,7 @@ val generateModMetadata = tasks.register("generateModMetadata", ProcessResources
         "neo_version" to libs.versions.neoForge.get(),
         "neo_version_range" to neo_version_range,
         "loader_version_range" to loader_version_range,
-        "geckolib_version_range" to geckolib_version_range,
+        "flywheel_version_range" to flywheel_version_range,
         "jade_version_range" to jade_version_range,
         "mod_id" to mod_id,
         "mod_name" to mod_name,

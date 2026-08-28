@@ -10,7 +10,7 @@ displayName = "${mod_name}"
 authors = "${mod_authors}"
 description = '''${mod_description}'''
 
-# 最小依赖集:NeoForge / Minecraft / KotlinForForge / GeckoLib / Jade
+# 最小依赖集:NeoForge / Minecraft / KotlinForForge / Flywheel / Jade
 
 [[dependencies."${mod_id}"]]
 modId = "neoforge"
@@ -33,12 +33,13 @@ versionRange = "${loader_version_range}"
 ordering = "NONE"
 side = "BOTH"
 
+# Flywheel 仅客户端渲染需要;ordering AFTER 保证实例类型注册前其后端已就绪
 [[dependencies."${mod_id}"]]
-modId = "geckolib"
+modId = "flywheel"
 type = "required"
-versionRange = "${geckolib_version_range}"
-ordering = "NONE"
-side = "BOTH"
+versionRange = "${flywheel_version_range}"
+ordering = "AFTER"
+side = "CLIENT"
 
 [[dependencies."${mod_id}"]]
 modId = "jade"

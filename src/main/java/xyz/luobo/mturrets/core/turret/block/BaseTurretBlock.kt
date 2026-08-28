@@ -12,8 +12,8 @@ import xyz.luobo.mturrets.core.turret.entity.BaseTurretBlockEntity
 
 /**
  * 炮台方块共享基类
- * 三座炮台(Duo/Arc/Meltdown)共用的方块逻辑:
- * 实体创建、服务端 ticker、渲染形状。
+ * 三座炮台(Duo/Arc/Meltdown)共用的方块逻辑:实体创建与服务端 ticker。
+ * 渲染为静态方块模型(RenderShape.MODEL)。
  *
  * @param properties 方块属性(强度、挖掘工具等)由子类提供
  */
@@ -21,15 +21,13 @@ abstract class BaseTurretBlock<T : BaseTurretBlockEntity>(
     properties: Properties
 ) : BaseEntityBlock(properties) {
 
+    // BaseEntityBlock 默认 INVISIBLE;炮台全部走静态方块模型
+    override fun getRenderShape(state: BlockState): RenderShape {
+        return RenderShape.MODEL
+    }
+
     /** 子类提供对应的方块实体类型 */
     protected abstract fun getBlockEntityType(): BlockEntityType<T>
-
-    /**
-     * 渲染形状:默认动画渲染(GeckoLib);静态模型炮台重写为 MODEL
-     */
-    override fun getRenderShape(state: BlockState): RenderShape {
-        return RenderShape.ENTITYBLOCK_ANIMATED
-    }
 
     override fun <E : BlockEntity> getTicker(
         level: Level,

@@ -5,7 +5,7 @@ MTurrets is a Kotlin NeoForge mod (MC 1.21.1) porting Mindustry's turret, machin
 ## Build & run
 
 - JDK 21; `gradlew build` builds, `gradlew runClient` smoke-tests the client
-- Version coordinates are centralized in `gradle/libs.versions.toml`; runtime deps are only GeckoLib / KotlinForForge / Jade (rationale in ADR-0001 §3)
+- Version coordinates are centralized in `gradle/libs.versions.toml`; runtime deps are only Flywheel / KotlinForForge / Jade (rationale in ADR-0001 §3, superseded by ADR-0002 for the renderer)
 - `gradlew runData` regenerates `src/generated/resources` — this directory is committed, and CI gates its freshness with `git diff --exit-code`. After touching registries, block/item models, or lang keys, re-run and commit the output or CI fails
 - `gradlew runGameTestServer` runs the behavior regression suite (damage / energy / output, external behavior only); run it locally, CI does not
 - The Chinese mirror repositories in settings.gradle are pre-existing environment; keep them

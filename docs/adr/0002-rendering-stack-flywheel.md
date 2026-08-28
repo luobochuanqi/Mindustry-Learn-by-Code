@@ -25,6 +25,5 @@
 
 ## 后果
 
-- `neoforge.mods.toml` 的 geckolib 必装依赖、`libs.versions.toml` 坐标、`DuoRenderer`/`DuoTurret` 的 geckolib import 待实施时移除；Flywheel 以 compileOnly+jarJar(runtime) 引入。
+- 已实施：GeckoLib 依赖与 Duo 渲染实现（`DuoRenderer.kt`、`geo/`、`animations/`、`registerControllers`）删除；Duo 暂以静态方块模型渲染（无瞄准旋转动画），动画部件按 ADR-0002 原则以 Flywheel visual / partial 逐步重建。Flywheel 以 compileOnly(api)+runtimeOnly 引入，jarJar 内嵌在发布前评估。
 - 渲染基座与玩法解耦决定（传送带物品为 BE 数据而非实体，见 `docs/research/create-engineering-patterns.md` §4.4）互为前提：数据化物品才能实例化渲染。
-- 实施时 `AGENTS.md` 的"runtime deps are only GeckoLib / KotlinForForge / Jade"一句需同步修改。

@@ -27,7 +27,7 @@
 
 MTurrets(1.21.1 / NeoForge)当前资产管线的现状(仓库内核实):
 
-- **GeckoLib 4.9.2** 已接入(`gradle/libs.versions.toml`),炮台用 `GeoBlockRenderer` 渲染,资源为 `geo/duo.geo.json` + `textures/block/duo.png` + `animations/duo.animation.json`(`DuoRenderer.kt`)——即 **Bedrock 几何格式(.geo.json)+ PNG 贴图 + 动画 JSON**,用 Blockbench 的 "GeckoLib Model" 格式制作/导出。
+- **GeckoLib 4.9.2** 已接入(`gradle/libs.versions.toml`),炮台用 `GeoBlockRenderer` 渲染,资源为 `geo/duo.geo.json` + `textures/block/duo.png` + `animations/duo.animation.json`(`DuoRenderer.kt`)——即 **Bedrock 几何格式(.geo.json)+ PNG 贴图 + 动画 JSON**,用 Blockbench 的 "GeckoLib Model" 格式制作/导出。**【2026-08-28 注】本报告成文当日 GeckoLib 已被移除(ADR-0002),Duo 现为静态方块模型;报告中依赖 .geo.json 的导出路径请按 Java Block/Item JSON 理解。**
 - Arc / Meltdown 炮台改用**静态方块模型(Mindustry 原版贴图)**(CHANGELOG.md)。
 - ADR 0001 记录:"**Mindustry 开源资产保留并注明出处**"——Mindustry 仓库本体是 **GPL-3.0**【一手:github.com/Anuken/Mindustry,License: GNU GPL v3.0】。
 

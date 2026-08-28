@@ -11,13 +11,15 @@ kotlin = "2.4.10"
 
 # 运行时依赖(最小依赖集)
 kotlinForForge = "5.12.0"
-geckolib = "4.9.2"
+flywheel = "1.0.6"
 jade = "15.10.6+neoforge"
 
 [libraries]
 # 运行时依赖
 kotlinforforge = { module = "thedarkcolour:kotlinforforge-neoforge", version.ref = "kotlinForForge" }
-geckolib = { module = "software.bernie.geckolib:geckolib-neoforge-1.21.1", version.ref = "geckolib" }
+# Flywheel 分 api/runtime 两个 artifact;Minecraft 版本在 artifact 名里
+flywheel-api = { module = "dev.engine-room.flywheel:flywheel-neoforge-api-1.21.1", version.ref = "flywheel" }
+flywheel = { module = "dev.engine-room.flywheel:flywheel-neoforge-1.21.1", version.ref = "flywheel" }
 jade = { module = "maven.modrinth:jade", version.ref = "jade" }
 
 [plugins]
