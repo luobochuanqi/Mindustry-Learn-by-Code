@@ -1,35 +1,36 @@
-# 更新日志
+# Changelog
 
-本项目的所有重要变更记录于此。
-
-格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/),版本号遵循 [SemVer](https://semver.org/lang/zh-CN/)。
+All notable player-facing changes to MTurrets are documented here. Format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
+[SemVer](https://semver.org/).
 
 ## [Unreleased]
 
-### 新增
+Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
-- 三座炮台:Duo(物品弹药,提前量索敌)、Arc(耗能电弧)、Meltdown(持续光束,单通道伤害,点燃路径敌人)
-- 服务端子弹实体:伤害、穿透、范围伤害,只命中敌对生物
-- 电力网络:电力节点存储与限速传输(100 FE/tick),向相邻机器与炮台供电,支持标准能量能力注入/抽取
-- 窑炉:铅 + 沙 → 金属玻璃(1:1:1),取电生产;断电停摆保持进度,恢复后续转;破坏时掉落内部物品
-- Jade 支持:炮台弹药/能量、窑炉进度、节点能量悬浮显示
-- GameTest 回归套件 6 例:炮台伤害、节点传输、窑炉合成、破坏掉落
-- CI 流水线:datagen 新鲜度校验 → GameTest 回归 → 构建 → 产物上传
-- 状态效果:BURNING/FREEZING/POISONED/SLOWED 映射原版效果
+### Added
 
-### 变更
+**Turrets**
 
-- mod id、包名、资源命名空间由 `mindustry` 迁移为 `mturrets`
-- 构建脚本迁移 Kotlin DSL,版本坐标收进版本目录;Gradle 升至 9.7.1(wrapper 带 sha256 校验)
-- 依赖裁剪至最小集:KotlinForForge 5.12.0 / GeckoLib 4.9.2 / Jade 15.10.6
-- NeoForge 升至 21.1.248,Kotlin 升至 2.4.10
-- 方块实体 NBT 键名统一为小驼峰
-- Arc/Meltdown 改用静态方块模型(Mindustry 贴图),Duo 保持 GeckoLib 动画渲染
+- **Duo** — twin-barrel turret fed with items. Copper is cheap and quick (5 damage), iron pierces up to two extra targets at 70% damage, gold hits hardest (12 damage) and flies fastest. Holds 30 rounds, reaches 20 blocks, tracks ground and air, and leads moving targets instead of shooting where they are now.
+- **Arc** — instant lightning strike, 12 damage, 15-block range, draws power instead of ammo.
+- **Meltdown** — continuous red beam, 60 damage per second, 25-block range, passes through every entity in its path without losing strength and sets them alight. Needs a warm-up before it fires and burns 300 FE/s, so it wants a real power network behind it.
+- Turrets fire on hostile mobs and players; passive creatures and pets are never targeted.
 
-### 移除
+**Production**
 
-- 多方块结构框架与空转注册表(无实现者的脚手架)
-- 调试物品(DebugBacon)、示例物品与 LDLib2 测试界面
-- 废弃渲染器 MachineRenderer、PowerNodeBlockEntityRenderer
-- 客户端子弹方案(ClientSideBullet),由服务端子弹实体取代
-- JEI/LDLib2/Mekanism/Create/KubeJS/Rhino 等开发期依赖
+- **Kiln** — bakes lead + sand into metaglass (1:1:1) while powered. A blackout pauses it and keeps its progress; power returns and it resumes where it stopped. Breaking it returns what was inside.
+- **Power Node** — stores energy and relays it to adjacent nodes, machines and turrets at up to 100 FE per tick, so a reactor can feed a turret across a base. Accepts and supplies standard NeoForge energy.
+- 20 Mindustry materials (copper, lead, silicon, metaglass, graphite, surge alloy, plastanium, phase fabric, …) and 11 fluids, all under the MTurrets creative tab.
+
+**Interface**
+
+- Jade tooltips now show a turret's ammo or energy, the Kiln's progress and energy, and a Power Node's charge — just look at the block.
+
+### Changed
+
+- Arc and Meltdown are now actually visible — they used to render as nothing.
+
+### Removed
+
+- Debug and example items, plus the throwaway test screens, are gone from the creative tab.

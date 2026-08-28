@@ -1,6 +1,9 @@
-# 贴图出处说明
+# 素材出处说明
 
-本目录下的 `arc.png`、`meltdown.png` 提取自 [Anuken/Mindustry](https://github.com/Anuken/Mindustry)(GPL-3.0) 开源仓库:
+本模组的素材衍生自 [Anuken/Mindustry](https://github.com/Anuken/Mindustry),未逐份列举。
 
-- 来源路径:`core/assets-raw/sprites/blocks/turrets/arc.png`、`core/assets-raw/sprites/blocks/turrets/meltdown.png`
-- 原项目许可证:GPL v3,本模组同样以 GPL v3 发布,符合许可证要求
+- 原项目许可证:GPL-3.0(仓库单一 `LICENSE`,素材不单独授权)
+- 本模组同样以 GPL-3.0 发布,衍生使用符合许可证要求
+- 原始素材来源:`Anuken/Mindustry` 的 `core/assets-raw/`(设计源文件)与 `core/assets/`(运行时资源)
+
+本目录下的文件可能经过裁剪、缩放、调色或重绘;未经改动的文件仍归原项目作者所有。

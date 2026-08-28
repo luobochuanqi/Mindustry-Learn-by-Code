@@ -14,7 +14,7 @@ mod id、资源命名空间与包名(含语言键)全部迁移为 mturrets。代
 
 ## 3. 依赖裁剪至最小集
 
-移除 LDLib2/Yoga(仅测试 UI 在使用、snapshots-only 分发、版本滞后)、JEI(代码零引用)、以及 Mekanism×4/Create/KubeJS/Rhino 调试依赖(代码零引用)。保留 GeckoLib(炮台动画)与 KotlinForForge(语言加载器);Jade 从"仅声明"改为真正实现(炮台/窑炉/电力节点的信息显示)。理由:运行时与构建面收到最小集,LDLib2 作为 UI 框架对单人开发的学习成本与构建负担不划算;将来若确需机器 UI 再重新评估。
+移除 LDLib2/Yoga(仅测试 UI 在使用、snapshots-only 分发、版本滞后)、JEI(代码零引用)、以及 Mekanism×4/Create/KubeJS/Rhino 调试依赖(代码零引用)。保留 GeckoLib(炮台动画)与 KotlinForForge(语言加载器);Jade 从"仅声明"改为真正实现(炮台/窑炉/电力节点的信息显示)。理由:运行时与构建面收到最小集,LDLib2 作为 UI 框架对单人开发的学习成本与构建负担不划算;将来若确需机器 UI 再重新评估。**GeckoLib 一项已被 ADR-0002 取代(Flywheel 接替其为动画基座)。**
 
 ## 4. Mindustry 开源资产保留并注明出处
 

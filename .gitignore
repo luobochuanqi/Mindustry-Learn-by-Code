@@ -11,10 +11,22 @@ out/
 *.jar
 # Gradle wrapper jar 必须入库(构建入口)
 !gradle-wrapper.jar
+.kotlin
 
 # NeoForge 开发运行目录
 run/
 runs/
+
+# 上游参考源码浅克隆,不入库;例外:ref/INDEX.md 是入库的资产索引
+ref/*
+!ref/INDEX.md
+
+# 处理中的美术/模型源文件(Blockbench 工程等),定稿后导出进 src/main/resources;
+/assets/
+
+# 第三方技能树由 skills CLI 生成,可用 skills-lock.json 重建
+# (npx skills experimental_install);入库只放 lockfile
+.agents/
 
 # IDE
 .idea/
@@ -35,3 +47,4 @@ hs_err_pid*
 Thumbs.db
 ehthumbs.db
 Desktop.ini
+.temp

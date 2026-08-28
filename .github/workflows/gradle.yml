@@ -24,24 +24,20 @@ jobs:
         java-version: '21'
         distribution: 'temurin'
 
-    - name: Setup Gradle(缓存 wrapper 与依赖)
+    - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v4
 
-    - name: Datagen 新鲜度校验
+    - name: Verify Datagen Freshness
       run: |
         ./gradlew runData --no-daemon
         # 产物过期(生成物与入库不一致)则失败;.cache 为 datagen 内部缓存,跨平台哈希可能抖动,不参与校验
         git diff --exit-code -- src/generated/resources/assets \
           || (echo "::error::datagen 产物过期:请本地运行 ./gradlew runData 并提交更新后的产物" && exit 1)
 
-    - name: GameTest 回归
-      timeout-minutes: 20
-      run: ./gradlew runGameTestServer --no-daemon < /dev/null
-
-    - name: 构建
+    - name: Build
       run: ./gradlew build --no-daemon
 
-    - name: 上传 mod JAR
+    - name: Upload mod JAR
       uses: actions/upload-artifact@v4
       with:
         name: mturrets

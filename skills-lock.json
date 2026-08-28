@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "blockbench-animation": {
+      "source": "jasonjgardner/blockbench-mcp-project",
+      "sourceType": "github",
+      "skillPath": "skills/blockbench-animation/SKILL.md",
+      "computedHash": "5f4117a807b9d84285642232769ab48b6b82400d84dad922c2a00cc737bac896"
+    },
+    "blockbench-hytale": {
+      "source": "jasonjgardner/blockbench-mcp-project",
+      "sourceType": "github",
+      "skillPath": "skills/blockbench-hytale/SKILL.md",
+      "computedHash": "e161b0489fa66f973c52c8629f5eef5a019a60fac47b4297864baa237cea5557"
+    },
+    "blockbench-mcp-overview": {
+      "source": "jasonjgardner/blockbench-mcp-project",
+      "sourceType": "github",
+      "skillPath": "skills/blockbench-mcp-overview/SKILL.md",
+      "computedHash": "5aae407e95647a578106eff16619385d94207a3a1a680a77abb4d3815ad6752d"
+    },
+    "blockbench-modeling": {
+      "source": "jasonjgardner/blockbench-mcp-project",
+      "sourceType": "github",
+      "skillPath": "skills/blockbench-modeling/SKILL.md",
+      "computedHash": "1a23b4d9e28d14ed074e5bf21d44fe62b0aa2c205c478a1c2b9b8cd38a9cdd35"
+    },
+    "blockbench-pbr-materials": {
+      "source": "jasonjgardner/blockbench-mcp-project",
+      "sourceType": "github",
+      "skillPath": "skills/blockbench-pbr-materials/SKILL.md",
+      "computedHash": "38d50c0e2fe1b547a4de915e12966a79851235cd3d8f1feb9d2ab891de7357d7"
+    },
+    "blockbench-plugins": {
+      "source": "jasonjgardner/blockbench-mcp-project",
+      "sourceType": "github",
+      "skillPath": "skills/blockbench-development/SKILL.md",
+      "computedHash": "e5732f0bf4ec269e1e3a47216ac21a5607cbe98b0e6daa408c4a0d6773bc42af"
+    },
+    "blockbench-texturing": {
+      "source": "jasonjgardner/blockbench-mcp-project",
+      "sourceType": "github",
+      "skillPath": "skills/blockbench-texturing/SKILL.md",
+      "computedHash": "736729d5159359f540d62fabf6c61e69d43429b0c2bbb55319fbb41053ca454e"
+    },
+    "blockbench-use": {
+      "source": "jasonjgardner/blockbench-mcp-project",
+      "sourceType": "github",
+      "skillPath": "skills/blockbench-use/SKILL.md",
+      "computedHash": "389766ad5b15a9141d9eec677d387d76ca365ae1de8b3d7521cef3390bda26a3"
+    }
+  }
+}

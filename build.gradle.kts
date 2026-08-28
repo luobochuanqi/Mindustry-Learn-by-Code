@@ -86,8 +86,8 @@ neoForge {
         configureEach {
             systemProperty("forge.logging.markers", "REGISTRIES")
 
-            // DEBUG 会产生海量日志,拖慢 CI 与本地运行;需要时临时改为 DEBUG
-            logLevel = org.slf4j.event.Level.INFO
+            // dev 运行统一使用仓库内 log4j.xml:静音 registry/mixin 等噪声,保留 debug.log 全量输出
+            loggingConfigFile = rootProject.file("log4j.xml")
         }
     }
 
