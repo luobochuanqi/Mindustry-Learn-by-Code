@@ -5,7 +5,6 @@ import net.neoforged.neoforge.registries.DeferredBlock
 import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
-import xyz.luobo.mturrets.common.structure.TestStructureAnchor1x1Block
 import xyz.luobo.mturrets.common.structure.TestStructureAnchor2x2Block
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 import xyz.luobo.mturrets.core.structure.StructuralBlock
@@ -21,7 +20,7 @@ object ModBlocks {
     val POWER_NODE_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("power_node_block") { PowerNodeBlock() }
 
     // Machines
-    val KILN_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("kiln_block") { KilnBlock() }
+    val KILN: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("kiln") { KilnBlock() }
 
     // Turrets - 新的 MTurrets 风格炮台系统
     val DUO_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("duo") { DuoTurretBlock() }
@@ -35,8 +34,7 @@ object ModBlocks {
         }
     val TEST_STRUCTURE_ANCHOR_2X2: DeferredBlock<TestStructureAnchor2x2Block> =
         MOD_BLOCKS.registerBlock("test_structure_anchor_2x2") { TestStructureAnchor2x2Block() }
-    val TEST_STRUCTURE_ANCHOR_1X1: DeferredBlock<TestStructureAnchor1x1Block> =
-        MOD_BLOCKS.registerBlock("test_structure_anchor_1x1") { TestStructureAnchor1x1Block() }
+
 
     fun register() {
         MOD_BLOCKS.register(MOD_BUS)

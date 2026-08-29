@@ -31,12 +31,11 @@ object ModTabs {
     fun addCreative(event: BuildCreativeModeTabContentsEvent) {
         if (event.tabKey === EXAMPLE_TAB.getKey()) {
             event.accept(ModItems.POWER_NODE_BLOCK_ITEM.get())
-            event.accept(ModItems.KILN_BLOCK_ITEM.get())
+            event.accept(ModItems.KILN_ITEM.get())
             event.accept(ModItems.DUO_BLOCK_ITEM.get())
             event.accept(ModItems.ARC_BLOCK_ITEM.get())
             event.accept(ModItems.MELTDOWN_BLOCK_ITEM.get())
             event.accept(ModItems.TEST_STRUCTURE_ANCHOR_2X2_ITEM.get())
-            event.accept(ModItems.TEST_STRUCTURE_ANCHOR_1X1_ITEM.get())
             Materials.ALL.forEach { material ->
                 event.accept(ModItems.getMaterial(material).get())
             }

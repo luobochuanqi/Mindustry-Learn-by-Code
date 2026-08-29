@@ -11,11 +11,11 @@
       "entries": [
         {
           "type": "minecraft:item",
-          "name": "mturrets:test_structure_anchor_1x1"
+          "name": "mturrets:kiln"
         }
       ],
       "rolls": 1.0
     }
   ],
-  "random_sequence": "mturrets:blocks/test_structure_anchor_1x1"
+  "random_sequence": "mturrets:blocks/kiln"
 }

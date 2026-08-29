@@ -1,0 +1,19 @@
+{
+  "type": "mturrets:machine",
+  "energy": 500,
+  "ingredients": [
+    {
+      "item": "mturrets:lead"
+    },
+    {
+      "item": "minecraft:sand"
+    }
+  ],
+  "processing_time": 100,
+  "results": [
+    {
+      "count": 1,
+      "id": "mturrets:metaglass"
+    }
+  ]
+}

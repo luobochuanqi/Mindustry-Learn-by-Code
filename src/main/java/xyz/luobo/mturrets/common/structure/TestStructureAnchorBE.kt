@@ -20,7 +20,7 @@ class TestStructureAnchorBE(pos: BlockPos, state: BlockState) :
     override val currentBlueprint: Blueprint
         get() = (blockState.block as BlueprintAnchorBlock).blueprint
 
-    val itemCapability: ItemCapabilityImpl = ItemCapabilityImpl(1)
+    override val itemCapability: ItemCapabilityImpl = ItemCapabilityImpl(1)
 
     override fun contentsToScatter(destroyed: Boolean): List<ItemStack> {
         if (destroyed) return emptyList() // Health 归零路径:内容全毁(语义随 #31/#34 启用)

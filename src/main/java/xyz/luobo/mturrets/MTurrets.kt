@@ -32,6 +32,7 @@ object MTurrets {
         ModFluids.register()
         ModBlockEntityTypes.register()
         ModEntities.register()
+        ModRecipeTypes.register()
         ModTabs.register()
 
         // 添加自定义物品栏标签

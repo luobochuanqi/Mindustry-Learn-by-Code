@@ -12,19 +12,15 @@ import snownee.jade.api.config.IPluginConfig
 import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.blocks.PowerNodeBlock
 import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
-import xyz.luobo.mturrets.common.machines.kiln.KilnBE
-import xyz.luobo.mturrets.common.machines.kiln.KilnBlock
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlock
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.DuoTurretBlock
 import xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
-import xyz.luobo.mturrets.core.machine.BaseMachineBE
 /**
-  * LEGACY 显示通道:三个 provider 服务翻新期方块,一期新方块显示另立插件,旧的不迁不删(#37)。
  * Jade 信息显示插件
- * 炮台:弹药/能量;窑炉:进度/能量;电力节点:能量
+ * 炮台:弹药/能量;电力节点:能量(窑炉显示随 #37 新插件落地)
  *
  * 插件类两端加载(Jade 为两端依赖),tooltip 逻辑仅客户端调用
  */
@@ -37,8 +33,7 @@ class MTurretsJadePlugin : IWailaPlugin {
         registration.registerBlockComponent(TurretDataProvider, ArcTurretBlock::class.java)
         registration.registerBlockComponent(TurretDataProvider, MeltdownTurretBlock::class.java)
 
-        // 窑炉
-        registration.registerBlockComponent(KilnDataProvider, KilnBlock::class.java)
+        // 窑炉(#37 落地新 KilnDataProvider;legacy 方块已退役,旧通道先摘)
 
         // 电力节点
         registration.registerBlockComponent(PowerNodeDataProvider, PowerNodeBlock::class.java)
@@ -86,26 +81,6 @@ object TurretDataProvider : IBlockComponentProvider {
     }
 }
 
-/** 窑炉信息:生产进度与能量 */
-object KilnDataProvider : IBlockComponentProvider {
-    override fun getUid(): ResourceLocation =
-        ResourceLocation.fromNamespaceAndPath(MTurrets.MOD_ID, "kiln_data")
-
-    override fun appendTooltip(tooltip: ITooltip, accessor: BlockAccessor, config: IPluginConfig) {
-        val be = accessor.getBlockEntity()
-        if (be is BaseMachineBE) {
-            val percent = if (be.maxProgress > 0) be.progress * 100 / be.maxProgress else 0
-            tooltip.add(Component.translatable("jade.mturrets.progress", percent))
-            tooltip.add(
-                Component.translatable(
-                    "jade.mturrets.energy",
-                    be.energyCapability.currentEnergy,
-                    be.energyCapability.energyCapacity
-                )
-            )
-        }
-    }
-}
 
 /** 电力节点信息:当前能量 */
 object PowerNodeDataProvider : IBlockComponentProvider {

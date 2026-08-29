@@ -1,161 +1,241 @@
 package xyz.luobo.mturrets.common.machines.kiln
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.HolderLookup
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.material.Fluids
+import net.neoforged.neoforge.fluids.FluidStack
+import net.neoforged.neoforge.items.ItemHandlerHelper
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
-import xyz.luobo.mturrets.common.ModItems
-import xyz.luobo.mturrets.common.items.Materials
-import xyz.luobo.mturrets.core.machine.BaseMachineBE
+import xyz.luobo.mturrets.common.ModRecipeTypes
+import xyz.luobo.mturrets.core.MTurretsModBlockEntity
+import xyz.luobo.mturrets.core.capability.impl.EnergyCapabilityImpl
+import xyz.luobo.mturrets.core.capability.impl.FluidCapabilityImpl
+import xyz.luobo.mturrets.core.capability.impl.ItemCapabilityImpl
+import xyz.luobo.mturrets.core.recipe.MachineRecipe
+import xyz.luobo.mturrets.core.structure.Blueprint
+import xyz.luobo.mturrets.core.structure.BlueprintAnchor
+import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 
 /**
-  * LEGACY: 翻新期窑炉 BE(硬编码配方)。新配方实例为纯 datapack JSON,见 #33。
- * 窑炉方块实体
- * 将铅和沙子合成为金属玻璃
+ * 窑炉 BE(#33):铅 + 原版沙 + 水 → 金属玻璃。
+ * Buffer 无固定槽位,只收配方原料/产物;内罐只收水,水为每轮预检的必需输入;
+ * 能量按配方总耗随进度均摊、内账直扣(对外速率只约束注入),原料/水在结算时一次扣除。
+ * 配方查找事件驱动 + 缓存(含负缓存;原料/水/能量变化时失效),每 tick 只推进进度(ADR-0006)。
+ * 缺输入即停摆、进度不倒退,补足后续转(#27 棕停同型语义);中途换料致本单作废(能量沉没)。
  */
-class KilnBE(
-    pos: BlockPos,
-    state: BlockState
-) : BaseMachineBE(ModBlockEntityTypes.KILN_BLOCK_ENTITY.get(), pos, state) {
+class KilnBE(pos: BlockPos, state: BlockState) :
+    MTurretsModBlockEntity(ModBlockEntityTypes.KILN.get(), pos, state), BlueprintAnchor {
 
     companion object {
-        // 配置常量
-        const val INPUT_SLOT_1 = 0
-        const val INPUT_SLOT_2 = 1
-        const val OUTPUT_SLOT = 2
-
+        /** Buffer 槽位数:不设布局语义,余量即自动化余量;20 覆盖一期配方宽度。 */
+        const val BUFFER_SLOTS = 20
+        /** 内罐容量(mB):一桶水恰好充满 → 20 轮(#25 决议)。 */
+        const val WATER_TANK_CAPACITY = 1000
+        /** 每轮耗水(mB):机器语义(CONTEXT:Kiln 水=必需输入),不进配方 JSON。 */
+        const val WATER_PER_CRAFT = 50
+        /** 储能:容纳多轮能耗;对外只收不吐,注入限速 200 FE/t(#27 口径)。 */
         const val ENERGY_CAPACITY = 10000
-        const val ENERGY_PER_TICK = 2
-        const val MAX_PROGRESS = 10
-        const val MAX_OUTPUT_STACK_SIZE = 64
+        const val MAX_ENERGY_RECEIVE = 200
     }
 
-    // ========== 配置属性 ==========
+    override val currentBlueprint: Blueprint
+        get() = (blockState.block as BlueprintAnchorBlock).blueprint
+    override val itemCapability: ItemCapabilityImpl =
+        createItemCapability(slotCount = BUFFER_SLOTS, isValidItem = { _, stack -> isBufferItem(stack) })
 
-    override val itemSlotCount: Int = 3
-    override val energyCapacity: Int = ENERGY_CAPACITY
-    override val maxProgress: Int = MAX_PROGRESS
-    override val energyPerTick: Int = ENERGY_PER_TICK
+    override val fluidCapability: FluidCapabilityImpl =
+        createFluidCapability(
+            capacity = WATER_TANK_CAPACITY,
+            maxReceive = WATER_TANK_CAPACITY,
+            maxExtract = 0,
+            isValidFluid = { it.fluid == Fluids.WATER }
+        )
 
-    override val maxEnergyReceive: Int = 200
-    override val maxEnergyExtract: Int = 200
+    override val energyCapability: EnergyCapabilityImpl =
+        createEnergyCapability(capacity = ENERGY_CAPACITY, maxReceive = MAX_ENERGY_RECEIVE, maxExtract = 0)
 
-    // ========== 物品引用缓存 ==========
 
-    private val leadItem by lazy { ModItems.getMaterial(Materials.LEAD).get() }
-    private val sandItem by lazy { ModItems.getMaterial(Materials.SAND).get() }
-    private val metaglassItem by lazy { ModItems.getMaterial(Materials.METAGLASS).get() }
+    private var cachedRecipe: MachineRecipe? = null
+    /** 查找结果缓存有效位(含"无匹配"负缓存);输入/水/能量变化时失效。 */
+    private var recipeKnown = false
+    private var progress = 0
+    /** 本轮加工总时长;随进度持久化,供客户端(Jade #37)换算百分比。 */
+    private var processingTime = 0
+    /** 本轮已扣 FE(均摊记账;持久化,防区块重载重复扣)。 */
+    private var consumedEnergy = 0
 
-    // ========== 槽位配置 ==========
+    /** 进度百分比(同步数据,Jade #37 消费)。 */
+    val progressPercent: Int
+        get() = if (processingTime > 0) progress * 100 / processingTime else 0
 
-    override fun isInputSlot(slot: Int): Boolean {
-        return slot == INPUT_SLOT_1 || slot == INPUT_SLOT_2
+    override fun onContentsChanged(slot: Int) {
+        super.onContentsChanged(slot)
+        invalidateRecipe()
     }
 
-    override fun isOutputSlot(slot: Int): Boolean {
-        return slot == OUTPUT_SLOT
+    override fun onFluidChanged() {
+        super.onFluidChanged()
+        invalidateRecipe()
     }
+
+    // 能量变化不失效缓存:能耗不影响"哪个配方匹配",否则连续供电下空转机每 tick 重扫配方(ADR-0006)。
+    // onEnergyChanged 不覆写,基类仍负责 setChanged + 节流同步。
 
     /**
-     * 检查物品是否可以插入到指定槽位（不考虑当前库存状态）
-     * 输入槽只能接受铅和沙子，输出槽不能插入
+     * 失效策略:空转(progress==0)随时可重查;加工中锁定已匹配配方(结算处重校验)。
+     * 例外:cachedRecipe 为 null 而 progress>0 是"重载后原料不完整"的卡死态,
+     * 放行重查使补料后续转(spec 故事 7 的停摆-续转语义)。
      */
-    override fun isValidItemForSlot(slot: Int, stack: ItemStack): Boolean {
+    private fun invalidateRecipe() {
+        if (progress == 0 || cachedRecipe == null) {
+            cachedRecipe = null
+            recipeKnown = false
+        }
+    }
+
+    /** 配方表扫描(仅插入/取出校验时调用,事件驱动;一期单机器不预建缓存层)。 */
+    private fun machineRecipes(): List<MachineRecipe> {
+        val lv = level ?: return emptyList()
+        return lv.recipeManager.getAllRecipesFor(ModRecipeTypes.MACHINE.get()).map { it.value }
+    }
+
+    /** Buffer 准入(CONTEXT:Buffer 只存配方出入物品):命中任一机器配方的原料或产物。 */
+    fun isBufferItem(stack: ItemStack): Boolean {
         if (stack.isEmpty) return false
-
-        return when (slot) {
-            INPUT_SLOT_1, INPUT_SLOT_2 -> {
-                // 输入槽只能接受铅或沙子
-                stack.item == leadItem || stack.item == sandItem
-            }
-
-            OUTPUT_SLOT -> {
-                // 输出槽不允许插入
-                false
-            }
-
-            else -> true
-        }
+        return machineRecipes().any { it.matches(stack) || it.produces(stack) }
     }
 
-    // ========== 工作逻辑 ==========
+    /** 是否为任一机器配方的产物(右键取出的优先项)。 */
+    private fun isProductItem(stack: ItemStack): Boolean = machineRecipes().any { it.produces(stack) }
 
-    override fun canWork(): Boolean {
-        // 检查能量是否充足
-        if (!energyCapability.hasEnergy(energyPerTick)) {
-            return false
+    /** 右键取出的选择:产出优先,否则退回首个存货(玩家清仓通道,无 GUI)。 */
+    fun takeBufferStack(): ItemStack? {
+        val cap = itemCapability
+        var fallback = -1
+        for (slot in 0 until cap.slotCount) {
+            val stack = cap.getStack(slot)
+            if (stack.isEmpty) continue
+            if (isProductItem(stack)) return cap.extractItem(slot, stack.count, false)
+            if (fallback < 0) fallback = slot
         }
-
-        val stack1 = itemCapability.getStack(INPUT_SLOT_1)
-        val stack2 = itemCapability.getStack(INPUT_SLOT_2)
-        val outputStack = itemCapability.getStack(OUTPUT_SLOT)
-
-        // 检查输入槽位是否有物品
-        if (stack1.isEmpty || stack2.isEmpty) {
-            return false
-        }
-
-        // 检查输出槽位是否已满
-        if (outputStack.count >= MAX_OUTPUT_STACK_SIZE) {
-            return false
-        }
-
-        // 检查配方是否匹配（铅 + 沙子）
-        return hasValidRecipe(stack1, stack2)
+        return if (fallback >= 0) cap.extractItem(fallback, cap.getStack(fallback).count, false) else null
     }
 
     /**
-     * 检查是否有有效的配方
+     * 服务端 tick(由 [KilnBlock] 排程):空转查配方、水检过则开工;
+     * 加工中按进度均摊扣能,满程结算产出。
      */
-    private fun hasValidRecipe(stack1: ItemStack, stack2: ItemStack): Boolean {
-        val isLeadAndSand = (stack1.item == leadItem && stack2.item == sandItem)
-        val isSandAndLead = (stack1.item == sandItem && stack2.item == leadItem)
-        return isLeadAndSand || isSandAndLead
-    }
-
-    override fun finishWork() {
-        val stack1 = itemCapability.getStack(INPUT_SLOT_1)
-        val stack2 = itemCapability.getStack(INPUT_SLOT_2)
-
-        // 再次验证配方
-        if (!hasValidRecipe(stack1, stack2)) {
+    fun tickServer() {
+        val lv = level ?: return
+        if (progress == 0) {
+            val recipe = lookupRecipe(lv) ?: return
+            // 启动校验:水为必需输入,不足即不开工(停摆、不倒退)
+            if (fluidCapability.currentFluid.amount < WATER_PER_CRAFT) return
+            processingTime = recipe.processingTime
+            consumedEnergy = 0
+            progress = 1
+            setChanged()
             return
         }
 
-        // 消耗输入物品（直接修改物品栈，因为输入槽不允许 extractItem）
-        stack1.shrink(1)
-        if (stack1.isEmpty) {
-            itemCapability.setStack(INPUT_SLOT_1, ItemStack.EMPTY)
+        // 重载恢复路径:加工中的配方按仍完好的原料重新匹配(输入在结算前不扣)
+        val recipe = cachedRecipe ?: lookupRecipe(lv) ?: return
+        val due = recipe.energy * progress / recipe.processingTime - consumedEnergy
+        if (due > 0) {
+            if (energyCapability.currentEnergy < due) return // 能量不足:停摆、进度保持
+            energyCapability.currentEnergy -= due
+            consumedEnergy += due
+            setChanged()
         }
-
-        stack2.shrink(1)
-        if (stack2.isEmpty) {
-            itemCapability.setStack(INPUT_SLOT_2, ItemStack.EMPTY)
+        if (progress < recipe.processingTime) {
+            progress++
+            if (progress % 5 == 0) syncData()
+            return
         }
+        settle(lv, recipe)
+    }
 
-        // 添加输出物品
-        val outputStack = itemCapability.getStack(OUTPUT_SLOT)
-        if (outputStack.isEmpty) {
-            itemCapability.setStack(OUTPUT_SLOT, ItemStack(metaglassItem, 1))
-        } else {
-            outputStack.grow(1)
+    /** 结算:换料破坏匹配或断水则本单作废(能量沉没);否则扣水扣料、产出入 Buffer。 */
+    private fun settle(lv: Level, recipe: MachineRecipe) {
+        val input = MachineRecipe.Input(bufferSnapshot())
+        val valid = recipe.matches(input, lv) && fluidCapability.currentFluid.amount >= WATER_PER_CRAFT
+        resetCycle()
+        if (!valid) return
+        recipe.consume(input)
+        drainWaterInternal(WATER_PER_CRAFT)
+        for (result in recipe.results) {
+            val leftover = ItemHandlerHelper.insertItem(itemCapability, result.copy(), false)
+            if (!leftover.isEmpty) {
+                // Buffer 理论装不下时才发生:就地散落,确定性不丢失
+                net.minecraft.world.Containers.dropItemStack(
+                    lv, worldPosition.x + 0.5, worldPosition.y + 0.5, worldPosition.z + 0.5, leftover
+                )
+            }
         }
+    }
 
-        // 标记为已更改
+    private fun resetCycle() {
+        progress = 0
+        processingTime = 0
+        consumedEnergy = 0
+        cachedRecipe = null
+        recipeKnown = false
         setChanged()
     }
 
-    // ========== 生命周期 ==========
-
-    override fun onLoad() {
-        super.onLoad()
+    private fun lookupRecipe(lv: Level): MachineRecipe? {
+        if (!recipeKnown) {
+            val stacks = bufferSnapshot()
+            cachedRecipe = if (stacks.all { it.isEmpty }) null else {
+                val input = MachineRecipe.Input(stacks)
+                lv.recipeManager.getAllRecipesFor(ModRecipeTypes.MACHINE.get())
+                    .firstOrNull { it.value.matches(input, lv) }
+                    ?.value
+            }
+            recipeKnown = true
+        }
+        return cachedRecipe
     }
 
-    override fun setRemoved() {
-        super.setRemoved()
+    private fun bufferSnapshot(): List<ItemStack> =
+        (0 until itemCapability.slotCount).map { itemCapability.getStack(it) }
+
+    /** 机器内账扣水:绕开对外 maxExtract=0 的限速;调用方已校验水量。 */
+    private fun drainWaterInternal(amount: Int) {
+        val fluid = fluidCapability.currentFluid
+        fluid.shrink(amount)
+        if (fluid.amount == 0) fluidCapability.currentFluid = FluidStack.EMPTY
+        fluidCapability.onFluidChanged()
     }
 
-    override fun onChunkUnloaded() {
-        super.onChunkUnloaded()
+    override fun contentsToScatter(destroyed: Boolean): List<ItemStack> {
+        // 拆机不洒水:液体无散落语义,确定性优先(#33 spec 定案)
+        if (destroyed) return emptyList()
+        return bufferSnapshot().filter { !it.isEmpty }.map { it.copy() }
     }
+
+    override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        super.saveAdditional(tag, registries)
+        tag.putInt("kiln_progress", progress)
+        tag.putInt("kiln_time", processingTime)
+        tag.putInt("kiln_energy_spent", consumedEnergy)
+    }
+
+    override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        super.loadAdditional(tag, registries)
+        progress = tag.getInt("kiln_progress")
+        processingTime = tag.getInt("kiln_time")
+        consumedEnergy = tag.getInt("kiln_energy_spent")
+    }
+
+    override fun getUpdatePacket(): ClientboundBlockEntityDataPacket =
+        ClientboundBlockEntityDataPacket.create(this)
+
+    override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag =
+        saveWithoutMetadata(registries)
 }

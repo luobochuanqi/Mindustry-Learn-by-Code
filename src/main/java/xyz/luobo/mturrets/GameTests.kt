@@ -11,6 +11,8 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 import net.neoforged.neoforge.capabilities.Capabilities
+import net.neoforged.neoforge.fluids.FluidStack
+import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.gametest.GameTestHolder
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate
 import xyz.luobo.mturrets.common.ModBlocks
@@ -19,10 +21,8 @@ import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
-import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
-import xyz.luobo.mturrets.core.structure.StructuralBlock
-import xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
+import xyz.luobo.mturrets.core.structure.StructuralBlock
 
 /**
   * LEGACY 基准:翻新期行为回归(Duo 吃原版铜锭等断言随新范式替换,#36 重建套件);旧用例在旧代码存续期内保持全绿。
@@ -168,64 +168,156 @@ object ModGameTests {
         }
     }
 
-    // ========== 生产:窑炉合成 ==========
+    // 生产:窑炉(#33 新范式:蓝图管线 1×1 + datapack 配方 + 水/能量)
+
+    /** 经流体能力向内罐灌水(GameTestHelper 无桶物品交互,走能力注入面) */
+    private fun fillKilnTank(helper: GameTestHelper, pos: BlockPos) {
+        val cap = helper.level.getCapability(
+            Capabilities.FluidHandler.BLOCK,
+            helper.absolutePos(pos),
+            null
+        ) ?: throw IllegalStateException("no fluid capability at $pos")
+        val filled = cap.fill(FluidStack(Fluids.WATER, 1000), net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE)
+        if (filled <= 0) throw IllegalStateException("kiln tank refused water")
+    }
+
+    /** 窑炉注入限速 200 FE/t,循环注满 */
+    private fun injectEnergyUpTo(helper: GameTestHelper, pos: BlockPos, amount: Int): Int {
+        var injected = 0
+        while (injected < amount) {
+            val got = injectEnergy(helper, pos, amount - injected)
+            if (got <= 0) break
+            injected += got
+        }
+        return injected
+    }
+
+    private fun countItem(helper: GameTestHelper, pos: BlockPos, item: net.minecraft.world.item.Item): Int {
+        val cap = helper.level.getCapability(
+            Capabilities.ItemHandler.BLOCK,
+            helper.absolutePos(pos),
+            null
+        ) ?: return 0
+        var count = 0
+        for (slot in 0 until cap.slots) {
+            val stack = cap.getStackInSlot(slot)
+            if (stack.`is`(item)) count += stack.count
+        }
+        return count
+    }
+
+    private fun storedEnergy(helper: GameTestHelper, pos: BlockPos): Int =
+        helper.level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(pos), null)?.energyStored ?: -1
 
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 300)
     fun kilnCraftsMetaglass(helper: GameTestHelper) {
         val kilnPos = BlockPos(1, 1, 1)
-        helper.setBlock(kilnPos, ModBlocks.KILN_BLOCK.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
 
-        val injected = injectEnergy(helper, kilnPos, 1000)
-        if (injected <= 0) helper.fail("kiln refused energy injection")
-
-        // 输入:铅 + 沙(1:1:1)
-        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
-        insertItem(helper, kilnPos, 1, ItemStack(ModItems.getMaterial(Materials.SAND).get(), 4))
-
-        val metaglass = ModItems.getMaterial(Materials.METAGLASS).get()
+        // 配方(生成 JSON):1 铅 + 1 原版沙 → 1 金属玻璃,100 tick,500 FE;水 50 mB/轮
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
+        fillKilnTank(helper, kilnPos)
+        val injected = injectEnergyUpTo(helper, kilnPos, 600)
+        if (injected < 600) helper.fail("kiln refused energy injection: $injected/600")
 
         helper.succeedWhen {
-            val cap = helper.level.getCapability(
-                Capabilities.ItemHandler.BLOCK,
-                helper.absolutePos(kilnPos),
-                null
-            )
-            var produced = false
-            if (cap != null) {
-                for (slot in 0 until cap.slots) {
-                    if (cap.getStackInSlot(slot).`is`(metaglass)) {
-                        produced = true
-                    }
-                }
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("kiln produced no metaglass")
             }
-            if (!produced) helper.fail("kiln produced no metaglass")
+            // 能量按配方总耗扣除:600 - 500 = 100
+            val left = storedEnergy(helper, kilnPos)
+            if (left != 100) helper.fail("expected 100 FE left after 500 FE recipe, got $left")
         }
     }
 
-    // ========== 回归:窑炉断电停摆、恢复后续转 ==========
-    // 说明:能量不足时进度保持(不倒退),恢复供电后续转——由 kilnCraftsMetaglass 的
-    // 节流供能路径隐式覆盖(节点按速率供电,窑炉在能量到位前保持进度)。
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun kilnStallsWithoutWaterThenResumes(helper: GameTestHelper) {
+        val kilnPos = BlockPos(1, 1, 1)
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
 
-    // ========== 回归:破坏窑炉掉落内容物 ==========
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
+        injectEnergyUpTo(helper, kilnPos, 600)
+
+        // 缺水:加工从不启动;40 tick 后确认零产出且能量分毫未耗(未开工)
+        helper.runAfterDelay(40) {
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) > 0) {
+                helper.fail("kiln produced without water")
+            }
+            if (storedEnergy(helper, kilnPos) != 600) {
+                helper.fail("kiln consumed energy without water: ${storedEnergy(helper, kilnPos)}")
+            }
+            fillKilnTank(helper, kilnPos)
+        }
+        helper.succeedWhen {
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("kiln did not resume after water refill")
+            }
+        }
+    }
 
     @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 200)
-    fun breakingKilnDropsContents(helper: GameTestHelper) {
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun kilnStallsWithoutEnergyKeepsProgress(helper: GameTestHelper) {
         val kilnPos = BlockPos(1, 1, 1)
-        helper.setBlock(kilnPos, ModBlocks.KILN_BLOCK.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
+        fillKilnTank(helper, kilnPos)
+
+        // 无能量:开工后因缺电停摆;30 tick 后零产出、水仍在罐(能量均摊未到结算不扣水扣料)
+        helper.runAfterDelay(30) {
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) > 0) {
+                helper.fail("kiln produced without energy")
+            }
+            injectEnergyUpTo(helper, kilnPos, 600)
+        }
+        helper.succeedWhen {
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("kiln did not resume after energy injection")
+            }
+        }
+    }
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun breakingKilnScattersBuffer(helper: GameTestHelper) {
+        val kilnPos = BlockPos(1, 1, 1)
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
 
         insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
-
-        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        helper.runAfterDelay(5) { helper.destroyBlock(kilnPos) }
 
         helper.succeedWhen {
-            // 破坏方块
-            helper.destroyBlock(kilnPos)
-            // 掉落物中出现铅
-            val drops = helper.getEntities(EntityType.ITEM, kilnPos, 2.0)
-            val found = drops.any { (it as? net.minecraft.world.entity.item.ItemEntity)?.item?.`is`(lead) == true }
-            if (!found) helper.fail("kiln did not drop stored lead")
+            val lead = ModItems.getMaterial(Materials.LEAD).get()
+            val drops = helper.getEntities(EntityType.ITEM, kilnPos, 3.0)
+            if (drops.none { (it as? net.minecraft.world.entity.item.ItemEntity)?.item?.`is`(lead) == true }) {
+                helper.fail("kiln did not scatter stored lead on teardown")
+            }
+        }
+    }
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun kilnFormsAs1x1Anchor(helper: GameTestHelper) {
+        // 1×1 管线语义由真窑炉承载(#32 脚手架 blueprintForms1x1 退役至此)
+        val kilnPos = BlockPos(1, 1, 1)
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+        helper.succeedWhen {
+            helper.assertBlockPresent(ModBlocks.KILN.get(), kilnPos)
+            if (helper.level.getBlockEntity(helper.absolutePos(kilnPos)) !is KilnBE) {
+                helper.fail("kiln anchor must host its block entity")
+            }
+            // 空偏移集:不盖任何成员格
+            for (offset in listOf(BlockPos(1, 0, 0), BlockPos(0, 0, 1), BlockPos(1, 0, 1))) {
+                if (!helper.getBlockState(kilnPos.offset(offset)).isAir) {
+                    helper.fail("1x1 kiln must not form members at $offset")
+                }
+            }
         }
     }
 
@@ -254,27 +346,6 @@ object ModGameTests {
             )
             if (decodedAnchor != anchorPos) {
                 helper.fail("encoded offsets do not resolve anchor: $decodedAnchor")
-            }
-        }
-    }
-
-    // 蓝图管线:1×1 走同一管线(空偏移集)
-
-    @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 100)
-    fun blueprintForms1x1(helper: GameTestHelper) {
-        val anchorPos = BlockPos(0, 1, 0)
-        helper.setBlock(anchorPos, ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get())
-        helper.succeedWhen {
-            if (!helper.getBlockState(anchorPos).`is`(ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get())) {
-                helper.fail("1x1 anchor vanished")
-            }
-            if (helper.getLevel().getBlockEntity(helper.absolutePos(anchorPos)) !is TestStructureAnchorBE) {
-                helper.fail("1x1 anchor lost its block entity")
-            }
-            // 空偏移集:不盖任何成员格
-            if (!helper.getBlockState(anchorPos.offset(BlockPos(1, 0, 0))).isAir) {
-                helper.fail("1x1 must not form members")
             }
         }
     }

@@ -29,16 +29,3 @@ class TestStructureAnchor2x2Block : BlueprintAnchorBlock(structureProperties()) 
         private val CODEC: MapCodec<TestStructureAnchor2x2Block> = simpleCodec { TestStructureAnchor2x2Block() }
     }
 }
-
-/** 测试 1×1 结构锚点:空偏移集,验证 1×1 内容走同一管线。 */
-class TestStructureAnchor1x1Block : BlueprintAnchorBlock(structureProperties()) {
-    override val blueprint: Blueprint = Blueprint(emptyList())
-
-    override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity = TestStructureAnchorBE(pos, state)
-
-    override fun codec(): MapCodec<out BaseEntityBlock?> = CODEC
-
-    companion object {
-        private val CODEC: MapCodec<TestStructureAnchor1x1Block> = simpleCodec { TestStructureAnchor1x1Block() }
-    }
-}

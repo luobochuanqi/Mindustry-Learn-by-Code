@@ -27,11 +27,11 @@ object ModBlockEntityTypes {
         })
 
     // Machines
-    val KILN_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<KilnBE>> =
+    val KILN: DeferredHolder<BlockEntityType<*>, BlockEntityType<KilnBE>> =
         BLOCK_ENTITY_TYPES.register("kiln", Supplier {
             BlockEntityType.Builder.of(
                 { pos, state -> KilnBE(pos, state) },
-                ModBlocks.KILN_BLOCK.get()
+                ModBlocks.KILN.get()
             ).build(null)
         })
 
@@ -60,13 +60,12 @@ object ModBlockEntityTypes {
             ).build(null)
         })
 
-    // 蓝图管线(ADR-0003/0004):骨架临时测试锚点 BE,两块测试锚点共用
+    // 蓝图管线(ADR-0003/0004):骨架临时测试锚点 BE,2×2 测试锚点专用(#34 落地后删除)
     val TEST_STRUCTURE_ANCHOR_BE: DeferredHolder<BlockEntityType<*>, BlockEntityType<TestStructureAnchorBE>> =
         BLOCK_ENTITY_TYPES.register("test_structure_anchor", Supplier {
             BlockEntityType.Builder.of(
                 { pos, state -> TestStructureAnchorBE(pos, state) },
-                ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get(),
-                ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get()
+                ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get()
             ).build(null)
         })
 

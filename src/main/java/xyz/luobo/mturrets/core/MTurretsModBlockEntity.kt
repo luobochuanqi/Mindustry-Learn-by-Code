@@ -163,13 +163,16 @@ abstract class MTurretsModBlockEntity(
     protected fun createFluidCapability(
         capacity: Int,
         maxReceive: Int = 0,
-        maxExtract: Int = 0
+        maxExtract: Int = 0,
+        isValidFluid: (FluidStack) -> Boolean = { true }
     ): FluidCapabilityImpl {
         return FluidCapabilityImpl(
             fluidCapacity = capacity,
             maxReceive = maxReceive,
-            maxExtract = maxExtract
-        ) { onFluidChanged() }
+            maxExtract = maxExtract,
+            onFluidChangedCallback = { onFluidChanged() },
+            isValidFluidCallback = isValidFluid
+        )
     }
 
     /**

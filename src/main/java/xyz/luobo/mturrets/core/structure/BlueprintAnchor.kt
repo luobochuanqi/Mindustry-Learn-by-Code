@@ -1,6 +1,7 @@
 package xyz.luobo.mturrets.core.structure
 
 import net.minecraft.world.item.ItemStack
+import xyz.luobo.mturrets.core.capability.IItemCapability
 
 /**
  * 锚点 BE 契约(ADR-0003/0004):蓝图管线里所有锚点方块的 BlockEntity 共同接口。
@@ -17,4 +18,7 @@ interface BlueprintAnchor {
      * Health 结算(#31/#34)落地后由该路径调用;常规拆除(玩家挖/爆炸)传 false。
      */
     fun contentsToScatter(destroyed: Boolean): List<ItemStack>
+
+    /** 成员格能力路由的物品入口(#32):成员面查询解析到锚点后返回此能力。 */
+    val itemCapability: IItemCapability?
 }

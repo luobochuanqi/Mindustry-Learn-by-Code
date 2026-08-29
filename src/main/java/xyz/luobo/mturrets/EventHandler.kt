@@ -18,7 +18,10 @@ import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.common.ModFluids
 import xyz.luobo.mturrets.common.liquids.FluidRegistry
 import xyz.luobo.mturrets.common.liquids.Liquids
+import xyz.luobo.mturrets.common.ModBlocks
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
+import xyz.luobo.mturrets.core.structure.BlueprintAnchor
+import xyz.luobo.mturrets.core.structure.StructuralBlock
 
 object EventHandler {
     private val LOGGER: Logger = LogUtils.getLogger()
@@ -96,21 +99,19 @@ object EventHandler {
     }
 
     fun registerCapabilities(event: RegisterCapabilitiesEvent) {
-        // 注册窑炉的物品处理器 Capability
+        // 窑炉(#33):Buffer / 内罐 / 储能三通道(1×1 蓝图锚点,查询即锚点位)
         event.registerBlockEntity(
             Capabilities.ItemHandler.BLOCK,
-            ModBlockEntityTypes.KILN_BLOCK_ENTITY.get()
-        ) { be, _ ->
-            if (be is KilnBE) be.itemCapability else null
-        }
-
-        // 注册窑炉的能量存储 Capability
+            ModBlockEntityTypes.KILN.get()
+        ) { be, _ -> (be as? KilnBE)?.itemCapability }
         event.registerBlockEntity(
             Capabilities.EnergyStorage.BLOCK,
-            ModBlockEntityTypes.KILN_BLOCK_ENTITY.get()
-        ) { be, _ ->
-            if (be is KilnBE) be.energyCapability else null
-        }
+            ModBlockEntityTypes.KILN.get()
+        ) { be, _ -> (be as? KilnBE)?.energyCapability }
+        event.registerBlockEntity(
+            Capabilities.FluidHandler.BLOCK,
+            ModBlockEntityTypes.KILN.get()
+        ) { be, _ -> (be as? KilnBE)?.fluidCapability }
 
         // 注册 Duo 炮台的物品弹药 Capability
         event.registerBlockEntity(
@@ -147,12 +148,10 @@ object EventHandler {
         event.registerBlock(
             Capabilities.ItemHandler.BLOCK,
             { level, pos, state, _, _ ->
-                val anchorPos = pos.subtract(
-                    xyz.luobo.mturrets.core.structure.StructuralBlock.decodeOffset(state)
-                )
-                (level.getBlockEntity(anchorPos) as? xyz.luobo.mturrets.common.structure.TestStructureAnchorBE)?.itemCapability
+                val anchorPos = pos.subtract(StructuralBlock.decodeOffset(state))
+                (level.getBlockEntity(anchorPos) as? BlueprintAnchor)?.itemCapability
             },
-            xyz.luobo.mturrets.common.ModBlocks.TEST_STRUCTURAL.get()
+            ModBlocks.TEST_STRUCTURAL.get()
         )
     }
 }
