@@ -11,6 +11,7 @@ import xyz.luobo.mturrets.core.capability.impl.ItemCapabilityImpl
 import xyz.luobo.mturrets.core.turret.bullet.BulletType
 
 /**
+  * LEGACY: 喂料槽 autoReload(折算不乘 ammoMultiplier,带 bug 死路)与 switchToNextAmmo(无 GUI)均废弃。新弹仓 = LIFO 单位账 + 右键装弹,见 ADR-0009。
  * 物品弹药炮台实体
  * 使用物品作为弹药，不同物品对应不同的 BulletType
  * 模仿 MTurrets 的 ItemTurret

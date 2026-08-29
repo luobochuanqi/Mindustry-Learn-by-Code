@@ -1,6 +1,7 @@
 package xyz.luobo.mturrets.core.turret.bullet
 
 /**
+  * LEGACY: 翻新期状态效果封装,不迁入一期骨架(Meltdown 换代时按需要重建)。
  * 状态效果类型
  * 定义攻击可以施加的各种状态效果
  */

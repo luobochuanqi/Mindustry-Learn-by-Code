@@ -16,6 +16,7 @@ import xyz.luobo.mturrets.core.turret.entity.ItemTurretBlockEntity
 import xyz.luobo.mturrets.core.turret.logic.LeadCalculator
 
 /**
+  * LEGACY: 翻新期 Duo(吃原版铜/铁/金,15t 射速)。新 Duo 按 ADR-0009 契约 + #28 数值表随 #31 重建;旧行为基准仅供 GameTest 对照。
  * Duo 炮台
  * MTurrets 的经典双管炮台
  * 使用铜/铁/金作为弹药，射速快，伤害适中

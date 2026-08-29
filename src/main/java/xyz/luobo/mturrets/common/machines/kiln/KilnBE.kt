@@ -9,6 +9,7 @@ import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.core.machine.BaseMachineBE
 
 /**
+  * LEGACY: 翻新期窑炉 BE(硬编码配方)。新配方实例为纯 datapack JSON,见 #33。
  * 窑炉方块实体
  * 将铅和沙子合成为金属玻璃
  */

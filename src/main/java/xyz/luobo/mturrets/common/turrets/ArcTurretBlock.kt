@@ -10,6 +10,7 @@ import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.core.turret.block.BaseTurretBlock
 
 /**
+  * LEGACY: Arc 翻新期方块,换代时随 ArcTurret 一并重建。
  * Arc 电弧炮台方块
  * 静态方块模型渲染(贴图来自 Mindustry 开源仓库,见 README 资产出处)
  */

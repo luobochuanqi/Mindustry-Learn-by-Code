@@ -22,6 +22,7 @@ import xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 
 /**
+  * LEGACY 基准:翻新期行为回归(Duo 吃原版铜锭等断言随新范式替换,#36 重建套件);旧用例在旧代码存续期内保持全绿。
  * GameTest 回归套件
  * 只断言外部行为(伤害/能量/合成产出),不触碰内部字段(spec #5 测试决策)
  *

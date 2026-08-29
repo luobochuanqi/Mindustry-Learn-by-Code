@@ -10,6 +10,7 @@ import xyz.luobo.mturrets.core.capability.impl.EnergyCapabilityImpl
 import xyz.luobo.mturrets.core.turret.bullet.BulletType
 
 /**
+  * LEGACY: 耗电通道不迁入一期骨架(一期 Duo/Scatter 不吃电)。Arc 换代时按 ADR-0007 电网语义重做。
  * 电力炮台实体
  * 使用电力作为能源，具有单一的 shootType
  * 模仿 MTurrets 的 PowerTurret

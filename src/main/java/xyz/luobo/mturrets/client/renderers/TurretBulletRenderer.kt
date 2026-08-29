@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation
 import xyz.luobo.mturrets.common.entity.bullet.TurretBulletEntity
 
 /**
+  * LEGACY: 翻新期子弹渲染;新 BulletEntity 渲染随 #31 落地。
  * 子弹实体渲染器
  * 绘制面向相机的发光四边形,颜色与大小来自实体同步数据
  */

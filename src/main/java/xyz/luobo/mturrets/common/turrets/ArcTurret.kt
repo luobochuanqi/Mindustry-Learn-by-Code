@@ -11,6 +11,7 @@ import xyz.luobo.mturrets.core.turret.config.TurretConfig
 import xyz.luobo.mturrets.core.turret.entity.PowerTurretBlockEntity
 
 /**
+  * LEGACY: Arc 本期保留运行、不迁不删(ADR-0008 边界);换代按 ADR-0006 瞬时家族 + ADR-0007 耗电接入点重建。
  * Arc 炮台
  * 电力炮台，发射电弧攻击
  * 瞬间命中，可以施加电击效果

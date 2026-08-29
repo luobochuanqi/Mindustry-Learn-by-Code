@@ -19,6 +19,7 @@ import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
 import kotlin.math.acos
 
+// LEGACY: 服务翻新期 Meltdown 光束。瞬时家族换代为服务端射线 + 客户端计数器视觉(ADR-0006),届时评估。
 @EventBusSubscriber(modid = MTurrets.MOD_ID, value = [Dist.CLIENT])
 object LaserRenderer {
     // 已发现的电力节点缓存:随区块加载/卸载事件维护

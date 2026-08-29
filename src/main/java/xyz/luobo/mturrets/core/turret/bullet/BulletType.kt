@@ -3,6 +3,7 @@ package xyz.luobo.mturrets.core.turret.bullet
 import net.minecraft.world.phys.Vec3
 
 /**
+  * LEGACY: 翻新期弹定义(含 EffectType 枚举假接口)。新 BulletType 为数据驱动配置对象,字段形状随 #31,见 ADR-0006。
  * 子弹/攻击类型
  * 统一定义所有攻击方式的属性
  * 模仿 MTurrets 的 BulletType 设计

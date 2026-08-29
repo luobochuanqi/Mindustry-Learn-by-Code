@@ -15,6 +15,7 @@ import net.neoforged.neoforge.energy.IEnergyStorage
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.core.MTurretsModBlockEntity
 import xyz.luobo.mturrets.core.capability.IEnergyCapability
+// LEGACY: 翻新期节点 BE(含旧传输逻辑);新电网随 ADR-0007/#30 重建。
 class PowerNodeBlockEntity(pos: BlockPos, state: BlockState) :
     MTurretsModBlockEntity(ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get(), pos, state), IEnergyStorage {
     // 存储相连的其他电力节点位置

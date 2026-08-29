@@ -11,6 +11,7 @@ import xyz.luobo.mturrets.core.turret.bullet.BulletType
 import xyz.luobo.mturrets.core.turret.bullet.StatusEffect
 
 /**
+  * LEGACY: 持续光束实现不迁;瞬时家族换代按 ADR-0006 走服务端射线判定零实体。
  * 持续射击炮台实体（激光/光束炮台）
  * 用于激光、光束等持续伤害武器
  * 模仿 MTurrets 的 ContinuousTurret / ContinuousBulletType

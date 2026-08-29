@@ -15,6 +15,7 @@ import java.util.UUID
 import kotlin.math.pow
 
 /**
+  * LEGACY: 翻新期子弹实体。新范式同为单一通用 BulletEntity,但行为全进 BulletType 数据对象(ADR-0006),随 #31 重建。
  * 服务端子弹实体
  * 由炮台发射的真实投射物:携带 [BulletType] 的属性飞行,
  * 命中敌对生物造成伤害,支持穿透与范围伤害。

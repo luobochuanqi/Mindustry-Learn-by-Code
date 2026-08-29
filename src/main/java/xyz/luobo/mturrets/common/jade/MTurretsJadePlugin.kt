@@ -22,6 +22,7 @@ import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 import xyz.luobo.mturrets.core.machine.BaseMachineBE
 /**
+  * LEGACY 显示通道:三个 provider 服务翻新期方块,一期新方块显示另立插件,旧的不迁不删(#37)。
  * Jade 信息显示插件
  * 炮台:弹药/能量;窑炉:进度/能量;电力节点:能量
  *

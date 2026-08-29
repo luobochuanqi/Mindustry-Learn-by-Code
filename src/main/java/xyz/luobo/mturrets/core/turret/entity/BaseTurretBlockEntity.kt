@@ -23,6 +23,7 @@ import kotlin.math.sign
 import kotlin.math.sqrt
 
 /**
+  * LEGACY: 翻新期四层链的基类(阵营过滤含 Player)。新骨架 = 单层 TurretBE,见 ADR-0009;不迁不删。
  * 炮台方块实体最基础类
  * 处理目标查找、旋转、基础攻击逻辑
  * 模仿 MTurrets 的 TurretBuild 类

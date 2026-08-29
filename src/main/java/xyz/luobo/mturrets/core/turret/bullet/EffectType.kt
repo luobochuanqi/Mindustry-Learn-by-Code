@@ -1,6 +1,7 @@
 package xyz.luobo.mturrets.core.turret.bullet
 
 /**
+  * LEGACY: 粒子枚举在 MC 端无消费方,不迁入新骨架;视觉字段的真实形状随 #31 子弹实体落地。
  * 视觉效果类型
  * 定义各种射击、击中、爆炸等视觉效果
  */

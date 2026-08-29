@@ -16,6 +16,7 @@ import net.minecraft.world.phys.BlockHitResult
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
 
+// LEGACY: 翻新期电力节点(每 tick 邻格扫描)。新 Grid 为惰性图染色 + 节点零储能,见 ADR-0007/#30。
 class PowerNodeBlock : BaseEntityBlock(
     Properties.of()
         .lightLevel { _ -> 15 }

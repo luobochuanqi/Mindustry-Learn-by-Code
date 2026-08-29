@@ -1,6 +1,7 @@
 package xyz.luobo.mturrets.core.turret.config
 
 /**
+  * LEGACY: 翻新期炮台配置表,不迁入新骨架(Builder 与预设工厂为投机配置)。新形状 = TurretSpec 代码表,见 ADR-0009/#28。
  * 炮台静态配置
  * 定义炮台的所有静态属性（类型级别）
  * 模仿 MTurrets 的 Turret 类设计

@@ -5,6 +5,7 @@ import net.minecraft.world.phys.Vec3
 import kotlin.math.sqrt
 
 /**
+  * 存活件:提前量解算对位原版 Predict.intercept,ADR-0009 定案迁入新射击管线。
  * 提前量计算器
  * 计算射击提前量以命中移动目标
  * 基于 MTurrets 的提前量计算算法

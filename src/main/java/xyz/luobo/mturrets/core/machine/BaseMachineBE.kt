@@ -16,6 +16,7 @@ import xyz.luobo.mturrets.core.capability.impl.EnergyCapabilityImpl
 import xyz.luobo.mturrets.core.capability.impl.ItemCapabilityImpl
 
 /**
+  * LEGACY: 翻新期机器基类;新机器按 ADR-0006 配方骨架(RecipeType/Serializer 代码注册)重建时评估复用面。
  * 机器方块实体基类
  * 使用组合方式管理 Capability（能量、物品）
  * 提供通用的机器功能：进度跟踪、能量消耗、物品处理

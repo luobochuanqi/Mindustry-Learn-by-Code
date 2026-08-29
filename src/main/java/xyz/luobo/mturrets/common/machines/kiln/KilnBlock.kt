@@ -9,6 +9,7 @@ import net.minecraft.world.level.block.state.BlockState
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.core.machine.BaseMachineBlock
 
+// LEGACY: 翻新期窑炉。新窑炉走蓝图管线 + 数据配方(ADR-0006)+ 桶灌水必需输入,见 #33。
 class KilnBlock : BaseMachineBlock<KilnBE>(Properties.of()) {
 
     companion object {

@@ -10,6 +10,7 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
+  * LEGACY: warmup/heat 不迁入新骨架(蓄力与热管理随 Meltdown 换代重建),累装载入门与 curRecoil 的概念由 ADR-0009 续用。
  * 带装填逻辑的炮台实体
  * 处理装填计时器、预热、后坐力、热量等
  * 继承自 BaseTurretBlockEntity

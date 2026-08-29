@@ -13,6 +13,7 @@ import xyz.luobo.mturrets.core.turret.config.TurretConfig
 import xyz.luobo.mturrets.core.turret.entity.ContinuousTurretBlockEntity
 
 /**
+  * LEGACY: Meltdown 本期保留运行、不迁不删(ADR-0008 边界);换代时重建 warmup/charge 蓄力语义。
  * Meltdown 炮台
  * 重型激光炮台
  * 持续发射高伤害激光，可以穿透多个敌人

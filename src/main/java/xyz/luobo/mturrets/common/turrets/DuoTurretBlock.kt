@@ -10,6 +10,7 @@ import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.core.turret.block.BaseTurretBlock
 
 /**
+  * LEGACY: 翻新期 Duo 方块;新 Duo 走蓝图管线(1×1,偏移集只含锚点),见 #32/#31。
  * Duo 炮台方块
  * 静态方块模型渲染(贴图来自 Mindustry 开源仓库,出处见 textures/ATTRIBUTION.md),
  * 共享 [BaseTurretBlock] 的 ticker 逻辑

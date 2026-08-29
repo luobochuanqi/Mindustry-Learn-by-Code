@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.state.BlockState
 import xyz.luobo.mturrets.core.turret.entity.BaseTurretBlockEntity
 
 /**
+  * LEGACY: 翻新期炮台方块基类;新范式方块走 ADR-0003 锚点+蓝图管线。
  * 炮台方块共享基类
  * 三座炮台(Duo/Arc/Meltdown)共用的方块逻辑:实体创建与服务端 ticker。
  * 渲染为静态方块模型(RenderShape.MODEL)。

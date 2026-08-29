@@ -10,6 +10,7 @@ import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
 
+// LEGACY: 翻新期机器方块基类;新范式方块走 ADR-0003 蓝图管线。
 abstract class BaseMachineBlock<T : BaseMachineBE>(
     properties: Properties
 ) : BaseEntityBlock(properties) {
