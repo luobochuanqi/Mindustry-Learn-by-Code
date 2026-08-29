@@ -13,6 +13,10 @@ git clone --depth 1 --branch mc1.21.1/dev --filter=blob:none https://github.com/
 # Flywheel:官方分支名是 1.21.1/dev(不是 1.21.1);api/lib 层在 common/src/{api,lib},后端与实现在 backend/impl
 git clone --depth 1 --branch 1.21.1/dev --filter=blob:none https://github.com/Engine-Room/Flywheel ref/flywheel
 
+# 原版 MC + NeoForge 源码:不用 clone,是本地 moddev 构建产物
+# build/moddev/artifacts/neoforge-<ver>-sources.jar(升 neoforge 版本后 gradlew build 即刷新)
+mkdir -p ref/minecraft-src && unzip -oq build/moddev/artifacts/neoforge-21.1.248-sources.jar -d ref/minecraft-src
+
 # Mindustry wiki:整站 HTML ~200MB 不可全拉。权威数据是 mkdocs 的 search_index.json(全文分段索引,~0.6MB);
 # ref/wiki 只留手写 markdown(docs/,~0.2MB,已去图),原始索引存 ref/wiki-md/search_index.json,
 # ref/wiki-md/ 为索引转写的 1166 页 markdown(~2.4MB)。重建:
@@ -21,7 +25,7 @@ git -C ref/wiki fetch --depth 1 origin gh-pages
 # 从 origin/gh-pages 单独取 search/search_index.json 转 markdown;从 origin/master 取 docs/ 并删 docs/images
 ```
 
-刷新:mindustry/create/flywheel 用 `git -C ref/<repo> fetch --depth 1 origin <branch> && git -C ref/<repo> reset --hard origin/<branch>`;wiki 是无历史快照,重新拉即可。
+刷新:mindustry/create/flywheel 用 `git -C ref/<repo> fetch --depth 1 origin <branch> && git -C ref/<repo> reset --hard origin/<branch>`;wiki 是无历史快照,重新拉即可;minecraft-src 在升级 neoforge 后重新执行上面的 `unzip`(覆盖同名解包)。
 
 ## 当前锚点
 
@@ -30,6 +34,7 @@ git -C ref/wiki fetch --depth 1 origin gh-pages
 | `ref/mindustry`    | Anuken/Mindustry           | master        | `dc32943` | 23 MB |
 | `ref/create`       | Creators-of-Create/Create  | mc1.21.1/dev  | `0924e93` | 64 MB |
 | `ref/flywheel`     | Engine-Room/Flywheel       | 1.21.1/dev    | `cbbc490` | 6 MB |
+| `ref/minecraft-src` | `neoforge-21.1.248-sources.jar` 解包:原版 Minecraft + NeoForge API 的 .java(`net/minecraft` 5168、`net/neoforged` 953、`com/mojang` 195)。Mojang 官方映射名,类/方法名与项目一致,参数名非 Parchment | MC 1.21.1 | — | 47 MB |
 | `ref/wiki`         | MindustryGame/wiki         | master(docs/) | `5eed587` | 0.2 MB |
 | `ref/wiki-md`      | MindustryGame/wiki(gh-pages `search_index.json` 转写) | — | `55b9450` | 2.4 MB |
 
