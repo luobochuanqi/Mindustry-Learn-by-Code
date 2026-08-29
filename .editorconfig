@@ -1,0 +1,31 @@
+# EditorConfig:机械风格唯一事实源(IDE 自动生效;CI 如需强制另接 lint)
+# 属性值来源:仓库现有文件实测(缩进/行尾),不是官方风格的空想套用。
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+# Kotlin:源码与构建脚本(main 源树实测 4 格)
+[*.{kt,kts}]
+indent_size = 4
+
+# Java(如遇翻新期遗留 java 参考代码)
+[*.java]
+indent_size = 4
+
+# JSON:生成资源(BlockState/LangProvider 输出)与手写 lang 均为 2 格
+[*.json]
+indent_size = 2
+
+# TOML:gradle/libs.versions.toml 实测 2 格
+[*.toml]
+indent_size = 2
+
+# YAML:GitHub Actions 惯例
+[*.{yml,yaml}]
+indent_size = 2
