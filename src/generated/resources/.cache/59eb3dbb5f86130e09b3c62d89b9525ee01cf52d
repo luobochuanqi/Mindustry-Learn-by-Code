@@ -1,7 +1,8 @@
-// 1.21.1	2026-08-29T22:12:21.6628412	Loot Tables
+// 1.21.1	2026-08-30T00:58:34.6332889	Loot Tables
 e02a45edb3e93c8b677f1decfa6c0416ab1c5819 data/mturrets/loot_table/blocks/arc.json
+dd5dd93ba5e7e3ad8354a20fc91be71aeea5db72 data/mturrets/loot_table/blocks/battery.json
 7f90f709df62e21d5a42bd0f581dbb9af2135dc3 data/mturrets/loot_table/blocks/duo.json
 fa0a4b3fee869e1f32663cddc6d3a72a6ce75792 data/mturrets/loot_table/blocks/kiln.json
 270752c31cd13d054bad57c000253bbe0ea913a7 data/mturrets/loot_table/blocks/meltdown.json
-ab7f5dc323b5ca154f9f9f050b6996f273c02e24 data/mturrets/loot_table/blocks/power_node_block.json
+7457dc1518426788981ba454f9d0199c85b1e5d3 data/mturrets/loot_table/blocks/power_node.json
 eb4eec18647c4a55a9adc69b7c6885b1b08a5a4c data/mturrets/loot_table/blocks/test_structure_anchor_2x2.json

@@ -10,8 +10,6 @@ import snownee.jade.api.IWailaPlugin
 import snownee.jade.api.WailaPlugin
 import snownee.jade.api.config.IPluginConfig
 import xyz.luobo.mturrets.MTurrets
-import xyz.luobo.mturrets.common.blocks.PowerNodeBlock
-import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlock
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.DuoTurretBlock
@@ -20,7 +18,7 @@ import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 /**
  * Jade 信息显示插件
- * 炮台:弹药/能量;电力节点:能量(窑炉显示随 #37 新插件落地)
+ * 炮台:弹药/能量;电网显示(供电比例/电池 FE)归 #37,本票只供公共只读数据。
  *
  * 插件类两端加载(Jade 为两端依赖),tooltip 逻辑仅客户端调用
  */
@@ -32,11 +30,6 @@ class MTurretsJadePlugin : IWailaPlugin {
         registration.registerBlockComponent(TurretDataProvider, DuoTurretBlock::class.java)
         registration.registerBlockComponent(TurretDataProvider, ArcTurretBlock::class.java)
         registration.registerBlockComponent(TurretDataProvider, MeltdownTurretBlock::class.java)
-
-        // 窑炉(#37 落地新 KilnDataProvider;legacy 方块已退役,旧通道先摘)
-
-        // 电力节点
-        registration.registerBlockComponent(PowerNodeDataProvider, PowerNodeBlock::class.java)
     }
 }
 
@@ -77,26 +70,6 @@ object TurretDataProvider : IBlockComponentProvider {
                     )
                 )
             }
-        }
-    }
-}
-
-
-/** 电力节点信息:当前能量 */
-object PowerNodeDataProvider : IBlockComponentProvider {
-    override fun getUid(): ResourceLocation =
-        ResourceLocation.fromNamespaceAndPath(MTurrets.MOD_ID, "power_node_data")
-
-    override fun appendTooltip(tooltip: ITooltip, accessor: BlockAccessor, config: IPluginConfig) {
-        val be = accessor.getBlockEntity()
-        if (be is PowerNodeBlockEntity) {
-            tooltip.add(
-                Component.translatable(
-                    "jade.mturrets.energy",
-                    be.energyCapability.currentEnergy,
-                    be.energyCapability.energyCapacity
-                )
-            )
         }
     }
 }

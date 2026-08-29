@@ -12,9 +12,10 @@ import xyz.luobo.mturrets.common.liquids.Liquids
 object ModItems {
     val MOD_ITEMS: DeferredRegister.Items = DeferredRegister.createItems(MTurrets.MOD_ID)
 
-
-    val POWER_NODE_BLOCK_ITEM: DeferredItem<BlockItem?> =
-        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.POWER_NODE_BLOCK)
+    val POWER_NODE_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.POWER_NODE)
+    val BATTERY_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.BATTERY)
 
     // machines items
     val KILN_ITEM: DeferredItem<BlockItem?> =

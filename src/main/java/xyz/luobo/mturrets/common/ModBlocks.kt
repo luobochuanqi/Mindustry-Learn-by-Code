@@ -5,10 +5,11 @@ import net.neoforged.neoforge.registries.DeferredBlock
 import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
+import xyz.luobo.mturrets.common.power.BatteryBlock
+import xyz.luobo.mturrets.common.power.PowerNodeBlock
 import xyz.luobo.mturrets.common.structure.TestStructureAnchor2x2Block
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 import xyz.luobo.mturrets.core.structure.StructuralBlock
-import xyz.luobo.mturrets.common.blocks.PowerNodeBlock
 import xyz.luobo.mturrets.common.machines.kiln.KilnBlock
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlock
 import xyz.luobo.mturrets.common.turrets.DuoTurretBlock
@@ -17,7 +18,10 @@ import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
 object ModBlocks {
     val MOD_BLOCKS: DeferredRegister.Blocks = DeferredRegister.createBlocks(MTurrets.MOD_ID)
 
-    val POWER_NODE_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("power_node_block") { PowerNodeBlock() }
+    // 电网(ADR-0007,#30):节点纯导线零储能;电池储能 8 万 FE。均 1×1 蓝图锚点。
+    val POWER_NODE: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("power_node") { PowerNodeBlock() }
+    val BATTERY: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("battery") { BatteryBlock() }
+
 
     // Machines
     val KILN: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("kiln") { KilnBlock() }

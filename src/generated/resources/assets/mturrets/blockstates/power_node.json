@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "mturrets:block/power_node"
+    }
+  }
+}

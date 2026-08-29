@@ -63,7 +63,8 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         this.add("itemGroup.mturrets", "MTurrets")
 
         // Blocks
-        this.add(ModBlocks.POWER_NODE_BLOCK.get(), "Power Node")
+        this.add(ModBlocks.POWER_NODE.get(), "Power Node")
+        this.add(ModBlocks.BATTERY.get(), "Battery")
         this.add(ModBlocks.KILN.get(), "Kiln")
         this.add(ModBlocks.DUO_BLOCK.get(), "Duo")
         this.add(ModBlocks.ARC_BLOCK.get(), "Arc")
@@ -82,8 +83,6 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
             this.add("fluid.mturrets.${liquid.id}", liquid.displayName)
         }
 
-        // Configs
-        this.add("mturrets.configuration.maxRenderDistance", "Max Laser Render Distance")
         this.add(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get(), "Test Structure Anchor (2x2)")
         this.add(ModBlocks.TEST_STRUCTURAL.get(), "Test Structure Member")
 
@@ -97,7 +96,6 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
 
         // Jade plugin config entries(缺失会导致客户端断言崩溃)
         this.add("config.jade.plugin_mturrets.turret_data", "Turret Info")
-        this.add("config.jade.plugin_mturrets.power_node_data", "Power Node Info")
     }
 }
 
@@ -129,7 +127,20 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
 class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFileHelper) :
     BlockStateProvider(output, MTurrets.MOD_ID, existingFileHelper) {
     override fun registerStatesAndModels() {
-        this.simpleBlockWithItem(ModBlocks.POWER_NODE_BLOCK.get(), cubeAll(ModBlocks.POWER_NODE_BLOCK.get()))
+        // 电网(#30):节点沿用 #39 预置节点贴图;电池用预置 battery/battery_top
+        this.simpleBlockWithItem(
+            ModBlocks.POWER_NODE.get(),
+            this.models().cubeAll("power_node", this.modLoc("block/power_node_block"))
+        )
+        this.simpleBlockWithItem(
+            ModBlocks.BATTERY.get(),
+            this.models().cubeBottomTop(
+                "battery",
+                this.modLoc("block/battery"),
+                this.modLoc("block/battery_top"),
+                this.modLoc("block/battery_top")
+            )
+        )
         // 窑炉:贴图沿用 kiln_block(与 legacy 视觉一致,#33 决议)
         this.simpleBlockWithItem(ModBlocks.KILN.get(), this.models().cubeAll("kiln", this.modLoc("block/kiln_block")))
 
@@ -142,7 +153,7 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         this.simpleBlockWithItem(duo, this.cubeAll(duo))
 
         // 蓝图管线骨架临时方块(贴图复用现有素材,真内容落地后删除)
-        val testTexture = this.blockTexture(ModBlocks.POWER_NODE_BLOCK.get())
+        val testTexture = this.modLoc("block/power_node_block")
         this.simpleBlockWithItem(
             ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get(),
             this.models().cubeAll("test_structure_anchor_2x2", testTexture)
@@ -153,7 +164,6 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         )
     }
 }
-
 /**
  * 掉落表:锚点 dropSelf(控制器物品);成员 noDrop(掉落收口在锚点,ADR-0003)。
  * LEGACY 方块补 noDrop 表维持现状(零掉落),真内容落地时随各票改表。
@@ -164,10 +174,11 @@ class ModBlockLootProvider(registries: HolderLookup.Provider) :
 
     override fun generate() {
         this.dropSelf(ModBlocks.KILN.get())
+        this.dropSelf(ModBlocks.POWER_NODE.get())
+        this.dropSelf(ModBlocks.BATTERY.get())
         this.dropSelf(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
         // 成员格:properties noLootTable() 已豁免(掉落收口在锚点,ADR-0003)
         // LEGACY 方块:维持现状零掉落
-        this.add(ModBlocks.POWER_NODE_BLOCK.get(), noDrop())
         this.add(ModBlocks.DUO_BLOCK.get(), noDrop())
         this.add(ModBlocks.ARC_BLOCK.get(), noDrop())
         this.add(ModBlocks.MELTDOWN_BLOCK.get(), noDrop())

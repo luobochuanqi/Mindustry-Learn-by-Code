@@ -1,6 +1,7 @@
-// 1.21.1	2026-08-29T22:12:21.6548477	Item Models: mturrets
+// 1.21.1	2026-08-30T00:58:34.6317758	Item Models: mturrets
 7931ff2201d3502212d8090f13b0eec9f569c524 assets/mturrets/models/item/arc.json
 5c8e7477a9defd1ede18385caf9f0f8aab4fd409 assets/mturrets/models/item/arkycite.json
+7e81d28578521e6d101cf89a47bdc27c220b3b55 assets/mturrets/models/item/battery.json
 f07623946ebd1166c51c9179c55555b9fb593d49 assets/mturrets/models/item/beryllium.json
 88092b3aa1511c5b4ef0c3fd31514a9c17d9553e assets/mturrets/models/item/blast_compound.json
 ab21fba47fc844024a7235daf9e20e7f5e41ffad assets/mturrets/models/item/carbide.json
@@ -23,7 +24,7 @@ aa41ecb1d2a58b898ce3ebd66aa4ec3dfde67d43 assets/mturrets/models/item/nitrogen.js
 51c5ea2f4067fbcfdc1310b76266f36d238607c7 assets/mturrets/models/item/ozone.json
 aa0894c543f70ad17b99c17ea87e13e9c801cba8 assets/mturrets/models/item/phase_fabric.json
 b538ac3c508ec44af05d5dd66017172c92ce601b assets/mturrets/models/item/plastanium.json
-e83293d99e95d07c2e8e8f43a79dbb16ac786c97 assets/mturrets/models/item/power_node_block.json
+a22d43013494abe927160df330746de97fd6c9fc assets/mturrets/models/item/power_node.json
 d9156b37848f68781df9380a3b03c650de2b9edc assets/mturrets/models/item/pyratite.json
 8c89500f8a73aaf5f2d636aa6a584566e4febaf9 assets/mturrets/models/item/sand.json
 5156606b6c88052cf73e75d9aab56ace7c2478e1 assets/mturrets/models/item/scrap.json

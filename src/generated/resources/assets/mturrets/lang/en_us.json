@@ -1,12 +1,12 @@
 {
   "block.mturrets.arc": "Arc",
+  "block.mturrets.battery": "Battery",
   "block.mturrets.duo": "Duo",
   "block.mturrets.kiln": "Kiln",
   "block.mturrets.meltdown": "Meltdown",
-  "block.mturrets.power_node_block": "Power Node",
+  "block.mturrets.power_node": "Power Node",
   "block.mturrets.test_structure_anchor_2x2": "Test Structure Anchor (2x2)",
   "block.mturrets.test_structure_structural": "Test Structure Member",
-  "config.jade.plugin_mturrets.power_node_data": "Power Node Info",
   "config.jade.plugin_mturrets.turret_data": "Turret Info",
   "fluid.mturrets.arkycite": "Arkycite",
   "fluid.mturrets.cryofluid": "Cryofluid",
@@ -54,6 +54,5 @@
   "jade.mturrets.ammo": "Ammo: %s/%s",
   "jade.mturrets.energy": "Energy: %s/%s FE",
   "jade.mturrets.progress": "Progress: %s%%",
-  "mturrets.configuration.maxRenderDistance": "Max Laser Render Distance",
   "mturrets.message.blueprint_blocked": "Not enough space for structure"
 }

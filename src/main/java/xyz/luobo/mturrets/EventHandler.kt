@@ -121,12 +121,13 @@ object EventHandler {
             if (be is xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity) be.itemCapability else null
         }
 
-        // 注册电力节点的能量存储 Capability(网络传输与外部注入/抽取入口)
+        // 电池(#30):对外充放 capability(各限 200 FE/次);节点零储能不注册能力,
+        // 节点读不到储能——电能只住在电池与耗电结构本地缓冲
         event.registerBlockEntity(
             Capabilities.EnergyStorage.BLOCK,
-            ModBlockEntityTypes.POWER_NODE_BLOCK_ENTITY.get()
+            ModBlockEntityTypes.BATTERY.get()
         ) { be, _ ->
-            if (be is xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity) be.energyCapability else null
+            if (be is xyz.luobo.mturrets.common.power.BatteryBE) be.energyCapability else null
         }
 
         // 注册能量炮台(Arc/Meltdown)的能量存储 Capability

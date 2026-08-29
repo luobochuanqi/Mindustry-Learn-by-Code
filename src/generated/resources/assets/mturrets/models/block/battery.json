@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "mturrets:block/battery_top",
+    "side": "mturrets:block/battery",
+    "top": "mturrets:block/battery_top"
+  }
+}

@@ -12,14 +12,15 @@ import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.items.ItemHandlerHelper
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.common.ModRecipeTypes
-import xyz.luobo.mturrets.core.MTurretsModBlockEntity
 import xyz.luobo.mturrets.core.capability.impl.EnergyCapabilityImpl
 import xyz.luobo.mturrets.core.capability.impl.FluidCapabilityImpl
 import xyz.luobo.mturrets.core.capability.impl.ItemCapabilityImpl
+import xyz.luobo.mturrets.core.power.PowerMemberBE
 import xyz.luobo.mturrets.core.recipe.MachineRecipe
 import xyz.luobo.mturrets.core.structure.Blueprint
 import xyz.luobo.mturrets.core.structure.BlueprintAnchor
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
+import kotlin.math.min
 
 /**
  * 窑炉 BE(#33):铅 + 原版沙 + 水 → 金属玻璃。
@@ -27,9 +28,11 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
  * 能量按配方总耗随进度均摊、内账直扣(对外速率只约束注入),原料/水在结算时一次扣除。
  * 配方查找事件驱动 + 缓存(含负缓存;原料/水/能量变化时失效),每 tick 只推进进度(ADR-0006)。
  * 缺输入即停摆、进度不倒退,补足后续转(#27 棕停同型语义);中途换料致本单作废(能量沉没)。
+ * 电网接入(#30,第一个需求方):无图时行为与 #33 完全一致(创造注入路径不变);
+ * 贴网后本地缓冲不足部分每 tick 向图申领,按供电比例(棕停)分数推进进度——定点记账防漂移。
  */
 class KilnBE(pos: BlockPos, state: BlockState) :
-    MTurretsModBlockEntity(ModBlockEntityTypes.KILN.get(), pos, state), BlueprintAnchor {
+    PowerMemberBE(ModBlockEntityTypes.KILN.get(), pos, state), BlueprintAnchor {
 
     companion object {
         /** Buffer 槽位数:不设布局语义,余量即自动化余量;20 覆盖一期配方宽度。 */
@@ -41,6 +44,8 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         /** 储能:容纳多轮能耗;对外只收不吐,注入限速 200 FE/t(#27 口径)。 */
         const val ENERGY_CAPACITY = 10000
         const val MAX_ENERGY_RECEIVE = 200
+        /** 进度定点记账单位(棕停按 ratio 分数推进,定点防浮点漂移;满速 = 每 tick +UNIT)。 */
+        const val PROGRESS_UNIT = 8
     }
 
     override val currentBlueprint: Blueprint
@@ -59,6 +64,9 @@ class KilnBE(pos: BlockPos, state: BlockState) :
     override val energyCapability: EnergyCapabilityImpl =
         createEnergyCapability(capacity = ENERGY_CAPACITY, maxReceive = MAX_ENERGY_RECEIVE, maxExtract = 0)
 
+    /** 供电比例(0..1,公共只读视图,Jade #37 消费;同步到客户端)。 */
+    var supplyRatio: Float = 1f
+
 
     private var cachedRecipe: MachineRecipe? = null
     /** 查找结果缓存有效位(含"无匹配"负缓存);输入/水/能量变化时失效。 */
@@ -69,9 +77,9 @@ class KilnBE(pos: BlockPos, state: BlockState) :
     /** 本轮已扣 FE(均摊记账;持久化,防区块重载重复扣)。 */
     private var consumedEnergy = 0
 
-    /** 进度百分比(同步数据,Jade #37 消费)。 */
+    /** 进度百分比(定点进度换算,Jade #37 消费)。 */
     val progressPercent: Int
-        get() = if (processingTime > 0) progress * 100 / processingTime else 0
+        get() = if (processingTime > 0) progress * 100 / (processingTime * PROGRESS_UNIT) else 0
 
     override fun onContentsChanged(slot: Int) {
         super.onContentsChanged(slot)
@@ -128,7 +136,8 @@ class KilnBE(pos: BlockPos, state: BlockState) :
 
     /**
      * 服务端 tick(由 [KilnBlock] 排程):空转查配方、水检过则开工;
-     * 加工中按进度均摊扣能,满程结算产出。
+     * 加工中按进度均摊扣能,满程结算产出。本地缓冲不足时向图申领(#30):
+     * 无图维持 #33 创造注入语义(停摆、进度保持);有图按供电比例棕停推进。
      */
     fun tickServer() {
         val lv = level ?: return
@@ -138,23 +147,48 @@ class KilnBE(pos: BlockPos, state: BlockState) :
             if (fluidCapability.currentFluid.amount < WATER_PER_CRAFT) return
             processingTime = recipe.processingTime
             consumedEnergy = 0
-            progress = 1
+            progress = PROGRESS_UNIT
+            supplyRatio = 1f
             setChanged()
             return
         }
 
         // 重载恢复路径:加工中的配方按仍完好的原料重新匹配(输入在结算前不扣)
         val recipe = cachedRecipe ?: lookupRecipe(lv) ?: return
-        val due = recipe.energy * progress / recipe.processingTime - consumedEnergy
+        val timeFP = recipe.processingTime * PROGRESS_UNIT
+        val due = recipe.energy * progress / timeFP - consumedEnergy
+        var step = PROGRESS_UNIT
         if (due > 0) {
-            if (energyCapability.currentEnergy < due) return // 能量不足:停摆、进度保持
-            energyCapability.currentEnergy -= due
-            consumedEnergy += due
-            setChanged()
+            if (energyCapability.currentEnergy < due) {
+                val grid = graph
+                if (grid == null) return // 无图:能量不足即 #33 停摆、进度保持
+                val deficit = due - energyCapability.currentEnergy
+                val granted = grid.requestDrain(lv.gameTime, deficit)
+                if (granted <= 0) {
+                    supplyRatio = 0f // 断电:进度保持不倒退
+                    setChanged()
+                    return
+                }
+                // 图供能补齐缺口,本 tick 实耗 = 本地余量 + 图给量(棕停时给量 < 缺口)
+                energyCapability.currentEnergy += granted
+                val drawn = min(due, energyCapability.currentEnergy)
+                energyCapability.currentEnergy -= drawn
+                consumedEnergy += drawn
+                supplyRatio = granted.toFloat() / deficit
+                step = PROGRESS_UNIT * granted / deficit
+            } else {
+                energyCapability.currentEnergy -= due
+                consumedEnergy += due
+                supplyRatio = 1f
+                setChanged()
+            }
         }
-        if (progress < recipe.processingTime) {
-            progress++
-            if (progress % 5 == 0) syncData()
+
+        // 满程判定在推进后:progress 封顶到 timeFP,下一个 tick 在 progress==timeFP
+        // 处计出最后一个 due(energy - consumed)并扣账,随后 settle —— 总耗恰为配方耗能
+        if (progress < timeFP) {
+            progress = min(progress + step, timeFP)
+            if (progress % (PROGRESS_UNIT * 5) == 0) syncData()
             return
         }
         settle(lv, recipe)
@@ -224,6 +258,7 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         tag.putInt("kiln_progress", progress)
         tag.putInt("kiln_time", processingTime)
         tag.putInt("kiln_energy_spent", consumedEnergy)
+        tag.putFloat("kiln_ratio", supplyRatio) // 随 getUpdateTag 同步到客户端(#37 显示层取数)
     }
 
     override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
@@ -231,6 +266,7 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         progress = tag.getInt("kiln_progress")
         processingTime = tag.getInt("kiln_time")
         consumedEnergy = tag.getInt("kiln_energy_spent")
+        supplyRatio = tag.getFloat("kiln_ratio").coerceIn(0f, 1f)
     }
 
     override fun getUpdatePacket(): ClientboundBlockEntityDataPacket =

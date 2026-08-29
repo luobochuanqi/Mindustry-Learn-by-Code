@@ -17,7 +17,6 @@ import net.neoforged.neoforge.gametest.GameTestHolder
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate
 import xyz.luobo.mturrets.common.ModBlocks
 import xyz.luobo.mturrets.common.ModItems
-import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
@@ -135,36 +134,147 @@ object ModGameTests {
         }
     }
 
-    // ========== 电力:节点间传输 ==========
+    // 电网(#30,ADR-0007):电池充放、节点链输送、棕停断电、断中格分裂
 
+    /** 电池对外充放各限 200 FE/次,容量 80,000;节点零储能(能力缺席)。 */
     @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 200)
-    fun nodeTransfersEnergy(helper: GameTestHelper) {
-        val nodeA = BlockPos(0, 1, 1)
-        val nodeB = BlockPos(2, 1, 1)
-        helper.setBlock(nodeA, ModBlocks.POWER_NODE_BLOCK.get())
-        helper.setBlock(nodeB, ModBlocks.POWER_NODE_BLOCK.get())
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun batteryChargesAndDischargesThroughCapability(helper: GameTestHelper) {
+        val batteryPos = BlockPos(1, 1, 1)
+        helper.setBlock(batteryPos, ModBlocks.BATTERY.get())
 
-        val injected = injectEnergy(helper, nodeA, 5000)
-        if (injected <= 0) helper.fail("node A refused energy injection")
+        if (storedEnergy(helper, batteryPos) != 0) helper.fail("battery must start empty")
+        if (injectEnergy(helper, batteryPos, 5000) != 200) {
+            helper.fail("battery charge must be capped at 200 per operation")
+        }
+        if (storedEnergy(helper, batteryPos) != 200) helper.fail("battery should hold 200 after capped charge")
+
+        val cap = helper.level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(batteryPos), null)
+            ?: throw IllegalStateException("no battery energy capability")
+        if (cap.extractEnergy(5000, false) != 200) {
+            helper.fail("battery discharge must be capped at 200 per operation")
+        }
+        if (storedEnergy(helper, batteryPos) != 0) helper.fail("battery should be empty after capped discharge")
+
+        // 容量:分拍注入直到拒收,总容量恰为 80,000(#27 决议)
+        val injected = injectEnergyUpTo(helper, batteryPos, 80_000 + 1000)
+        if (injected != 80_000) helper.fail("battery capacity must be 80,000 FE, got $injected")
+
+        // 节点纯导线:读不到储能(#30 验收:capability 缺席)
+        val nodePos = BlockPos(0, 1, 1)
+        helper.setBlock(nodePos, ModBlocks.POWER_NODE.get())
+        if (helper.level.getCapability(Capabilities.EnergyStorage.BLOCK, helper.absolutePos(nodePos), null) != null) {
+            helper.fail("power node must expose no energy storage")
+        }
+        helper.succeed()
+    }
+
+    /** 电池 → 节点链 → 窑炉:能量经图流到机器,单电池扣账恰为配方耗能(500 → 余 100)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun gridPowersKilnThroughNodeChain(helper: GameTestHelper) {
+        val batteryPos = BlockPos(0, 1, 1)
+        val node1 = BlockPos(1, 1, 1)
+        val node2 = BlockPos(2, 1, 1)
+        val kilnPos = BlockPos(2, 1, 2)
+        helper.setBlock(batteryPos, ModBlocks.BATTERY.get())
+        helper.setBlock(node1, ModBlocks.POWER_NODE.get())
+        helper.setBlock(node2, ModBlocks.POWER_NODE.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
+        fillKilnTank(helper, kilnPos)
+        if (injectEnergyUpTo(helper, batteryPos, 600) < 600) helper.fail("battery refused injection")
 
         helper.succeedWhen {
-            val receiver = helper.level.getCapability(
-                Capabilities.EnergyStorage.BLOCK,
-                helper.absolutePos(nodeB),
-                null
-            )
-            if (receiver == null || receiver.energyStored <= 0) {
-                val nodeABe = helper.getBlockEntity(nodeA) as? PowerNodeBlockEntity
-                val aEnergy = helper.level.getCapability(
-                    Capabilities.EnergyStorage.BLOCK,
-                    helper.absolutePos(nodeA),
-                    null
-                )?.energyStored ?: -1
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("kiln did not craft from grid power")
+            }
+            // 单电池:500 FE 经节点链被窑炉拉走,余量恰为 100(对外 capability 可观测)
+            val left = storedEnergy(helper, batteryPos)
+            if (left != 100) helper.fail("expected 100 FE left in battery after 500 FE craft, got $left")
+        }
+    }
+
+    /** 低电量电池:满速 6 tick 耗尽 → 断电停、进度冻结不倒退、supplyRatio 归零;补电后续转。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 400)
+    fun gridBrownoutStallsKilnWithProgressKept(helper: GameTestHelper) {
+        val batteryPos = BlockPos(0, 1, 1)
+        val kilnPos = BlockPos(1, 1, 1)
+        helper.setBlock(batteryPos, ModBlocks.BATTERY.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
+        fillKilnTank(helper, kilnPos)
+        if (injectEnergyUpTo(helper, batteryPos, 30) < 30) helper.fail("battery refused injection")
+
+        helper.runAfterDelay(200) {
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) > 0) {
+                helper.fail("low-power battery must not complete a craft")
+            }
+            if (storedEnergy(helper, batteryPos) != 0) {
+                helper.fail("battery must be fully drained, got ${storedEnergy(helper, batteryPos)}")
+            }
+            val kiln = helper.getBlockEntity(kilnPos) as? KilnBE
+            if (kiln == null || kiln.supplyRatio > 0f) {
+                helper.fail("kiln must report supplyRatio 0 while cut off from power, got ${kiln?.supplyRatio}")
+            }
+            // 30 FE @ 5 FE/t = 6 个扣账 tick + 起始 tick,进度冻结在 7%:断电不倒退、补电后续转
+            if (kiln?.progressPercent != 7) {
+                helper.fail("kiln progress must freeze at 7%, got ${kiln?.progressPercent}")
+            }
+            if (injectEnergyUpTo(helper, batteryPos, 2000) < 2000) helper.fail("battery refused refill")
+        }
+        helper.succeedWhen {
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("kiln did not resume after battery refill")
+            }
+        }
+    }
+
+    /** 断中格:两侧图当场分离——被隔离电池冻结,另一侧电池继续供窑炉完成两炉。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun breakingNodeSplitsGrid(helper: GameTestHelper) {
+        val batteryA = BlockPos(0, 1, 1)
+        val nodeM = BlockPos(1, 1, 1)
+        val batteryB = BlockPos(2, 1, 1)
+        val kilnPos = BlockPos(2, 1, 2)
+        helper.setBlock(batteryA, ModBlocks.BATTERY.get())
+        helper.setBlock(nodeM, ModBlocks.POWER_NODE.get())
+        helper.setBlock(batteryB, ModBlocks.BATTERY.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND, 4))
+        fillKilnTank(helper, kilnPos)
+        if (injectEnergyUpTo(helper, batteryA, 600) < 600) helper.fail("battery A refused injection")
+        if (injectEnergyUpTo(helper, batteryB, 1100) < 1100) helper.fail("battery B refused injection")
+
+        var aAfterSplit = -1
+        helper.runAfterDelay(50) {
+            // 合网阶段:两电池并网供能,按余量比例分摊——双池同时下降
+            val a = storedEnergy(helper, batteryA)
+            val b = storedEnergy(helper, batteryB)
+            if (a >= 600 || b >= 1100) helper.fail("grid must drain both batteries together, A=$a B=$b")
+            helper.destroyBlock(nodeM)
+            aAfterSplit = storedEnergy(helper, batteryA)
+        }
+        helper.runAfterDelay(230) {
+            if (aAfterSplit < 0) helper.fail("split never happened")
+            if (storedEnergy(helper, batteryA) != aAfterSplit) {
                 helper.fail(
-                    "node B empty; A.energy=$aEnergy A.connections=${nodeABe?.getConnectedNodes()?.size ?: -1}"
+                    "isolated battery must freeze after split: " +
+                        "before=${aAfterSplit} after=${storedEnergy(helper, batteryA)}"
                 )
             }
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 2) {
+                helper.fail("kiln must keep crafting from the surviving grid after the split")
+            }
+            helper.succeed()
         }
     }
 

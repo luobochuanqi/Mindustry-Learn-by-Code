@@ -6,7 +6,8 @@ import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
-import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
+import xyz.luobo.mturrets.common.power.BatteryBE
+import xyz.luobo.mturrets.common.power.PowerNodeBE
 import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
@@ -18,12 +19,20 @@ object ModBlockEntityTypes {
     val BLOCK_ENTITY_TYPES: DeferredRegister<BlockEntityType<*>> =
         DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MTurrets.MOD_ID)
 
-    val POWER_NODE_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<PowerNodeBlockEntity>> =
+    // 电网(ADR-0007,#30)
+    val POWER_NODE: DeferredHolder<BlockEntityType<*>, BlockEntityType<PowerNodeBE>> =
         BLOCK_ENTITY_TYPES.register("power_node", Supplier {
             BlockEntityType.Builder.of(
-                { pos, state -> PowerNodeBlockEntity(pos, state) },
-                ModBlocks.POWER_NODE_BLOCK.get()
+                { pos, state -> PowerNodeBE(pos, state) },
+                ModBlocks.POWER_NODE.get()
             ).build(null) // dataType 为 null, 使用 NBT, 拒绝使用 Minecraft 1.20.5+ 引入的 数据组件(Data Components) 特性
+        })
+    val BATTERY: DeferredHolder<BlockEntityType<*>, BlockEntityType<BatteryBE>> =
+        BLOCK_ENTITY_TYPES.register("battery", Supplier {
+            BlockEntityType.Builder.of(
+                { pos, state -> BatteryBE(pos, state) },
+                ModBlocks.BATTERY.get()
+            ).build(null)
         })
 
     // Machines

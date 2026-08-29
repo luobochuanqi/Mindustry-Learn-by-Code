@@ -30,7 +30,8 @@ object ModTabs {
     // 在这里添加物品到 创造标签页
     fun addCreative(event: BuildCreativeModeTabContentsEvent) {
         if (event.tabKey === EXAMPLE_TAB.getKey()) {
-            event.accept(ModItems.POWER_NODE_BLOCK_ITEM.get())
+            event.accept(ModItems.POWER_NODE_ITEM.get())
+            event.accept(ModItems.BATTERY_ITEM.get())
             event.accept(ModItems.KILN_ITEM.get())
             event.accept(ModItems.DUO_BLOCK_ITEM.get())
             event.accept(ModItems.ARC_BLOCK_ITEM.get())

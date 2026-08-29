@@ -5,7 +5,7 @@ import xyz.luobo.mturrets.core.capability.IEnergyCapability
 /**
  * 能量 Capability 默认实现
  */
-class EnergyCapabilityImpl(
+open class EnergyCapabilityImpl(
     override val energyCapacity: Int,
     override val maxReceive: Int = 0,
     override val maxExtract: Int = 0,

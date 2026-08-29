@@ -1,5 +1,6 @@
 {
-  "block.mturrets.power_node_block": "电力节点",
+  "block.mturrets.power_node": "电力节点",
+  "block.mturrets.battery": "电池",
   "block.mturrets.kiln": "窑炉",
   "block.mturrets.duo": "Duo",
   "block.mturrets.arc": "Arc",
@@ -7,7 +8,6 @@
   "jade.mturrets.energy": "能量: %s/%s FE",
   "jade.mturrets.progress": "进度: %s%%",
   "config.jade.plugin_mturrets.turret_data": "炮台状态",
-  "config.jade.plugin_mturrets.power_node_data": "电力节点状态",
   "block.mturrets.meltdown": "Meltdown",
   "fluid.mturrets.arkycite": "氩",
   "fluid.mturrets.cryofluid": "冷冻液",
@@ -54,6 +54,5 @@
   "itemGroup.mturrets": "MTurrets",
   "block.mturrets.test_structure_anchor_2x2": "测试结构锚点(2×2)",
   "block.mturrets.test_structure_structural": "测试结构成员",
-  "mturrets.message.blueprint_blocked": "空间不足,无法放置结构",
-  "mturrets.configuration.maxRenderDistance": "最大激光渲染距离"
+  "mturrets.message.blueprint_blocked": "空间不足,无法放置结构"
 }
