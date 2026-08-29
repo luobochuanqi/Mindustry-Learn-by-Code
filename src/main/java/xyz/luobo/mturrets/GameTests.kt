@@ -377,4 +377,31 @@ object ModGameTests {
             }
         }
     }
+
+    // ========== 蓝图管线:相邻贴放被拒时,已放结构不受牵连(回归修复) ==========
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun rejectedNeighborPlacementDoesNotHarmExistingStructure(helper: GameTestHelper) {
+        val anchorA = BlockPos(1, 1, 1)
+        val membersA = listOf(BlockPos(2, 1, 1), BlockPos(1, 1, 2), BlockPos(2, 1, 2))
+        helper.setBlock(anchorA, ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
+        helper.runAfterDelay(5) {
+            // B 锚 (0,1,1) 的 +X 成员格正是 A 的锚点 → 成型校验必失败 → 回滚
+            helper.setBlock(BlockPos(0, 1, 1), ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
+        }
+        helper.succeedWhen {
+            if (!helper.getBlockState(anchorA).`is`(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())) {
+                helper.fail("existing structure's anchor was destroyed by a rejected neighbor placement")
+            }
+            val anyMemberGone = membersA.any { !helper.getBlockState(it).`is`(ModBlocks.TEST_STRUCTURAL.get()) }
+            if (anyMemberGone) {
+                helper.fail("existing structure's members were torn down by a rejected neighbor placement")
+            }
+            // 新放置的锚点已回滚消失
+            if (!helper.getBlockState(BlockPos(0, 1, 1)).isAir) {
+                helper.fail("blocked placement did not roll back its own anchor")
+            }
+        }
+    }
 }

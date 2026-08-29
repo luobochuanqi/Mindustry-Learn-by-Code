@@ -85,7 +85,13 @@ abstract class BlueprintAnchorBlock(properties: Properties) : BaseEntityBlock(pr
             }
             for (spec in blueprint.members) {
                 val memberPos = pos.offset(spec.offset)
-                if (level.getBlockState(memberPos).block == spec.stateProvider().block) {
+                val memberState = level.getBlockState(memberPos)
+                // 归属校验:只拆"成员编码指向本锚点"的格。放置回滚/相邻贴放时,
+                // 本蓝图偏移上可能是相邻结构的成员格(同类型方块),误清会触发对方
+                // 破坏代理、把好端端的邻居整机拆掉。
+                if (memberState.block is StructuralBlock
+                    && memberPos.subtract(StructuralBlock.decodeOffset(memberState)) == pos
+                ) {
                     level.removeBlock(memberPos, false)
                 }
             }
