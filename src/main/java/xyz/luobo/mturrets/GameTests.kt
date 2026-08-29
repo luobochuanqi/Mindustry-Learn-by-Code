@@ -18,6 +18,8 @@ import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
+import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
+import xyz.luobo.mturrets.core.structure.StructuralBlock
 import xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 
@@ -223,6 +225,126 @@ object ModGameTests {
             val drops = helper.getEntities(EntityType.ITEM, kilnPos, 2.0)
             val found = drops.any { (it as? net.minecraft.world.entity.item.ItemEntity)?.item?.`is`(lead) == true }
             if (!found) helper.fail("kiln did not drop stored lead")
+        }
+    }
+
+    // ========== 蓝图管线(ADR-0003,#32):2×2 成型 ==========
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun blueprintForms2x2(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        helper.setBlock(anchorPos, ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
+        helper.succeedWhen {
+            for (offset in listOf(BlockPos(1, 0, 0), BlockPos(0, 0, 1), BlockPos(1, 0, 1))) {
+                val memberPos = anchorPos.offset(offset)
+                val state = helper.getBlockState(memberPos)
+                if (!state.`is`(ModBlocks.TEST_STRUCTURAL.get())) {
+                    helper.fail("member not formed at $offset: $state")
+                }
+                if (helper.getLevel().getBlockEntity(helper.absolutePos(memberPos)) != null) {
+                    helper.fail("member at $offset must not host a block entity")
+                }
+            }
+            // 编码偏移可重算回锚点(成员零持久化引用)
+            val diagonal = helper.getBlockState(anchorPos.offset(BlockPos(1, 0, 1)))
+            val decodedAnchor = anchorPos.offset(BlockPos(1, 0, 1)).subtract(
+                StructuralBlock.decodeOffset(diagonal)
+            )
+            if (decodedAnchor != anchorPos) {
+                helper.fail("encoded offsets do not resolve anchor: $decodedAnchor")
+            }
+        }
+    }
+
+    // ========== 蓝图管线:1×1 走同一管线(空偏移集) ==========
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun blueprintForms1x1(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        helper.setBlock(anchorPos, ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get())
+        helper.succeedWhen {
+            if (!helper.getBlockState(anchorPos).`is`(ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get())) {
+                helper.fail("1x1 anchor vanished")
+            }
+            if (helper.getLevel().getBlockEntity(helper.absolutePos(anchorPos)) !is TestStructureAnchorBE) {
+                helper.fail("1x1 anchor lost its block entity")
+            }
+            // 空偏移集:不盖任何成员格
+            if (!helper.getBlockState(anchorPos.offset(BlockPos(1, 0, 0))).isAir) {
+                helper.fail("1x1 must not form members")
+            }
+        }
+    }
+
+    // ========== 蓝图管线:放置校验失败 → 回滚 + 退控制器物品 ==========
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun blueprintRejectedWhenBlocked(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        helper.setBlock(anchorPos.offset(BlockPos(1, 0, 0)), Blocks.STONE) // 挡住 +X 成员格
+        helper.setBlock(anchorPos, ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
+        helper.succeedWhen {
+            if (!helper.getBlockState(anchorPos).isAir) {
+                helper.fail("blocked placement must roll back the anchor")
+            }
+            if (!helper.getBlockState(anchorPos.offset(BlockPos(0, 0, 1))).isAir) {
+                helper.fail("no partial members may form")
+            }
+            // 无玩家环境 → 非创造退还路径:锚点位掉落控制器物品
+            val anchorItem = ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get().asItem()
+            val drops = helper.getEntities(EntityType.ITEM, anchorPos, 3.0)
+            if (drops.none { (it as? net.minecraft.world.entity.item.ItemEntity)?.item?.`is`(anchorItem) == true }) {
+                helper.fail("controller item not refunded after rejected placement")
+            }
+        }
+    }
+
+    // ========== 蓝图管线:成员破坏代理 → 整体拆除 + 掉控制器物品 + 内容物散落 ==========
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun destroyMemberTearsDownStructure(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        val memberPos = anchorPos.offset(BlockPos(1, 0, 1))
+        helper.setBlock(anchorPos, ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
+        helper.runAfterDelay(5) {
+            // 成员格能力路由:经成员插入 → 存入锚点 BE 缓冲
+            insertItem(helper, memberPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
+            helper.destroyBlock(memberPos)
+        }
+        helper.succeedWhen {
+            val cells = listOf(anchorPos, BlockPos(1, 0, 0), BlockPos(0, 0, 1), BlockPos(1, 0, 1))
+                .map { anchorPos.offset(it) }
+            if (cells.any { !helper.getBlockState(it).isAir }) {
+                helper.fail("structure not fully torn down after member break")
+            }
+            val anchorItem = ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get().asItem()
+            val lead = ModItems.getMaterial(Materials.LEAD).get()
+            val drops = helper.getEntities(EntityType.ITEM, anchorPos, 4.0)
+            if (drops.none { (it as? net.minecraft.world.entity.item.ItemEntity)?.item?.`is`(anchorItem) == true }) {
+                helper.fail("controller item not dropped")
+            }
+            if (drops.none { (it as? net.minecraft.world.entity.item.ItemEntity)?.item?.`is`(lead) == true }) {
+                helper.fail("buffer contents not scattered on teardown")
+            }
+        }
+    }
+
+    // ========== 蓝图管线:直接拆锚点 → 成员同步清空 ==========
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun destroyAnchorClearsMembers(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        helper.setBlock(anchorPos, ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
+        helper.runAfterDelay(5) { helper.destroyBlock(anchorPos) }
+        helper.succeedWhen {
+            if (!helper.getBlockState(anchorPos.offset(BlockPos(1, 0, 1))).isAir) {
+                helper.fail("members not cleared after anchor removal")
+            }
         }
     }
 }

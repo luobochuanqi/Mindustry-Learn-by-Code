@@ -53,5 +53,9 @@
   "item.mturrets.tungsten": "钨",
   "item.mturrets.water": "水",
   "itemGroup.mturrets": "MTurrets",
+  "block.mturrets.test_structure_anchor_2x2": "测试结构锚点(2×2)",
+  "block.mturrets.test_structure_anchor_1x1": "测试结构锚点(1×1)",
+  "block.mturrets.test_structure_structural": "测试结构成员",
+  "mturrets.message.blueprint_blocked": "空间不足,无法放置结构",
   "mturrets.configuration.maxRenderDistance": "最大激光渲染距离"
 }

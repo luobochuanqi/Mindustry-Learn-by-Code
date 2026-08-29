@@ -27,6 +27,11 @@ object ModItems {
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.ARC_BLOCK)
     val MELTDOWN_BLOCK_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.MELTDOWN_BLOCK)
+    // 蓝图管线锚点物品(成员方格无物品,掉落收口在锚点,ADR-0003)
+    val TEST_STRUCTURE_ANCHOR_2X2_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2)
+    val TEST_STRUCTURE_ANCHOR_1X1_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.TEST_STRUCTURE_ANCHOR_1X1)
 
     val ALL_ITEMS = Materials.ALL.associateWith { material ->
         MOD_ITEMS.registerSimpleItem(material.id)

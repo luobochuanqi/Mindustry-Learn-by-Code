@@ -141,5 +141,18 @@ object EventHandler {
         ) { be, _ ->
             if (be is xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity) be.energyCapability else null
         }
+
+        // 蓝图管线(ADR-0003):成员格 block 级 capability,查询时解析到锚点 BE 返回其能力
+        // (可插任意成员面等效操作整机);按相对坐标判面归属为扩展位,本期不区分面
+        event.registerBlock(
+            Capabilities.ItemHandler.BLOCK,
+            { level, pos, state, _, _ ->
+                val anchorPos = pos.subtract(
+                    xyz.luobo.mturrets.core.structure.StructuralBlock.decodeOffset(state)
+                )
+                (level.getBlockEntity(anchorPos) as? xyz.luobo.mturrets.common.structure.TestStructureAnchorBE)?.itemCapability
+            },
+            xyz.luobo.mturrets.common.ModBlocks.TEST_STRUCTURAL.get()
+        )
     }
 }

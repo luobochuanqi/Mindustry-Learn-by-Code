@@ -4,6 +4,9 @@
   "block.mturrets.kiln_block": "Kiln",
   "block.mturrets.meltdown": "Meltdown",
   "block.mturrets.power_node_block": "Power Node",
+  "block.mturrets.test_structure_anchor_1x1": "Test Structure Anchor (1x1)",
+  "block.mturrets.test_structure_anchor_2x2": "Test Structure Anchor (2x2)",
+  "block.mturrets.test_structure_structural": "Test Structure Member",
   "config.jade.plugin_mturrets.kiln_data": "Kiln Info",
   "config.jade.plugin_mturrets.power_node_data": "Power Node Info",
   "config.jade.plugin_mturrets.turret_data": "Turret Info",
@@ -53,5 +56,6 @@
   "jade.mturrets.ammo": "Ammo: %s/%s",
   "jade.mturrets.energy": "Energy: %s/%s FE",
   "jade.mturrets.progress": "Progress: %s%%",
-  "mturrets.configuration.maxRenderDistance": "Max Laser Render Distance"
+  "mturrets.configuration.maxRenderDistance": "Max Laser Render Distance",
+  "mturrets.message.blueprint_blocked": "Not enough space for structure"
 }

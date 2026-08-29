@@ -7,6 +7,7 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.blockEntities.PowerNodeBlockEntity
+import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity
@@ -56,6 +57,16 @@ object ModBlockEntityTypes {
             BlockEntityType.Builder.of(
                 { pos, state -> MeltdownTurretBlockEntity(pos, state) },
                 ModBlocks.MELTDOWN_BLOCK.get()
+            ).build(null)
+        })
+
+    // 蓝图管线(ADR-0003/0004):骨架临时测试锚点 BE,两块测试锚点共用
+    val TEST_STRUCTURE_ANCHOR_BE: DeferredHolder<BlockEntityType<*>, BlockEntityType<TestStructureAnchorBE>> =
+        BLOCK_ENTITY_TYPES.register("test_structure_anchor", Supplier {
+            BlockEntityType.Builder.of(
+                { pos, state -> TestStructureAnchorBE(pos, state) },
+                ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get(),
+                ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get()
             ).build(null)
         })
 

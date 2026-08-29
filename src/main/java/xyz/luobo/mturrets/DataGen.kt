@@ -7,7 +7,14 @@ import net.neoforged.neoforge.client.model.generators.ItemModelProvider
 import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.LanguageProvider
+import net.minecraft.core.HolderLookup
+import net.minecraft.data.loot.BlockLootSubProvider
+import net.minecraft.data.loot.LootTableProvider
+import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
 import net.neoforged.neoforge.data.event.GatherDataEvent
+import net.minecraft.world.item.Item
+import net.minecraft.world.flag.FeatureFlags
+import net.minecraft.world.level.block.Block
 import xyz.luobo.mturrets.common.ModBlocks
 import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
@@ -23,6 +30,20 @@ object DataGen {
         generator.addProvider(event.includeClient(), ModLanguageProvider(packOutput, "en_us"))
         generator.addProvider(event.includeClient(), ModItemModelProvider(packOutput, existingFileHelper))
         generator.addProvider(event.includeClient(), ModBlockStateProvider(packOutput, existingFileHelper))
+        generator.addProvider(
+            event.includeServer(),
+            LootTableProvider(
+                packOutput,
+                emptySet(),
+                listOf(
+                    LootTableProvider.SubProviderEntry(
+                        { registries -> ModBlockLootProvider(registries) },
+                        LootContextParamSets.BLOCK
+                    )
+                ),
+                event.lookupProvider
+            )
+        )
     }
 }
 
@@ -53,6 +74,12 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
 
         // Configs
         this.add("mturrets.configuration.maxRenderDistance", "Max Laser Render Distance")
+        this.add(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get(), "Test Structure Anchor (2x2)")
+        this.add(ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get(), "Test Structure Anchor (1x1)")
+        this.add(ModBlocks.TEST_STRUCTURAL.get(), "Test Structure Member")
+
+        // 蓝图管线
+        this.add("mturrets.message.blueprint_blocked", "Not enough space for structure")
 
         // Jade tooltips
         this.add("jade.mturrets.ammo", "Ammo: %s/%s")
@@ -104,5 +131,41 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         this.simpleBlockWithItem(meltdown, this.cubeAll(meltdown))
         val duo = ModBlocks.DUO_BLOCK.get()
         this.simpleBlockWithItem(duo, this.cubeAll(duo))
+
+        // 蓝图管线骨架临时方块(贴图复用现有素材,真内容落地后删除)
+        val testTexture = this.blockTexture(ModBlocks.POWER_NODE_BLOCK.get())
+        this.simpleBlockWithItem(
+            ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get(),
+            this.models().cubeAll("test_structure_anchor_2x2", testTexture)
+        )
+        this.simpleBlockWithItem(
+            ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get(),
+            this.models().cubeAll("test_structure_anchor_1x1", testTexture)
+        )
+        this.simpleBlockWithItem(
+            ModBlocks.TEST_STRUCTURAL.get(),
+            this.models().cubeAll("test_structure_structural", testTexture)
+        )
+    }
+}
+
+/**
+ * 掉落表:锚点 dropSelf(控制器物品);成员 noDrop(掉落收口在锚点,ADR-0003)。
+ * LEGACY 方块补 noDrop 表维持现状(零掉落),真内容落地时随各票改表。
+ */
+class ModBlockLootProvider(registries: HolderLookup.Provider) :
+    BlockLootSubProvider(emptySet<Item>(), FeatureFlags.DEFAULT_FLAGS, registries) {
+    override fun getKnownBlocks(): Iterable<Block> = ModBlocks.MOD_BLOCKS.entries.map { it.get() }
+
+    override fun generate() {
+        this.dropSelf(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
+        this.dropSelf(ModBlocks.TEST_STRUCTURE_ANCHOR_1X1.get())
+        // 成员格:properties noLootTable() 已豁免(掉落收口在锚点,ADR-0003)
+        // LEGACY 方块:维持现状零掉落
+        this.add(ModBlocks.POWER_NODE_BLOCK.get(), noDrop())
+        this.add(ModBlocks.KILN_BLOCK.get(), noDrop())
+        this.add(ModBlocks.DUO_BLOCK.get(), noDrop())
+        this.add(ModBlocks.ARC_BLOCK.get(), noDrop())
+        this.add(ModBlocks.MELTDOWN_BLOCK.get(), noDrop())
     }
 }

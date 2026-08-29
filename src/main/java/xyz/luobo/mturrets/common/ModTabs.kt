@@ -35,6 +35,8 @@ object ModTabs {
             event.accept(ModItems.DUO_BLOCK_ITEM.get())
             event.accept(ModItems.ARC_BLOCK_ITEM.get())
             event.accept(ModItems.MELTDOWN_BLOCK_ITEM.get())
+            event.accept(ModItems.TEST_STRUCTURE_ANCHOR_2X2_ITEM.get())
+            event.accept(ModItems.TEST_STRUCTURE_ANCHOR_1X1_ITEM.get())
             Materials.ALL.forEach { material ->
                 event.accept(ModItems.getMaterial(material).get())
             }

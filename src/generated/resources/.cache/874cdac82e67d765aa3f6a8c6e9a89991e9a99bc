@@ -1,4 +1,4 @@
-// 1.21.1	2026-08-20T17:38:11.0713736	Item Models: mturrets
+// 1.21.1	2026-08-29T18:01:36.5189015	Item Models: mturrets
 7931ff2201d3502212d8090f13b0eec9f569c524 assets/mturrets/models/item/arc.json
 5c8e7477a9defd1ede18385caf9f0f8aab4fd409 assets/mturrets/models/item/arkycite.json
 f07623946ebd1166c51c9179c55555b9fb593d49 assets/mturrets/models/item/beryllium.json
@@ -31,6 +31,9 @@ d9156b37848f68781df9380a3b03c650de2b9edc assets/mturrets/models/item/pyratite.js
 b51be2229d4352e76c1ce111e532215227975743 assets/mturrets/models/item/slag.json
 561b4ecc8a7bb2edffb411595e02ae7a85ed25e1 assets/mturrets/models/item/spore_pod.json
 80ccf628eb14b73da7b8c8bfd150f17e7a243963 assets/mturrets/models/item/surge_alloy.json
+2340297979715c21b7ea5b6bde9e9e98d649d28b assets/mturrets/models/item/test_structure_anchor_1x1.json
+6dfff68c361981d4ac7b1ea055d356ef9f583490 assets/mturrets/models/item/test_structure_anchor_2x2.json
+da4b5e61eaad3f3f529d80bb36886a2a569af57d assets/mturrets/models/item/test_structure_structural.json
 3945185f6233d02c8a342b16a1f5572f32f5f64d assets/mturrets/models/item/thorium.json
 ac5c8980cda5a0ce31daf02cdfba871ca397c19a assets/mturrets/models/item/titanium.json
 2bf791d6c7433a07bb13b0f19bd284c791c76cf0 assets/mturrets/models/item/tungsten.json
