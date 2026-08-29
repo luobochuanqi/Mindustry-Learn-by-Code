@@ -2,6 +2,7 @@ package xyz.luobo.mturrets
 
 import net.minecraft.core.BlockPos
 import net.minecraft.gametest.framework.GameTest
+import net.minecraft.world.level.GameType
 import net.minecraft.gametest.framework.GameTestHelper
 import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
@@ -344,6 +345,35 @@ object ModGameTests {
         helper.succeedWhen {
             if (!helper.getBlockState(anchorPos.offset(BlockPos(1, 0, 1))).isAir) {
                 helper.fail("members not cleared after anchor removal")
+            }
+        }
+    }
+    // ========== 蓝图管线:创造模式敲成员格 → 整体拆除、零掉落(回归 #32 修复) ==========
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun creativeMiningMemberLeavesNoDrops(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        val memberPos = anchorPos.offset(BlockPos(1, 0, 1))
+        helper.setBlock(anchorPos, ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
+        helper.runAfterDelay(5) {
+            // 模拟 ServerPlayerGameMode 创造路径:playerWillDestroy 先行,成员随后移除
+            val memberState = helper.getBlockState(memberPos)
+            memberState.block.playerWillDestroy(
+                helper.level, helper.absolutePos(memberPos), memberState, helper.makeMockPlayer(GameType.CREATIVE)
+            )
+            helper.destroyBlock(memberPos)
+        }
+        helper.succeedWhen {
+            val cells = listOf(anchorPos, BlockPos(1, 0, 0), BlockPos(0, 0, 1), BlockPos(1, 0, 1))
+                .map { anchorPos.offset(it) }
+            if (cells.any { !helper.getBlockState(it).isAir }) {
+                helper.fail("creative member break must tear down the whole structure")
+            }
+            // 创造模式:控制器物品与内容物都不掉落
+            val drops = helper.getEntities(EntityType.ITEM, anchorPos, 4.0)
+            if (drops.isNotEmpty()) {
+                helper.fail("creative break must not drop anything, found ${drops.size} items")
             }
         }
     }

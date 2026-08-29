@@ -7,6 +7,8 @@ import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.IntegerProperty
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.level.block.Blocks
 
 /**
  * 成员格(ADR-0003):无 BE、无 tick、无交互;碰撞/选中整格;破坏代理回锚点。
@@ -27,6 +29,21 @@ class StructuralBlock(properties: Properties) : Block(properties) {
 
     override fun createBlockStateDefinition(builder: StateDefinition.Builder<Block, BlockState>) {
         builder.add(OFFSET_X, OFFSET_Y, OFFSET_Z)
+    }
+    /**
+     * 玩家敲击成员格的创造路径:预先无痕摘除锚点。ServerPlayerGameMode 创造分支
+     * 走 removeBlock(不掉落),但成员 onRemove 代理的 destroyBlock(锚点, drop=true)
+     * 不知道原 drop 标志,会多出锚点破坏粒子 + 本体掉落;锚点先变空气后,
+     * 成员移除时代理守卫短路。生存挖掘不受影响(代理照常掉控制器物品)。
+     */
+    override fun playerWillDestroy(level: Level, pos: BlockPos, state: BlockState, player: Player): BlockState {
+        if (!level.isClientSide && player.isCreative) {
+            val anchorPos = pos.subtract(decodeOffset(state))
+            if (level.getBlockState(anchorPos).block is BlueprintAnchorBlock) {
+                level.setBlock(anchorPos, Blocks.AIR.defaultBlockState(), 3)
+            }
+        }
+        return super.playerWillDestroy(level, pos, state, player)
     }
 
     /**
