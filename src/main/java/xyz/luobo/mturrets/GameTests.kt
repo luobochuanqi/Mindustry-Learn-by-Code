@@ -229,7 +229,7 @@ object ModGameTests {
         }
     }
 
-    // ========== 蓝图管线(ADR-0003,#32):2×2 成型 ==========
+    // 蓝图管线(ADR-0003,#32):2×2 成型
 
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
@@ -258,7 +258,7 @@ object ModGameTests {
         }
     }
 
-    // ========== 蓝图管线:1×1 走同一管线(空偏移集) ==========
+    // 蓝图管线:1×1 走同一管线(空偏移集)
 
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
@@ -279,7 +279,7 @@ object ModGameTests {
         }
     }
 
-    // ========== 蓝图管线:放置校验失败 → 回滚 + 退控制器物品 ==========
+    // 蓝图管线:放置校验失败 → 回滚 + 退控制器物品
 
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
@@ -303,7 +303,7 @@ object ModGameTests {
         }
     }
 
-    // ========== 蓝图管线:成员破坏代理 → 整体拆除 + 掉控制器物品 + 内容物散落 ==========
+    // 蓝图管线:成员破坏代理 → 整体拆除 + 掉控制器物品 + 内容物散落
 
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
@@ -334,7 +334,7 @@ object ModGameTests {
         }
     }
 
-    // ========== 蓝图管线:直接拆锚点 → 成员同步清空 ==========
+    // 蓝图管线:直接拆锚点 → 成员同步清空
 
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
@@ -348,7 +348,7 @@ object ModGameTests {
             }
         }
     }
-    // ========== 蓝图管线:创造模式敲成员格 → 整体拆除、零掉落(回归 #32 修复) ==========
+    // 蓝图管线:创造模式敲成员格 → 整体拆除、零掉落(回归 #32 修复)
 
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
@@ -378,7 +378,7 @@ object ModGameTests {
         }
     }
 
-    // ========== 蓝图管线:相邻贴放被拒时,已放结构不受牵连(回归修复) ==========
+    // 蓝图管线:相邻贴放被拒时,已放结构不受牵连(回归修复)
 
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
