@@ -12,7 +12,7 @@ import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
 import xyz.luobo.mturrets.common.machines.drill.DrillBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
-import xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity
+import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 import java.util.function.Supplier
 
@@ -54,10 +54,10 @@ object ModBlockEntityTypes {
         })
 
     // Turrets - 新的 MTurrets 风格炮台系统
-    val DUO_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<DuoTurretBlockEntity>> =
+    val DUO_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<DuoTurretBE>> =
         BLOCK_ENTITY_TYPES.register("duo", Supplier {
             BlockEntityType.Builder.of(
-                { pos, state -> DuoTurretBlockEntity(pos, state) },
+                { pos, state -> DuoTurretBE(pos, state) },
                 ModBlocks.DUO_BLOCK.get()
             ).build(null)
         })

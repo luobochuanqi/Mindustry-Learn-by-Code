@@ -1,0 +1,86 @@
+package xyz.luobo.mturrets.common.turrets
+
+import com.mojang.serialization.MapCodec
+import net.minecraft.core.BlockPos
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.ItemInteractionResult
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.BaseEntityBlock
+import net.minecraft.world.level.block.entity.BlockEntity
+import net.minecraft.world.level.block.entity.BlockEntityTicker
+import net.minecraft.world.level.block.entity.BlockEntityType
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.phys.BlockHitResult
+import net.neoforged.neoforge.fluids.FluidUtil
+import xyz.luobo.mturrets.common.ModBlockEntityTypes
+import xyz.luobo.mturrets.core.structure.Blueprint
+import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
+
+/**
+ * Duo(蓝图管线 1×1,ADR-0003/0008/0009):偏移集只含锚点,放置/拆除/回滚由管线兜住。
+ * 交互无 GUI:可倒出液体的手持物右键灌 Coolant 内罐(水);手持弹药右键整堆入仓(超 cap 拒收);
+ * 无取出通道(单位账不存物理物品,拆除按倍率折回散落,ADR-0009)。
+ */
+class DuoBlock : BlueprintAnchorBlock(structureProperties()) {
+
+    override val blueprint: Blueprint = Blueprint(emptyList())
+
+    override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity = DuoTurretBE(pos, state)
+
+    override fun <E : BlockEntity> getTicker(
+        level: Level,
+        state: BlockState,
+        type: BlockEntityType<E>
+    ): BlockEntityTicker<E>? {
+        if (level.isClientSide || type !== ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()) return null
+        val ticker = BlockEntityTicker<DuoTurretBE> { _, _, _, be -> be.tickServer() }
+        @Suppress("UNCHECKED_CAST")
+        return ticker as BlockEntityTicker<E>
+    }
+
+    override fun useItemOn(
+        stack: ItemStack,
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hand: InteractionHand,
+        hitResult: BlockHitResult
+    ): ItemInteractionResult {
+        if (level.isClientSide) return ItemInteractionResult.SUCCESS
+        val turret = level.getBlockEntity(pos) as? DuoTurretBE
+            ?: return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+        // 容器语义先行:可倒出液体的手持物 → 灌 Coolant 内罐(换桶由 FluidUtil 完成)
+        if (FluidUtil.interactWithFluidHandler(player, hand, turret.fluidCapability)) {
+            return ItemInteractionResult.CONSUME
+        }
+        // 手持弹药右键装弹:整堆折算入仓,超 cap 整堆拒收(物品原样保留)
+        if (turret.ammoTypeFor(stack.item) != null) {
+            return if (turret.tryLoadAmmo(stack)) {
+                stack.shrink(stack.count)
+                ItemInteractionResult.CONSUME
+            } else {
+                ItemInteractionResult.FAIL
+            }
+        }
+        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+    }
+
+    override fun useWithoutItem(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hitResult: BlockHitResult
+    ): InteractionResult = InteractionResult.PASS
+
+    companion object {
+        @JvmStatic
+        val CODEC: MapCodec<DuoBlock> = simpleCodec { DuoBlock() }
+    }
+
+    override fun codec(): MapCodec<out BaseEntityBlock> = CODEC
+}

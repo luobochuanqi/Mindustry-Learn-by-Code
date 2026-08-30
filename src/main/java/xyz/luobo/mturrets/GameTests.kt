@@ -5,11 +5,14 @@ import net.minecraft.gametest.framework.GameTest
 import net.minecraft.core.Direction
 import net.minecraft.world.level.GameType
 import net.minecraft.gametest.framework.GameTestHelper
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
 import net.minecraft.world.entity.EntityType
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.item.ItemEntity
+import net.minecraft.world.item.Item
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
@@ -26,6 +29,7 @@ import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
+import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 import xyz.luobo.mturrets.core.structure.StructuralBlock
 
@@ -68,24 +72,226 @@ object ModGameTests {
         }
     }
 
-    // ========== 战斗:Duo 子弹命中伤害 ==========
+    /** 模拟玩家在方块位手持物品右键(新 Duo 供弹走块交互面,无 capability 注入口)。 */
+    private fun mockUseOn(helper: GameTestHelper, pos: BlockPos, stack: ItemStack): ItemInteractionResult {
+        val state = helper.getBlockState(pos)
+        val player = helper.makeMockPlayer(GameType.SURVIVAL)
+        val hit = BlockHitResult(Vec3.ZERO, Direction.UP, helper.absolutePos(pos), false)
+        return state.useItemOn(stack, helper.level, player, InteractionHand.MAIN_HAND, hit)
+    }
 
+    /** 统计某物品在 pos 附近的掉落实体总数(拆机折回断言用)。 */
+    private fun countDrops(helper: GameTestHelper, pos: BlockPos, item: Item): Int =
+        helper.getEntities(EntityType.ITEM, pos, 4.0)
+            .sumOf { (it as? ItemEntity)?.item?.let { s -> if (s.`is`(item)) s.count else 0 } ?: 0 }
+
+    /**
+     * 以真实玩家拆方块语义拆掉结构(第 3 参 drop=true 走 loot → 控制器物品掉落):
+     * GameTestHelper.destroyBlock 固定 drop=false,只触发 onRemove 散落而 loot 不跑。
+     */
+    private fun breakForDrops(helper: GameTestHelper, pos: BlockPos) {
+        helper.level.destroyBlock(helper.absolutePos(pos), true)
+    }
+
+    /** ① 伤害 + 弹尽停火 + 拆机零折回:1 铜(2 单位)命中 2 发(9×2=18),僵尸余 2 HP 后不再掉血。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 300)
-    fun duoShootsZombie(helper: GameTestHelper) {
+    fun duoShootsExactDamageThenRunsDry(helper: GameTestHelper) {
         val turretPos = BlockPos(1, 1, 1)
         helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
 
-        // 经外部物品能力供给弹药(不触碰内部字段)
-        insertItem(helper, turretPos, 0, ItemStack(Items.COPPER_INGOT, 64))
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        val stack = ItemStack(copper, 1)
+        if (mockUseOn(helper, turretPos, stack) != ItemInteractionResult.CONSUME) {
+            helper.fail("ammo load must consume the held stack")
+        }
+        if (!stack.isEmpty) helper.fail("1 copper must be fully loaded")
 
         val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
         fireproof(zombie)
-        val initialHealth = zombie.health
 
+        helper.runAfterDelay(60) {
+            if (zombie.health != 2f) {
+                helper.fail("exactly 2 shots of 9 damage expected (zombie at 2 HP), got ${zombie.health}")
+            }
+        }
+        helper.runAfterDelay(150) {
+            // 2 单位打尽:100 tick 窗口内不再掉血
+            if (zombie.health != 2f) {
+                helper.fail("turret must stop firing after ammo runs out, zombie at ${zombie.health}")
+            }
+        }
+        helper.runAfterDelay(160) { breakForDrops(helper, turretPos) }
         helper.succeedWhen {
-            if (!zombie.isRemoved && zombie.health >= initialHealth) {
-                helper.fail("zombie not damaged by duo turret")
+            val copper = ModItems.getMaterial(Materials.COPPER).get()
+            if (countDrops(helper, turretPos, copper) != 0) {
+                helper.fail("empty magazine must refund 0 copper on teardown")
+            }
+        }
+    }
+
+    /** ② 超 cap 整堆拒收:51 铜(102 单位 > cap 100)物品原样保留;50 铜(恰 100)全收;再 1 铜拒收。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun duoRejectsAmmoOverCapacity(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+
+        val over = ItemStack(copper, 51)
+        if (mockUseOn(helper, turretPos, over) != ItemInteractionResult.FAIL || over.count != 51) {
+            helper.fail("over-cap stack must be rejected whole, count=${over.count}")
+        }
+        val exact = ItemStack(copper, 50)
+        if (mockUseOn(helper, turretPos, exact) != ItemInteractionResult.CONSUME || !exact.isEmpty) {
+            helper.fail("exactly-full stack must be accepted, count=${exact.count}")
+        }
+        val extra = ItemStack(copper, 1)
+        if (mockUseOn(helper, turretPos, extra) != ItemInteractionResult.FAIL || extra.count != 1) {
+            helper.fail("full magazine must reject any more ammo")
+        }
+        helper.succeed()
+    }
+
+    /** ③a 只打 Monster:僵尸与牛同框,牛不掉血、僵尸掉血。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 200)
+    fun duoLeavesFriendlyMobsUntouched(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get()))
+
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
+        fireproof(zombie)
+        val cow = helper.spawnWithNoFreeWill(EntityType.COW, BlockPos(0, 1, 2))
+        val cowHealth = cow.health
+
+        helper.runAfterDelay(100) {
+            if (cow.health != cowHealth) {
+                helper.fail("friendly cow must not be damaged, hp=${cow.health}")
+            }
+            if (zombie.health >= 20f) {
+                helper.fail("zombie must be damaged while cow stands untouched")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** ③b 仅有友好生物:牛(最近的实体)永不受伤;弹仓 2 单位被射程内(共享测试世界)的怪物尽数消耗 → 折回 0。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 200)
+    fun duoDoesNotFireAtFriendlyOnly(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get()))
+        val cow = helper.spawnWithNoFreeWill(EntityType.COW, BlockPos(1, 1, 2))
+        val cowHealth = cow.health
+
+        helper.runAfterDelay(80) {
+            if (cow.health != cowHealth) {
+                helper.fail("nearest friendly must never be shot, hp=${cow.health}")
+            }
+            breakForDrops(helper, turretPos)
+        }
+        helper.succeedWhen {
+            // 测试世界内 33 用例并行、结构间距 8 格而 Duo 射程 20:射程内必有他例怪,
+            // 本单位只放牛时弹仓仍会被(远处的)怪物合法消耗——本断言锁「无一发落在牛身上」。
+            val copper = ModItems.getMaterial(Materials.COPPER).get()
+            if (countDrops(helper, turretPos, copper) != 0) {
+                helper.fail("2 units spent on non-friendly targets in 80 ticks, expected 0 copper refund")
+            }
+        }
+    }
+
+    /** ④a 无水基准:20 铜(40 单位),60 tick 窗口内 8 发(6.7t 装填)→ 拆机折回 16 铜。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun duoDryReloadBaseline(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 20))
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
+        fireproof(zombie)
+        // 990 吸收甲:扛住整个观察窗口不倒地,窗口只数发数不数死亡
+        zombie.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 600, 199))
+
+        helper.runAfterDelay(60) { breakForDrops(helper, turretPos) }
+        helper.succeedWhen {
+            val copper = ModItems.getMaterial(Materials.COPPER).get()
+            val refunded = countDrops(helper, turretPos, copper)
+            if (refunded != 16) {
+                helper.fail("dry baseline: 8 shots expected, refund=${refunded}")
+            }
+        }
+    }
+
+    /** ④b 满水窗口对照:60 tick 内 12 发(6.7t ÷ 1.5)→ 拆机折回 14 铜,发数多于无水基准。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun duoCoolantAcceleratesReload(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 20))
+        fillKilnTank(helper, turretPos)
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
+        fireproof(zombie)
+        zombie.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 600, 199))
+
+        helper.runAfterDelay(60) { breakForDrops(helper, turretPos) }
+        helper.succeedWhen {
+            val copper = ModItems.getMaterial(Materials.COPPER).get()
+            val refunded = countDrops(helper, turretPos, copper)
+            if (refunded >= 16) {
+                helper.fail("cooled reload must outpace dry baseline in 60 ticks, refund=$refunded (dry=16)")
+            }
+            if (refunded != 14) {
+                helper.fail("coolant window: 12 shots expected, refund=$refunded")
+            }
+        }
+    }
+
+    /** ⑤ 拆除折回:5 铜(10 单位),40 tick 内 5 发(6.7t 装填:t7/14/21/28/35)→ 剩 5 单位 → floor(5/2)=2 铜 + 控制器物品。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun duoRefundsAmmoOnTeardown(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 5))
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
+        fireproof(zombie)
+
+        helper.runAfterDelay(40) { breakForDrops(helper, turretPos) }
+        helper.succeedWhen {
+            val copper = ModItems.getMaterial(Materials.COPPER).get()
+            if (countDrops(helper, turretPos, copper) != 2) {
+                helper.fail("5 shots before 40 ticks → floor((10-5)/2)=2 copper expected, got ${
+                    countDrops(helper, turretPos, copper)
+                }")
+            }
+            val anchorItem = ModBlocks.DUO_BLOCK.get().asItem()
+            val drops = helper.getEntities(EntityType.ITEM, turretPos, 4.0)
+            if (drops.none { (it as? ItemEntity)?.item?.`is`(anchorItem) == true }) {
+                helper.fail("controller item must drop on teardown")
+            }
+        }
+    }
+
+    /** ⑥ 1×1 蓝图管线:成型 BE 成立且不盖任何成员格(偏移集只含锚点)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun duoFormsAs1x1Anchor(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        helper.succeedWhen {
+            helper.assertBlockPresent(ModBlocks.DUO_BLOCK.get(), turretPos)
+            if (helper.level.getBlockEntity(helper.absolutePos(turretPos)) !is DuoTurretBE) {
+                helper.fail("duo anchor must host its block entity")
+            }
+            for (offset in listOf(BlockPos(1, 0, 0), BlockPos(0, 0, 1), BlockPos(1, 0, 1))) {
+                if (!helper.getBlockState(turretPos.offset(offset)).isAir) {
+                    helper.fail("1x1 duo must not form members at $offset")
+                }
             }
         }
     }

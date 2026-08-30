@@ -7,23 +7,22 @@ import net.minecraft.client.renderer.RenderType
 import net.minecraft.client.renderer.entity.EntityRenderer
 import net.minecraft.client.renderer.entity.EntityRendererProvider
 import net.minecraft.resources.ResourceLocation
-import xyz.luobo.mturrets.common.entity.bullet.TurretBulletEntity
+import xyz.luobo.mturrets.common.entity.bullet.BulletEntity
 
 /**
-  * LEGACY: 翻新期子弹渲染;新 BulletEntity 渲染随 #31 落地。
- * 子弹实体渲染器
- * 绘制面向相机的发光四边形,颜色与大小来自实体同步数据
+ * 飞行弹渲染器(#31):面向相机的发光四边形,颜色与大小来自实体同步数据
+ * (服务端权威运动,客户端不模拟)。与 legacy 渲染同构,换绑新 [BulletEntity]。
  */
-class TurretBulletRenderer(context: EntityRendererProvider.Context) :
-    EntityRenderer<TurretBulletEntity>(context) {
+class BulletRenderer(context: EntityRendererProvider.Context) :
+    EntityRenderer<BulletEntity>(context) {
 
-    override fun getTextureLocation(entity: TurretBulletEntity): ResourceLocation {
+    override fun getTextureLocation(entity: BulletEntity): ResourceLocation {
         // 未使用纹理,颜色直接写入顶点
         return ResourceLocation.withDefaultNamespace("textures/misc/white.png")
     }
 
     override fun render(
-        entity: TurretBulletEntity,
+        entity: BulletEntity,
         entityYaw: Float,
         partialTick: Float,
         poseStack: PoseStack,

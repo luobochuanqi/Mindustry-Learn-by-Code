@@ -15,7 +15,7 @@ import xyz.luobo.mturrets.core.structure.StructuralBlock
 import xyz.luobo.mturrets.common.machines.kiln.KilnBlock
 import xyz.luobo.mturrets.common.machines.drill.DrillBlock
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlock
-import xyz.luobo.mturrets.common.turrets.DuoTurretBlock
+import xyz.luobo.mturrets.common.turrets.DuoBlock
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
 
 object ModBlocks {
@@ -46,7 +46,7 @@ object ModBlocks {
         BlockBehaviour.Properties.of().mapColor(MapColor.STONE).strength(3.0f)
 
     // Turrets - 新的 MTurrets 风格炮台系统
-    val DUO_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("duo") { DuoTurretBlock() }
+    val DUO_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("duo") { DuoBlock() }
     val ARC_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("arc") { ArcTurretBlock() }
     val MELTDOWN_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("meltdown") { MeltdownTurretBlock() }
 

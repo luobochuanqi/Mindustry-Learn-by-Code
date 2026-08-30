@@ -12,8 +12,8 @@ import snownee.jade.api.config.IPluginConfig
 import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlock
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
-import xyz.luobo.mturrets.common.turrets.DuoTurretBlock
-import xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity
+import xyz.luobo.mturrets.common.turrets.DuoBlock
+import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 /**
@@ -27,7 +27,7 @@ class MTurretsJadePlugin : IWailaPlugin {
 
     override fun registerClient(registration: IWailaClientRegistration) {
         // 炮台(物品炮台显示弹药;能量炮台显示能量)
-        registration.registerBlockComponent(TurretDataProvider, DuoTurretBlock::class.java)
+        registration.registerBlockComponent(TurretDataProvider, DuoBlock::class.java)
         registration.registerBlockComponent(TurretDataProvider, ArcTurretBlock::class.java)
         registration.registerBlockComponent(TurretDataProvider, MeltdownTurretBlock::class.java)
     }
@@ -41,12 +41,12 @@ object TurretDataProvider : IBlockComponentProvider {
     override fun appendTooltip(tooltip: ITooltip, accessor: BlockAccessor, config: IPluginConfig) {
         val be = accessor.getBlockEntity()
         when (be) {
-            is DuoTurretBlockEntity -> {
+            is DuoTurretBE -> {
                 tooltip.add(
                     Component.translatable(
                         "jade.mturrets.ammo",
-                        be.currentAmmo,
-                        be.config.maxAmmo
+                        be.magazine.total,
+                        be.spec.maxAmmo
                     )
                 )
             }

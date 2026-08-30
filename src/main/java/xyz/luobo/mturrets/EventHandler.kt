@@ -36,6 +36,14 @@ object EventHandler {
     object ClientModEvents : IModBusEvent {
         @SubscribeEvent
         fun onClientSetup(event: FMLClientSetupEvent?) {
+            // Duo 动件 visual(ADR-0002/0005):Flywheel GPU 轨接管;visual 缺席时退回静态方块模型
+            dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer.builder(
+                xyz.luobo.mturrets.common.ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
+            )
+                .factory { ctx, be, pt ->
+                    xyz.luobo.mturrets.client.visual.DuoVisual(ctx, be, pt)
+                }
+                .apply()
         }
 
         @SubscribeEvent
@@ -44,7 +52,7 @@ object EventHandler {
             event.registerEntityRenderer(
                 xyz.luobo.mturrets.common.ModEntities.TURRET_BULLET.get()
             ) { context ->
-                xyz.luobo.mturrets.client.renderers.TurretBulletRenderer(context)
+                xyz.luobo.mturrets.client.renderers.BulletRenderer(context)
             }
         }
 
@@ -123,12 +131,12 @@ object EventHandler {
             ModBlockEntityTypes.DRILL.get()
         ) { be, _ -> (be as? DrillBE)?.fluidCapability }
 
-        // 注册 Duo 炮台的物品弹药 Capability
+        // Duo 炮台(#31):Magazine 为单位账无物品通道(ADR-0009),只暴露 Coolant 内罐
         event.registerBlockEntity(
-            Capabilities.ItemHandler.BLOCK,
+            Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
         ) { be, _ ->
-            if (be is xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity) be.itemCapability else null
+            if (be is xyz.luobo.mturrets.common.turrets.DuoTurretBE) be.fluidCapability else null
         }
 
         // 电池(#30):对外充放 capability(各限 200 FE/次);节点零储能不注册能力,

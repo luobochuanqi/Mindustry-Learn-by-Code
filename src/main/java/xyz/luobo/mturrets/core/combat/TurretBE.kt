@@ -1,0 +1,318 @@
+package xyz.luobo.mturrets.core.combat
+
+import net.minecraft.core.BlockPos
+import net.minecraft.core.HolderLookup
+import net.minecraft.nbt.CompoundTag
+import net.minecraft.util.Mth
+import net.minecraft.world.entity.LivingEntity
+import net.minecraft.world.entity.monster.Monster
+import net.minecraft.world.item.ItemStack
+import net.minecraft.world.level.Level
+import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.entity.BlockEntityType
+import net.minecraft.world.level.material.Fluids
+import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.Vec3
+import org.joml.Quaternionf
+import org.joml.Vector3f
+import xyz.luobo.mturrets.common.ModEntities
+import xyz.luobo.mturrets.core.MTurretsModBlockEntity
+import xyz.luobo.mturrets.core.capability.impl.FluidCapabilityImpl
+import xyz.luobo.mturrets.core.structure.Blueprint
+import xyz.luobo.mturrets.core.structure.BlueprintAnchor
+import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
+import xyz.luobo.mturrets.core.turret.logic.LeadCalculator
+import kotlin.math.abs
+import kotlin.math.atan2
+import kotlin.math.sign
+import kotlin.math.sqrt
+
+/**
+ * 新范式炮台锚点 BE(ADR-0009,#31):单层承载索敌/旋转/装填/开火管线、Magazine 单位账、
+ * Coolant 内罐与 Health。不沿用 legacy 四层链(旧框架保留给 Arc/Meltdown)。
+ *
+ * 每 tick 时序(对位 ADR-0009):目标校验 → 装填累加(封顶 reload;Coolant 生效 ×1.5)→
+ * 每 7t 索敌(Monster-only、最近优先)→ 旋转逼近目标角(rotateSpeed 封顶)→ 开火门
+ * (装填满 ∧ 入 shootCone)→ 扳机扣 1 单位 + 造弹(各发共用扳机时刻瞄准角)→ curRecoil 衰减。
+ * 装填与瞄准解耦:无目标照常装填。
+ *
+ * 同步(ADR-0005):yaw/pitch 低频 update tag + 单调开火计数器;瞬时角不上网;
+ * curRecoil 是枪管动画的唯一逻辑量,客户端按开火计数器驱动后坐。
+ */
+abstract class TurretBE(
+    type: BlockEntityType<*>,
+    pos: BlockPos,
+    state: BlockState,
+    /** 炮台数值表(子类传入;构造器参数保证 magazine/health 初始化时已就绪)。 */
+    val spec: TurretSpec
+) : MTurretsModBlockEntity(type, pos, state), BlueprintAnchor {
+
+    companion object {
+        /** 索敌间隔(tick,#28 决议 7t)。 */
+        const val TARGET_INTERVAL = 7
+        /** Coolant 内罐容量(mB):一桶水恰好充满。 */
+        const val WATER_TANK_CAPACITY = 1000
+        /** 枪口高度(块内局部 y):与 barrel 部件齐平。 */
+        const val MUZZLE_HEIGHT = 0.44
+        /** 枪口推出距离:锚点中心沿瞄准水平方向外推,保证出生点在空气。 */
+        const val MUZZLE_DISTANCE = 0.75
+        /** 后坐衰减(每 tick 递减量)。 */
+        const val RECOIL_DECAY = 0.1f
+        /** 旋转同步节流(旋转变化最快每 2 tick 上报一次)。 */
+        const val SYNC_THROTTLE = 2
+    }
+
+    override val currentBlueprint: Blueprint
+        get() = (blockState.block as BlueprintAnchorBlock).blueprint
+
+    /** 单位账弹仓(ADR-0009);无 capability 注入口(二期传送带期重做)。 */
+    val magazine = Magazine(spec.maxAmmo)
+
+    /** 内罐只收水(Coolant;缺液只掉速不阻火,ADR-0009)。 */
+    override val fluidCapability: FluidCapabilityImpl =
+        createFluidCapability(
+            capacity = WATER_TANK_CAPACITY,
+            maxReceive = WATER_TANK_CAPACITY,
+            maxExtract = 0,
+            isValidFluid = { it.fluid == Fluids.WATER }
+        )
+
+    // ===== 运行状态(服务端权威;saveAdditional 持久化) =====
+
+    /** 当前锁定目标(Monster-only)。 */
+    var target: LivingEntity? = null
+        private set
+
+    /** 当前枪口偏航(度;0 = +Z)。 */
+    var yaw: Float = 0f
+        private set
+
+    /** 当前枪口俯仰(度;负 = 向上,与 legacy 约定一致)。 */
+    var pitch: Float = 0f
+        private set
+
+    /** 单调开火计数器(客户端枪管动画消费;只增不减)。 */
+    var fireCount: Long = 0
+        private set
+
+    /** 结构 Health(锚点单条;结算归 #34/共享骨架,本票只存档)。 */
+    var health: Int = spec.health
+        private set
+
+    /** 后坐(0..1,枪管动画单一逻辑量)。 */
+    var curRecoil: Float = 0f
+        private set
+
+    /** 目标偏航角(度;客户端 visual 按 rotateSpeed 向其逼近,ADR-0005 只发目标角)。 */
+    var targetYaw: Float = 0f
+        private set
+
+    /** 目标俯仰角(度;负 = 向上)。 */
+    var targetPitch: Float = 0f
+        private set
+    private var reloadCounter = 0f
+    private var targetTimer = 0
+    private var totalShots = 0L
+    private var lastRotationSync = 0L
+
+    /** 弹种定义查询;非本炮台弹药返回 null。 */
+    fun ammoTypeFor(item: net.minecraft.world.item.Item): AmmoType? =
+        spec.ammoTypes.firstOrNull { it.item == item }
+
+    /** 整堆装弹:折算超 cap 整堆拒收(物品原样保留)。 */
+    fun tryLoadAmmo(stack: ItemStack): Boolean {
+        val ammo = ammoTypeFor(stack.item) ?: return false
+        return magazine.load(stack.item, stack.count, ammo.unitMultiplier)
+    }
+
+    override fun contentsToScatter(destroyed: Boolean): List<ItemStack> {
+        if (destroyed) return emptyList()
+        // 拆除折回:floor(单位/入仓倍率) 的物品(ADR-0009)
+        return magazine.toItems()
+    }
+
+    // ===== 服务端 tick(由炮台方块 getTicker 排程) =====
+
+    fun tickServer() {
+        val lv = level ?: return
+
+        if (target != null && !isValidTarget(target!!)) target = null
+
+        // 每 7t 索敌(ADR-0009;首 tick 0%7==0 即找):Monster-only、射程内最近者优先
+        if (targetTimer++ % TARGET_INTERVAL == 0) {
+            findTarget(lv)
+        }
+
+        // 装填累加:封顶 reload;Coolant 生效(罐内 ≥ 一发耗水)则 ×1.5(#28 决议)
+        val coolantActive = fluidCapability.currentFluid.amount >= spec.coolantPerShot
+        val reloadSpeed = if (coolantActive) spec.coolantReloadMultiplier else 1f
+        if (reloadCounter < spec.reloadTicks) {
+            reloadCounter = minOf(spec.reloadTicks, reloadCounter + reloadSpeed)
+        }
+
+        // 旋转逼近目标角(提前量瞄准点);无目标保持当前角
+        val tgt = target
+        if (tgt != null) {
+            val aim = aimPoint(tgt)
+            targetYaw = yawTowards(aim)
+            targetPitch = pitchTowards(aim)
+            val nextYaw = approachAngle(yaw, targetYaw, spec.rotateSpeed)
+            val nextPitch = approachAngle(pitch, targetPitch, spec.rotateSpeed)
+            val moved = abs(Mth.wrapDegrees(nextYaw - yaw)) > 0.001f
+                || abs(nextPitch - pitch) > 0.001f
+            yaw = nextYaw
+            pitch = nextPitch
+            if (moved && lv.gameTime - lastRotationSync >= SYNC_THROTTLE) {
+                lastRotationSync = lv.gameTime
+                syncData()
+            }
+        }
+
+        // 开火门:装填满 ∧ 入锥角 ∧ 有弹
+        if (tgt != null && reloadCounter >= spec.reloadTicks
+            && abs(Mth.wrapDegrees(targetYaw - yaw)) < spec.shootCone
+            && magazine.canFire()
+        ) {
+            fire(lv, tgt)
+            reloadCounter = 0f
+        }
+
+        // 后坐衰减
+        if (curRecoil > 0f) {
+            curRecoil = maxOf(0f, curRecoil - RECOIL_DECAY)
+            if (curRecoil == 0f) setChanged()
+        }
+    }
+
+    // ===== 索敌 =====
+
+    /** 目标过滤:只打 Monster(ADR-0009);不伤友好生物与玩家。 */
+    protected open fun isValidTarget(entity: LivingEntity): Boolean =
+        entity is Monster && entity.isAlive && !entity.isRemoved &&
+            entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range
+
+    private fun findTarget(lv: Level) {
+        val area = AABB(worldPosition).inflate(spec.range.toDouble())
+        val candidates = lv.getEntitiesOfClass(LivingEntity::class.java, area) { isValidTarget(it) }
+        target = candidates.minByOrNull { it.distanceToSqr(anchorCenter()) }
+    }
+
+    // ===== 旋转与瞄准 =====
+
+    private fun anchorCenter(): Vec3 = worldPosition.center
+
+    /** 提前量瞄准点:对移动目标按弹速解命中时间外推位置(LeadCalculator 存活件);瞄胸口而非脚底。 */
+    protected open fun aimPoint(tgt: LivingEntity): Vec3 {
+        val look = tgt.position().add(0.0, tgt.eyeHeight * 0.5.toDouble(), 0.0)
+        val bullet = spec.ammoTypes.firstOrNull { it.item == magazine.tail?.item }?.bullet ?: return look
+        val time = LeadCalculator.solveLeadEquation(
+            look.subtract(anchorCenter()),
+            tgt.deltaMovement,
+            bullet.speed.toDouble()
+        )
+        return if (time > 0) look.add(tgt.deltaMovement.scale(time)) else look
+    }
+
+    private fun yawTowards(pos: Vec3): Float {
+        val dx = pos.x - anchorCenter().x
+        val dz = pos.z - anchorCenter().z
+        return (Math.toDegrees(atan2(dz, dx)) - 90).toFloat()
+    }
+
+    private fun pitchTowards(pos: Vec3): Float {
+        val dx = pos.x - anchorCenter().x
+        val dz = pos.z - anchorCenter().z
+        val dy = pos.y - (worldPosition.y + MUZZLE_HEIGHT)
+        val horizontal = sqrt(dx * dx + dz * dz)
+        // 负 = 向上(与 legacy 约定一致,visual 直接消费)
+        return -Math.toDegrees(atan2(dy, horizontal)).toFloat()
+    }
+
+    /** 角度逼近:偏航走最短角(±180 环绕);俯仰封顶 ±90。 */
+    private fun approachAngle(current: Float, target: Float, maxStep: Float): Float {
+        val diff = Mth.wrapDegrees(target - current)
+        val step = if (abs(diff) <= maxStep) diff else sign(diff) * maxStep
+        return Mth.wrapDegrees(current + step)
+    }
+
+    // ===== 开火 =====
+
+    private fun fire(lv: Level, tgt: LivingEntity) {
+        val entry = magazine.tail ?: return
+        val ammo = spec.ammoTypes.firstOrNull { it.item == entry.item } ?: return
+        val aim = aimPoint(tgt)
+        // 枪口:锚点中心,沿瞄准水平方向外推,保证出生点在空气(不与自己方块碰撞)
+        val horizontal = Vec3(aim.x - anchorCenter().x, 0.0, aim.z - anchorCenter().z).normalize()
+        val muzzle = anchorCenter().add(
+            horizontal.x * MUZZLE_DISTANCE,
+            MUZZLE_HEIGHT - 0.5,
+            horizontal.z * MUZZLE_DISTANCE
+        )
+        var dir = aim.subtract(muzzle).normalize()
+        dir = jitter(dir, spec.inaccuracy + ammo.bullet.inaccuracy, lv.random)
+
+        // 点射排程:本期 shots=1、shotDelay=0 同刻齐出
+        // ponytail: shotgun burst scheduling (shots>1 / shotDelay>0) deferred to #34 Scatter
+        repeat(spec.shots) {
+            val bullet = ModEntities.TURRET_BULLET.get().create(lv) ?: return
+            bullet.moveTo(muzzle.x, muzzle.y, muzzle.z, 0f, 0f)
+            bullet.init(ammo.bullet, dir)
+            lv.addFreshEntity(bullet)
+        }
+
+        // 扳机扣账(点射各发共用同一次扣账,ADR-0009)
+        magazine.drainOne()
+        if (fluidCapability.currentFluid.amount >= spec.coolantPerShot) {
+            drainFluidInternal(spec.coolantPerShot)
+        }
+        totalShots++
+        fireCount++
+        curRecoil = 1f
+        syncData() // 开火计数器脉冲即时上报(枪管动画)
+    }
+
+    /** 出生散布:绕竖直轴与水平轴各转 ±inaccuracy(度内均匀随机)。 */
+    private fun jitter(dir: Vec3, degrees: Float, random: net.minecraft.util.RandomSource): Vec3 {
+        if (degrees <= 0f) return dir
+        val yawJ = Math.toRadians(((random.nextFloat() * 2f - 1f) * degrees).toDouble()).toFloat()
+        val pitchJ = Math.toRadians(((random.nextFloat() * 2f - 1f) * degrees).toDouble()).toFloat()
+        val q = Quaternionf().rotateY(yawJ).rotateX(pitchJ)
+        val v = Vector3f(dir.x.toFloat(), dir.y.toFloat(), dir.z.toFloat())
+        q.transform(v)
+        return Vec3(v.x.toDouble(), v.y.toDouble(), v.z.toDouble())
+    }
+
+    // ===== 存档与同步 =====
+
+    override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        super.loadAdditional(tag, registries)
+        yaw = tag.getFloat("turret_yaw")
+        pitch = tag.getFloat("turret_pitch")
+        targetYaw = tag.getFloat("turret_target_yaw")
+        targetPitch = tag.getFloat("turret_target_pitch")
+        reloadCounter = tag.getFloat("turret_reload")
+        totalShots = tag.getLong("turret_shots")
+        fireCount = tag.getLong("turret_fire")
+        health = tag.getInt("turret_health").coerceAtLeast(1)
+        magazine.load(tag, registries)
+    }
+
+    override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
+        super.saveAdditional(tag, registries)
+        tag.putFloat("turret_yaw", yaw)
+        tag.putFloat("turret_pitch", pitch)
+        tag.putFloat("turret_target_yaw", targetYaw)
+        tag.putFloat("turret_target_pitch", targetPitch)
+        tag.putFloat("turret_reload", reloadCounter)
+        tag.putLong("turret_shots", totalShots)
+        tag.putLong("turret_fire", fireCount)
+        tag.putInt("turret_health", health)
+        magazine.save(tag, registries)
+    }
+
+    override fun getUpdatePacket(): net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket =
+        net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket.create(this)
+
+    override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag =
+        saveWithoutMetadata(registries)
+}

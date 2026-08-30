@@ -240,8 +240,9 @@ class ModBlockLootProvider(registries: HolderLookup.Provider) :
         this.dropSelf(ModBlocks.BATTERY.get())
         this.dropSelf(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
         // 成员格:properties noLootTable() 已豁免(掉落收口在锚点,ADR-0003)
+        // 新 Duo(#31):蓝图锚点 dropSelf(控制器物品),拆机内容物折回由锚点散落通道兜住
+        this.dropSelf(ModBlocks.DUO_BLOCK.get())
         // LEGACY 方块:维持现状零掉落
-        this.add(ModBlocks.DUO_BLOCK.get(), noDrop())
         this.add(ModBlocks.ARC_BLOCK.get(), noDrop())
         this.add(ModBlocks.MELTDOWN_BLOCK.get(), noDrop())
     }

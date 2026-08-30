@@ -8,17 +8,17 @@ import net.neoforged.neoforge.registries.DeferredHolder
 import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
-import xyz.luobo.mturrets.common.entity.bullet.TurretBulletEntity
+import xyz.luobo.mturrets.common.entity.bullet.BulletEntity
 import java.util.function.Supplier
 
 object ModEntities {
     val MOD_ENTITIES: DeferredRegister<EntityType<*>> =
         DeferredRegister.create(Registries.ENTITY_TYPE, MTurrets.MOD_ID)
 
-    val TURRET_BULLET: DeferredHolder<EntityType<*>, EntityType<TurretBulletEntity>> =
+    val TURRET_BULLET: DeferredHolder<EntityType<*>, EntityType<BulletEntity>> =
         MOD_ENTITIES.register("turret_bullet", Supplier {
             EntityType.Builder.of(
-                ::TurretBulletEntity,
+                ::BulletEntity,
                 MobCategory.MISC
             )
                 .sized(0.25f, 0.25f)
