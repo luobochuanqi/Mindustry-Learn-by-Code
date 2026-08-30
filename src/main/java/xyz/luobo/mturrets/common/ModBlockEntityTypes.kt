@@ -9,6 +9,7 @@ import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.power.BatteryBE
 import xyz.luobo.mturrets.common.power.PowerNodeBE
 import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
+import xyz.luobo.mturrets.common.machines.drill.DrillBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.DuoTurretBlockEntity
@@ -41,6 +42,14 @@ object ModBlockEntityTypes {
             BlockEntityType.Builder.of(
                 { pos, state -> KilnBE(pos, state) },
                 ModBlocks.KILN.get()
+            ).build(null)
+        })
+    // 钻头(#35)
+    val DRILL: DeferredHolder<BlockEntityType<*>, BlockEntityType<DrillBE>> =
+        BLOCK_ENTITY_TYPES.register("mechanical_drill", Supplier {
+            BlockEntityType.Builder.of(
+                { pos, state -> DrillBE(pos, state) },
+                ModBlocks.DRILL.get()
             ).build(null)
         })
 

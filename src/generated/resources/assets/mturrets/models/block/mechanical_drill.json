@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "mturrets:block/mechanical_drill_top",
+    "side": "mturrets:block/mechanical_drill",
+    "top": "mturrets:block/mechanical_drill_top"
+  }
+}

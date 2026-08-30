@@ -1,4 +1,4 @@
-// 1.21.1	2026-08-30T00:58:34.6317758	Item Models: mturrets
+// 1.21.1	2026-08-30T10:56:20.4992572	Item Models: mturrets
 7931ff2201d3502212d8090f13b0eec9f569c524 assets/mturrets/models/item/arc.json
 5c8e7477a9defd1ede18385caf9f0f8aab4fd409 assets/mturrets/models/item/arkycite.json
 7e81d28578521e6d101cf89a47bdc27c220b3b55 assets/mturrets/models/item/battery.json
@@ -15,11 +15,16 @@ b93c7fe0c28597d6cde74bc2d599bc2dbd1f41b3 assets/mturrets/models/item/duo.json
 1bacc1fd6273fe06163eb201e799f467110a05a6 assets/mturrets/models/item/hydrogen.json
 4d11f8f355ee0abb04ce37b943f56af9be54c34c assets/mturrets/models/item/kiln.json
 259048245bbfc9b0ace1e4df026827db92ba6c7b assets/mturrets/models/item/lead.json
+e382facd59792022baaa311304e4c7fad29a27dc assets/mturrets/models/item/mechanical_drill.json
+26cbb5ca6043f16868c9364aa4e5ffa93eb9f9ab assets/mturrets/models/item/mechanical_drill_structural.json
 85b3bf57b5e3df2ea0ddcb304e3ac6beb43b6713 assets/mturrets/models/item/meltdown.json
 b05a37cbe0b9cf4ce093f240ef488c4c266062bc assets/mturrets/models/item/metaglass.json
 984f553bde23cdcaac38ed4bcc51d83f385b1d00 assets/mturrets/models/item/neoplasm.json
 aa41ecb1d2a58b898ce3ebd66aa4ec3dfde67d43 assets/mturrets/models/item/nitrogen.json
 781ed9e172fc44cf2e9889a6981a1e2e3ba263cf assets/mturrets/models/item/oil.json
+7f9941d627eaba1abf075c4e3c83afe1f213c09d assets/mturrets/models/item/ore_coal.json
+e8841bdcf762493d5b37a6143c4853b7e7f95adc assets/mturrets/models/item/ore_copper.json
+76cba95141cf36457d79f9a231813d6aab2b786f assets/mturrets/models/item/ore_lead.json
 19ab562d49bbc1924384884dca578d46cd6f42ef assets/mturrets/models/item/oxide.json
 51c5ea2f4067fbcfdc1310b76266f36d238607c7 assets/mturrets/models/item/ozone.json
 aa0894c543f70ad17b99c17ea87e13e9c801cba8 assets/mturrets/models/item/phase_fabric.json

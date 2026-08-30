@@ -1,9 +1,14 @@
-// 1.21.1	2026-08-30T00:59:52.3032673	Block States: mturrets
+// 1.21.1	2026-08-30T10:56:20.5213753	Block States: mturrets
 a726f73b659457bd687f90cdbe9107cabef2c95e assets/mturrets/blockstates/arc.json
 54381fb1a59e61dd7e4fd9c39e498e08bcc901f1 assets/mturrets/blockstates/battery.json
 c106ba959996949392457e18052d774a3ee9ed7a assets/mturrets/blockstates/duo.json
 fa7363b690ff9dcf2bbbd567cdf7534fe92644c8 assets/mturrets/blockstates/kiln.json
+b0aeb541c881d30b3117a0dad92f770e9b05b1f7 assets/mturrets/blockstates/mechanical_drill.json
+164790cc534bd16e42f3ddfae7443d6b8bb9418b assets/mturrets/blockstates/mechanical_drill_structural.json
 11b5943f59982742f216f7f1b8563187d41f07c5 assets/mturrets/blockstates/meltdown.json
+323852252b3531a6216b735fca7ebcc44dc98f2b assets/mturrets/blockstates/ore_coal.json
+988cfb44768f04ae25c9d0ddb01f11622fce0566 assets/mturrets/blockstates/ore_copper.json
+249a3a8fd42cfeeaab26a38c07ae7533a2613b4e assets/mturrets/blockstates/ore_lead.json
 0713e8ad6469c027cebca3e23cb757bab7fa477c assets/mturrets/blockstates/power_node.json
 39c9ced233f88b10caf7a0cb2bc9671e1254ab44 assets/mturrets/blockstates/test_structure_anchor_2x2.json
 861ea386a632b2fe78eef679453653cf91c3d11a assets/mturrets/blockstates/test_structure_structural.json
@@ -11,7 +16,12 @@ fa7363b690ff9dcf2bbbd567cdf7534fe92644c8 assets/mturrets/blockstates/kiln.json
 4ec0502679798b87050cf6b398bab2e0a98e21dc assets/mturrets/models/block/battery.json
 d0e955d9092f7bdd91cfda6ae4bca89ec7f4defc assets/mturrets/models/block/duo.json
 7bcdb1d4ba9fb7172e5dad9bbf098b4faf88ee7f assets/mturrets/models/block/kiln.json
+07f762b82509730b8c16ed6ba4385b15607adac4 assets/mturrets/models/block/mechanical_drill.json
+07f762b82509730b8c16ed6ba4385b15607adac4 assets/mturrets/models/block/mechanical_drill_structural.json
 4111f215fe2cf6233ff0ee0e8b14a69467750e35 assets/mturrets/models/block/meltdown.json
+fa051b90d9a1c27660b6c99f7b22b27c27966850 assets/mturrets/models/block/ore_coal.json
+4b921de3c501b415d70703e9879c165e7a75c5d0 assets/mturrets/models/block/ore_copper.json
+8425cdeb2dbb118743bb2017892220ebaef06f93 assets/mturrets/models/block/ore_lead.json
 beabc9f63574f67619c38540648ca091440f523e assets/mturrets/models/block/power_node.json
 beabc9f63574f67619c38540648ca091440f523e assets/mturrets/models/block/test_structure_anchor_2x2.json
 beabc9f63574f67619c38540648ca091440f523e assets/mturrets/models/block/test_structure_structural.json
@@ -19,7 +29,12 @@ beabc9f63574f67619c38540648ca091440f523e assets/mturrets/models/block/test_struc
 c96fedb381c255fba756ae1423f1f6b4cea1c69b assets/mturrets/models/item/battery.json
 3cdbf8d7fbe98394deb5a47577a3734b4f7d2707 assets/mturrets/models/item/duo.json
 db4fc0bfe3b07023423d8364f00b2ca644849d4e assets/mturrets/models/item/kiln.json
+3945f2e57ce5ee44c0dc7a93173705c37a4475ab assets/mturrets/models/item/mechanical_drill.json
+a6546a40b6f5cc906e07135f29ff6f5663d686e7 assets/mturrets/models/item/mechanical_drill_structural.json
 a5c5a683354d691e5c99ecf894fbd07338743db7 assets/mturrets/models/item/meltdown.json
+4c521036862eebc5dd262bfa1e6253e5925eb3ac assets/mturrets/models/item/ore_coal.json
+d188fd8c732f9bfc9a9f4fa7e6e1d4ebb6cf1fd8 assets/mturrets/models/item/ore_copper.json
+412b111302883f90cd06e61e4fc72e5b26097c63 assets/mturrets/models/item/ore_lead.json
 39df8d7a2494c87046d1bc3f9a3dcc4b5dccaaba assets/mturrets/models/item/power_node.json
 184d1055f1ead0f0351914bbee323ebf69b34f8d assets/mturrets/models/item/test_structure_anchor_2x2.json
 2b35488b08e40df677aa0d52fde31a99d87f77ab assets/mturrets/models/item/test_structure_structural.json

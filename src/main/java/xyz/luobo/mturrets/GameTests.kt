@@ -2,11 +2,17 @@ package xyz.luobo.mturrets
 
 import net.minecraft.core.BlockPos
 import net.minecraft.gametest.framework.GameTest
+import net.minecraft.core.Direction
 import net.minecraft.world.level.GameType
 import net.minecraft.gametest.framework.GameTestHelper
 import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
 import net.minecraft.world.entity.EntityType
+import net.minecraft.server.level.ServerLevel
+import net.minecraft.world.entity.item.ItemEntity
+import net.minecraft.world.level.block.Block
+import net.minecraft.world.phys.BlockHitResult
+import net.minecraft.world.phys.Vec3
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
@@ -584,5 +590,171 @@ object ModGameTests {
                 helper.fail("blocked placement did not roll back its own anchor")
             }
         }
+    }
+    // 采矿:矿脉与钻头(#35,ADR-0008 一期材料链)。采口 = 锚点正下方 1×1;钻头 2×2 角锚点 (+X/+Z)。
+
+    /** ① + ③:钻头 40 tick 基础节奏产出 1 铜入 Buffer,采口矿格被吞并回填宿主石头。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun drillMinesOreIntoBufferAndRefillsStone(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        // 模板原点在绝对 y=-60:采口绝对 y<0 → 回填 deepslate(#35 规则;常规生存浅层为 stone)
+        val expectedHost =
+            if (helper.absolutePos(orePos).y < 0) Blocks.DEEPSLATE else Blocks.STONE
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, ModItems.getMaterial(Materials.COPPER).get()) < 1) {
+                helper.fail("drill produced no copper within base pace")
+            }
+            if (!helper.getBlockState(orePos).`is`(expectedHost)) {
+                helper.fail("mined ore block must be refilled with the host stone for its depth")
+            }
+        }
+    }
+
+    /** ②a 基准:无水钻头按 40 tick 节奏——30 tick 窗口内零产出,随后产出(与 ②b 同窗口对照)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun drillWithoutWaterMinesOnBasePace(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(30) {
+            if (countItem(helper, drillPos, ModItems.getMaterial(Materials.COPPER).get()) > 0) {
+                helper.fail("dry drill must not finish an item within 30 ticks (40 tick base pace)")
+            }
+        }
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, ModItems.getMaterial(Materials.COPPER).get()) < 1) {
+                helper.fail("dry drill must produce within the 40 tick base pace")
+            }
+        }
+    }
+
+    /** ②b 加成:灌满水 → 25 tick/物品(×1.6),30 tick 窗口内产出——同窗口多于无水基准。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun drillAcceleratesWhenWaterBoosted(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        fillKilnTank(helper, drillPos)
+        helper.runAfterDelay(30) {
+            if (countItem(helper, drillPos, ModItems.getMaterial(Materials.COPPER).get()) < 1) {
+                helper.fail("water-boosted drill must finish an item within 30 ticks (25 tick pace)")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** ④:Buffer 满载 → 停转:采口矿石不被吞、产出数不变(取出后自动续转由 ⑤ 覆盖)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun drillStopsWhenBufferFull(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        // 20 槽 × 64:塞满 Buffer 后再放矿,采口不得被吞
+        repeat(20) { insertItem(helper, drillPos, it, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 64)) }
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.runAfterDelay(60) {
+            if (!helper.getBlockState(orePos).`is`(ModBlocks.ORE_COPPER.get())) {
+                helper.fail("full buffer must not consume the ore block")
+            }
+            if (countItem(helper, drillPos, ModItems.getMaterial(Materials.COPPER).get()) != 1280) {
+                helper.fail("full buffer must not grow")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** ⑤:空手右键取出(进玩家背包),补矿后续转;拆机 Buffer 散落。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 200)
+    fun drillTakeoutThenScatterOnTeardown(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(60) {
+            if (countItem(helper, drillPos, copper) < 1) helper.fail("drill produced nothing to take")
+            val state = helper.getBlockState(drillPos)
+            val player = helper.makeMockPlayer(GameType.SURVIVAL)
+            // 1.21.1 的 Block#useWithoutItem 为 protected;公开入口是 BlockStateBase 的同名方法(经 BlockState 调用)
+            state.useWithoutItem(
+                helper.level, player,
+                BlockHitResult(Vec3.ZERO, Direction.UP, helper.absolutePos(drillPos), false)
+            )
+            if (countItem(helper, drillPos, copper) != 0) {
+                helper.fail("empty-hand use must transfer the whole buffer stack out")
+            }
+            if (!player.inventory.contains(ItemStack(copper))) {
+                helper.fail("taken item must land in the player inventory")
+            }
+            // 补矿:采口已回填石头,放下新矿续转;待第二件产出后拆机
+            helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        }
+        helper.runAfterDelay(120) {
+            if (countItem(helper, drillPos, copper) < 1) {
+                helper.fail("drill did not resume after ore refill")
+            }
+            helper.destroyBlock(drillPos)
+        }
+        helper.succeedWhen {
+            val drops = helper.getEntities(EntityType.ITEM, drillPos, 4.0)
+            if (drops.none { (it as? ItemEntity)?.item?.`is`(copper) == true }) {
+                helper.fail("drill did not scatter buffer contents on teardown")
+            }
+        }
+    }
+
+    /** ⑥:2×2 成员格能力路由——经成员插入/取出解析回锚点 Buffer(真内容首验)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun drillMemberRoutesToAnchorBuffer(helper: GameTestHelper) {
+        val anchorPos = BlockPos(1, 2, 1)
+        val memberPos = BlockPos(2, 2, 2)
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        helper.setBlock(anchorPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(5) {
+            insertItem(helper, memberPos, 0, ItemStack(lead, 4))
+            if (countItem(helper, anchorPos, lead) != 4) {
+                helper.fail("member-inserted items must land in the anchor buffer")
+            }
+            val cap = helper.level.getCapability(Capabilities.ItemHandler.BLOCK, helper.absolutePos(memberPos), null)
+                ?: throw IllegalStateException("no item capability at drill member")
+            val extracted = cap.extractItem(0, 2, false)
+            if (!extracted.`is`(lead) || extracted.count != 2) {
+                helper.fail("member extraction must pull from the anchor buffer")
+            }
+            if (countItem(helper, anchorPos, lead) != 2) {
+                helper.fail("anchor buffer must shrink after member extraction")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** ⑦:镐子挖矿石 → 固定掉 1 对应材料物品(手挖语义,无 fortune/silk 分支)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun miningOreDropsSingleMaterial(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        helper.setBlock(orePos, ModBlocks.ORE_LEAD.get())
+        val drops = Block.getDrops(
+            helper.getBlockState(orePos),
+            helper.level as ServerLevel,
+            helper.absolutePos(orePos),
+            null
+        )
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        if (drops.size != 1 || !drops[0].`is`(lead)) {
+            helper.fail("pickaxe mining must drop exactly 1 lead item, got ${drops.map { it.item.toString() }}")
+        }
+        helper.succeed()
     }
 }

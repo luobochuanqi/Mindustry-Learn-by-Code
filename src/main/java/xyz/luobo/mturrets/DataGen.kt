@@ -20,6 +20,9 @@ import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.data.ExistingFileHelper
 import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
+import net.minecraft.tags.BlockTags
+import net.neoforged.neoforge.common.data.BlockTagsProvider
+import xyz.luobo.mturrets.common.worldgen.OreWorldGenProvider
 import xyz.luobo.mturrets.common.ModBlocks
 import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
@@ -52,7 +55,33 @@ object DataGen {
         )
         generator.addProvider(
             event.includeServer(),
+            OreWorldGenProvider(packOutput, event.lookupProvider)
+        )
+        generator.addProvider(
+            event.includeServer(),
+            ModBlockTagProvider(packOutput, event.lookupProvider, existingFileHelper)
+        )
+        generator.addProvider(
+            event.includeServer(),
             ModRecipeProvider(packOutput, event.lookupProvider)
+        )
+    }
+}
+
+/**
+ * 方块标签(#35):矿石挂 #minecraft:mineable/pickaxe;不做 requiresCorrectToolForDrops
+ * (#24 手挖亦可),不需其他标签。
+ */
+class ModBlockTagProvider(
+    output: PackOutput,
+    registries: CompletableFuture<HolderLookup.Provider>,
+    existingFileHelper: ExistingFileHelper
+) : BlockTagsProvider(output, registries, MTurrets.MOD_ID, existingFileHelper) {
+    override fun addTags(provider: HolderLookup.Provider) {
+        tag(BlockTags.MINEABLE_WITH_PICKAXE).add(
+            ModBlocks.ORE_COPPER.get(),
+            ModBlocks.ORE_LEAD.get(),
+            ModBlocks.ORE_COAL.get()
         )
     }
 }
@@ -68,6 +97,11 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         this.add(ModBlocks.KILN.get(), "Kiln")
         this.add(ModBlocks.DUO_BLOCK.get(), "Duo")
         this.add(ModBlocks.ARC_BLOCK.get(), "Arc")
+        this.add(ModBlocks.ORE_COPPER.get(), "Copper Ore")
+        this.add(ModBlocks.ORE_LEAD.get(), "Lead Ore")
+        this.add(ModBlocks.ORE_COAL.get(), "Coal Ore")
+        this.add(ModBlocks.DRILL.get(), "Mechanical Drill")
+        this.add(ModBlocks.DRILL_STRUCTURAL.get(), "Mechanical Drill Member")
         this.add(ModBlocks.MELTDOWN_BLOCK.get(), "Meltdown")
         Materials.ALL.forEach { material ->
             this.add(ModItems.getMaterial(material).get(), material.displayName)
@@ -143,6 +177,29 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         )
         // 窑炉:贴图沿用 kiln_block(与 legacy 视觉一致,#33 决议)
         this.simpleBlockWithItem(ModBlocks.KILN.get(), this.models().cubeAll("kiln", this.modLoc("block/kiln_block")))
+        // 矿脉(#35):预置贴图(#39 入库),单变体 cube_all
+        this.simpleBlockWithItem(ModBlocks.ORE_COPPER.get(), this.models().cubeAll("ore_copper", this.modLoc("block/ore_copper")))
+        this.simpleBlockWithItem(ModBlocks.ORE_LEAD.get(), this.models().cubeAll("ore_lead", this.modLoc("block/ore_lead")))
+        this.simpleBlockWithItem(ModBlocks.ORE_COAL.get(), this.models().cubeAll("ore_coal", this.modLoc("block/ore_coal")))
+        // 钻头(#35):静态模型(ADR-0005 一期),锚点与成员格同外观;贴图预置 mechanical_drill*
+        this.simpleBlockWithItem(
+            ModBlocks.DRILL.get(),
+            this.models().cubeBottomTop(
+                "mechanical_drill",
+                this.modLoc("block/mechanical_drill"),
+                this.modLoc("block/mechanical_drill_top"),
+                this.modLoc("block/mechanical_drill_top")
+            )
+        )
+        this.simpleBlockWithItem(
+            ModBlocks.DRILL_STRUCTURAL.get(),
+            this.models().cubeBottomTop(
+                "mechanical_drill_structural",
+                this.modLoc("block/mechanical_drill"),
+                this.modLoc("block/mechanical_drill_top"),
+                this.modLoc("block/mechanical_drill_top")
+            )
+        )
 
         // 静态模型炮台(贴图提取自 Mindustry 开源仓库,出处见 textures/ATTRIBUTION.md)
         val arc = ModBlocks.ARC_BLOCK.get()
@@ -174,6 +231,11 @@ class ModBlockLootProvider(registries: HolderLookup.Provider) :
 
     override fun generate() {
         this.dropSelf(ModBlocks.KILN.get())
+        // 矿脉(#35):固定 1 对应材料物品,无 fortune/silk touch 分支(#24 定案)
+        this.add(ModBlocks.ORE_COPPER.get(), createSingleItemTable(ModItems.getMaterial(Materials.COPPER).get()))
+        this.add(ModBlocks.ORE_LEAD.get(), createSingleItemTable(ModItems.getMaterial(Materials.LEAD).get()))
+        this.add(ModBlocks.ORE_COAL.get(), createSingleItemTable(ModItems.getMaterial(Materials.COAL).get()))
+        this.dropSelf(ModBlocks.DRILL.get())
         this.dropSelf(ModBlocks.POWER_NODE.get())
         this.dropSelf(ModBlocks.BATTERY.get())
         this.dropSelf(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())

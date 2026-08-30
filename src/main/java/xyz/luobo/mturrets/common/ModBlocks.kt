@@ -1,6 +1,8 @@
 package xyz.luobo.mturrets.common
 
 import net.minecraft.world.level.block.Block
+import net.minecraft.world.level.block.state.BlockBehaviour
+import net.minecraft.world.level.material.MapColor
 import net.neoforged.neoforge.registries.DeferredBlock
 import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
@@ -11,6 +13,7 @@ import xyz.luobo.mturrets.common.structure.TestStructureAnchor2x2Block
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 import xyz.luobo.mturrets.core.structure.StructuralBlock
 import xyz.luobo.mturrets.common.machines.kiln.KilnBlock
+import xyz.luobo.mturrets.common.machines.drill.DrillBlock
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlock
 import xyz.luobo.mturrets.common.turrets.DuoTurretBlock
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
@@ -25,6 +28,22 @@ object ModBlocks {
 
     // Machines
     val KILN: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("kiln") { KilnBlock() }
+
+    // 矿脉与钻头(#35,ADR-0008 一期材料链):单变体矿石(无深色变体,#24 视觉妥协);
+    // 钻头 = 2×2 蓝图锚点,角锚点 +X/+Z 生长(#26),成员格用钻头外观结构块。
+    val ORE_COPPER: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("ore_copper") { Block(oreProperties()) }
+    val ORE_LEAD: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("ore_lead") { Block(oreProperties()) }
+    val ORE_COAL: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("ore_coal") { Block(oreProperties()) }
+    val DRILL: DeferredBlock<DrillBlock> = MOD_BLOCKS.registerBlock("mechanical_drill") { DrillBlock() }
+    val DRILL_STRUCTURAL: DeferredBlock<StructuralBlock> =
+        MOD_BLOCKS.registerBlock("mechanical_drill_structural") {
+            StructuralBlock(BlueprintAnchorBlock.structureProperties().noLootTable())
+        }
+
+
+    /** 矿石属性:硬度同原版矿石;无 requiresCorrectToolForDrops(#24 手挖亦可)。 */
+    private fun oreProperties(): BlockBehaviour.Properties =
+        BlockBehaviour.Properties.of().mapColor(MapColor.STONE).strength(3.0f)
 
     // Turrets - 新的 MTurrets 风格炮台系统
     val DUO_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("duo") { DuoTurretBlock() }

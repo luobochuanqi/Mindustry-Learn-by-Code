@@ -20,6 +20,15 @@ object ModItems {
     // machines items
     val KILN_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.KILN)
+    // 矿脉与钻头(#35)
+    val ORE_COPPER_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.ORE_COPPER)
+    val ORE_LEAD_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.ORE_LEAD)
+    val ORE_COAL_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.ORE_COAL)
+    val DRILL_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.DRILL)
 
     // turrets items
     val DUO_BLOCK_ITEM: DeferredItem<BlockItem?> =

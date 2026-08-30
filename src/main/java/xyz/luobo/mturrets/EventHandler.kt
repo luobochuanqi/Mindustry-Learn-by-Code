@@ -20,6 +20,7 @@ import xyz.luobo.mturrets.common.liquids.FluidRegistry
 import xyz.luobo.mturrets.common.liquids.Liquids
 import xyz.luobo.mturrets.common.ModBlocks
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
+import xyz.luobo.mturrets.common.machines.drill.DrillBE
 import xyz.luobo.mturrets.core.structure.BlueprintAnchor
 import xyz.luobo.mturrets.core.structure.StructuralBlock
 
@@ -112,6 +113,15 @@ object EventHandler {
             Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.KILN.get()
         ) { be, _ -> (be as? KilnBE)?.fluidCapability }
+        // 钻头(#35):Buffer / 内罐(水加成)两通道(2×2 蓝图锚点,查询即锚点位)
+        event.registerBlockEntity(
+            Capabilities.ItemHandler.BLOCK,
+            ModBlockEntityTypes.DRILL.get()
+        ) { be, _ -> (be as? DrillBE)?.itemCapability }
+        event.registerBlockEntity(
+            Capabilities.FluidHandler.BLOCK,
+            ModBlockEntityTypes.DRILL.get()
+        ) { be, _ -> (be as? DrillBE)?.fluidCapability }
 
         // 注册 Duo 炮台的物品弹药 Capability
         event.registerBlockEntity(
@@ -153,6 +163,14 @@ object EventHandler {
                 (level.getBlockEntity(anchorPos) as? BlueprintAnchor)?.itemCapability
             },
             ModBlocks.TEST_STRUCTURAL.get()
+        )
+        event.registerBlock(
+            Capabilities.ItemHandler.BLOCK,
+            { level, pos, state, _, _ ->
+                val anchorPos = pos.subtract(StructuralBlock.decodeOffset(state))
+                (level.getBlockEntity(anchorPos) as? BlueprintAnchor)?.itemCapability
+            },
+            ModBlocks.DRILL_STRUCTURAL.get()
         )
     }
 }

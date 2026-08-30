@@ -1,0 +1,10 @@
+// 1.21.1	2026-08-30T10:56:20.5164521	Registries
+e25a95ace3e3ffef8cf8401ac9ee5057c6687382 data/mturrets/neoforge/biome_modifier/ore_coal.json
+cb8a8bebc128539178d8be5b753edde68ac9d88b data/mturrets/neoforge/biome_modifier/ore_copper.json
+efefccf9b225f199fa6748732a1cfd58893153a1 data/mturrets/neoforge/biome_modifier/ore_lead.json
+3ca51166aeb856d196b42755c4497bceec46528f data/mturrets/worldgen/configured_feature/ore_coal.json
+6bda7399b43fe9a5704d8c88f6956864d3c027b1 data/mturrets/worldgen/configured_feature/ore_copper.json
+087e564c5cf2ad51b18d5a53281b11fe2222d1f4 data/mturrets/worldgen/configured_feature/ore_lead.json
+e83c30354855a15921de3efc7dbdb8a10d87b9ef data/mturrets/worldgen/placed_feature/ore_coal.json
+e614a83217b9a3a66044522c33d915355ab1e25e data/mturrets/worldgen/placed_feature/ore_copper.json
+0a58e29e7bcbae0f8c918c824b93776c9ae45b91 data/mturrets/worldgen/placed_feature/ore_lead.json
