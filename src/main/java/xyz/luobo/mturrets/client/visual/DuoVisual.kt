@@ -31,9 +31,10 @@ class DuoVisual(
 ) : AbstractBlockEntityVisual<DuoTurretBE>(ctx, blockEntity, partialTick), SimpleDynamicVisual {
 
     // ===== 部件位姿(块内局部空间,与 bbmodel 导出的部件几何对应) =====
+    // 基座由块状态模型承担(block/turret/duo_base,chunk mesh 静态渲染):
+    // 块状态与 Flywheel 是两条独立渲染路径,基座留在块状态侧可避免与 visual 双画 z-fight,
+    // 也保留无 Flywheel 时的静态回退外观。
 
-    /** 底座:静态,无旋转。 */
-    private val base: TransformedInstance = instanceFor(DuoModels.BASE)
     /** 炮身:绕锚点中心竖轴旋转(偏航)。 */
     private val head: TransformedInstance = instanceFor(DuoModels.HEAD)
     /** 左炮管:挂在炮身上,绕自身铰点俯仰 + 后坐。 */
@@ -74,9 +75,6 @@ class DuoVisual(
         ).createInstance()
 
     init {
-        base.setIdentityTransform()
-            .translate(visualPos.x.toFloat(), visualPos.y.toFloat(), visualPos.z.toFloat())
-            .setChanged()
         head.setZeroTransform().setChanged()
         barrelL.setZeroTransform().setChanged()
         barrelR.setZeroTransform().setChanged()
@@ -146,18 +144,16 @@ class DuoVisual(
     }
 
     override fun updateLight(partialTick: Float) {
-        relight(base, head, barrelL, barrelR)
+        relight(head, barrelL, barrelR)
     }
 
     override fun collectCrumblingInstances(consumer: Consumer<Instance?>) {
-        consumer.accept(base)
         consumer.accept(head)
         consumer.accept(barrelL)
         consumer.accept(barrelR)
     }
 
     override fun _delete() {
-        base.delete()
         head.delete()
         barrelL.delete()
         barrelR.delete()
@@ -169,7 +165,6 @@ object DuoModels {
     private fun part(path: String): PartialModel =
         PartialModel.of(ResourceLocation.fromNamespaceAndPath(MTurrets.MOD_ID, "block/turret/$path"))
 
-    val BASE: PartialModel = part("duo_base")
     val HEAD: PartialModel = part("duo_head")
     val BARREL_L: PartialModel = part("duo_barrel_left")
     val BARREL_R: PartialModel = part("duo_barrel_right")

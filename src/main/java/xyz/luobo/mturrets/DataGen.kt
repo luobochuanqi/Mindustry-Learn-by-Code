@@ -206,8 +206,11 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         this.simpleBlockWithItem(arc, this.cubeAll(arc))
         val meltdown = ModBlocks.MELTDOWN_BLOCK.get()
         this.simpleBlockWithItem(meltdown, this.cubeAll(meltdown))
+        // Duo(#31):块状态模型 = 静态基座(与 Flywheel 部件同几何)。
+        // 块状态模型走 chunk mesh 独立渲染路径,全立方会整体罩住内部部件——
+        // 基座只占底部 1/4,旋转炮身/炮管由 Flywheel visual 在其上叠加,互不遮挡。
         val duo = ModBlocks.DUO_BLOCK.get()
-        this.simpleBlockWithItem(duo, this.cubeAll(duo))
+        this.simpleBlockWithItem(duo, this.models().getExistingFile(this.modLoc("block/turret/duo_base")))
 
         // 蓝图管线骨架临时方块(贴图复用现有素材,真内容落地后删除)
         val testTexture = this.modLoc("block/power_node_block")

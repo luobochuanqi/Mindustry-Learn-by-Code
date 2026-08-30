@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "mturrets:block/duo"
+      "model": "mturrets:block/turret/duo_base"
     }
   }
 }
