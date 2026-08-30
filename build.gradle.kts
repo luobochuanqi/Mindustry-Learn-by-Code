@@ -38,6 +38,13 @@ repositories {
         name = "Modrinth"
         url = uri("https://api.modrinth.com/maven")
     }
+    maven {
+        name = "BlameJared (JEI 官方 maven)"
+        url = uri("https://maven.blamejared.com")
+        content {
+            includeGroup("mezz.jei")
+        }
+    }
 }
 
 base {
@@ -107,6 +114,7 @@ dependencies {
     compileOnly(libs.flywheel.api)
     runtimeOnly(libs.flywheel)
     implementation(libs.jade)
+    runtimeOnly(libs.jei)
 }
 
 val generateModMetadata = tasks.register("generateModMetadata", ProcessResources::class.java) {

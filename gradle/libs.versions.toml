@@ -13,6 +13,7 @@ kotlin = "2.4.10"
 kotlinForForge = "5.12.0"
 flywheel = "1.0.6"
 jade = "15.10.6+neoforge"
+jei = "19.50.0.414"
 
 [libraries]
 # 运行时依赖
@@ -21,6 +22,8 @@ kotlinforforge = { module = "thedarkcolour:kotlinforforge-neoforge", version.ref
 flywheel-api = { module = "dev.engine-room.flywheel:flywheel-neoforge-api-1.21.1", version.ref = "flywheel" }
 flywheel = { module = "dev.engine-room.flywheel:flywheel-neoforge-1.21.1", version.ref = "flywheel" }
 jade = { module = "maven.modrinth:jade", version.ref = "jade" }
+# JEI:仅 dev 运行时辅助调试(配方/物品浏览)
+jei = { module = "mezz.jei:jei-1.21.1-neoforge", version.ref = "jei" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
