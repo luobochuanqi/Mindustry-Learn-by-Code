@@ -685,6 +685,17 @@ object ModGameTests {
             if (countItem(helper, drillPos, copper) < 1) helper.fail("drill produced nothing to take")
             val state = helper.getBlockState(drillPos)
             val player = helper.makeMockPlayer(GameType.SURVIVAL)
+            // 空手限定(spec):手持非流体物品右键不得触发取出(无放料通道,FAIL 挡住 useWithoutItem 回退)
+            val hit = BlockHitResult(Vec3.ZERO, Direction.UP, helper.absolutePos(drillPos), false)
+            val stickUse = state.useItemOn(
+                ItemStack(Items.STICK), helper.level, player, net.minecraft.world.InteractionHand.MAIN_HAND, hit
+            )
+            if (stickUse != net.minecraft.world.ItemInteractionResult.FAIL) {
+                helper.fail("non-fluid item use must be refused, got $stickUse")
+            }
+            if (countItem(helper, drillPos, copper) != 1) {
+                helper.fail("non-empty hand must not trigger takeout")
+            }
             // 1.21.1 的 Block#useWithoutItem 为 protected;公开入口是 BlockStateBase 的同名方法(经 BlockState 调用)
             state.useWithoutItem(
                 helper.level, player,

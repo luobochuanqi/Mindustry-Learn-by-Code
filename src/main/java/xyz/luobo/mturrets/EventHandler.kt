@@ -155,21 +155,15 @@ object EventHandler {
         }
 
         // 蓝图管线(ADR-0003):成员格 block 级 capability,查询时解析到锚点 BE 返回其能力
-        // (可插任意成员面等效操作整机);按相对坐标判面归属为扩展位,本期不区分面
+        // (可插任意成员面等效操作整机);按相对坐标判面归属为扩展位,本期不区分面。
+        // 钻头(#35)真内容与测试脚手架同款语义;脚手架随 #34 退役。
         event.registerBlock(
             Capabilities.ItemHandler.BLOCK,
             { level, pos, state, _, _ ->
                 val anchorPos = pos.subtract(StructuralBlock.decodeOffset(state))
                 (level.getBlockEntity(anchorPos) as? BlueprintAnchor)?.itemCapability
             },
-            ModBlocks.TEST_STRUCTURAL.get()
-        )
-        event.registerBlock(
-            Capabilities.ItemHandler.BLOCK,
-            { level, pos, state, _, _ ->
-                val anchorPos = pos.subtract(StructuralBlock.decodeOffset(state))
-                (level.getBlockEntity(anchorPos) as? BlueprintAnchor)?.itemCapability
-            },
+            ModBlocks.TEST_STRUCTURAL.get(),
             ModBlocks.DRILL_STRUCTURAL.get()
         )
     }

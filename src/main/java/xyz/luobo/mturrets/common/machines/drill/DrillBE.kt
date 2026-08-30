@@ -98,7 +98,7 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         progress = 0
         // 采集语义:吞掉矿石格、回填宿主石头;浅层 stone / 深层 deepslate
         lv.setBlock(mouth, hostStoneFor(mouth), 3)
-        if (boosted) drainWaterInternal(WATER_PER_ITEM)
+        if (boosted) drainFluidInternal(WATER_PER_ITEM)
         val leftover = ItemHandlerHelper.insertItem(itemCapability, ItemStack(oreItem), false)
         if (!leftover.isEmpty) {
             // 预检已保证有位,理论不可达;确定性兜底不丢物品
@@ -109,25 +109,6 @@ class DrillBE(pos: BlockPos, state: BlockState) :
 
     private fun hostStoneFor(pos: BlockPos): BlockState =
         if (pos.y < 0) Blocks.DEEPSLATE.defaultBlockState() else Blocks.STONE.defaultBlockState()
-
-    /** 机器内账扣水:绕开对外 maxExtract=0 的限速;调用方(boosted)已校验水量。 */
-    private fun drainWaterInternal(amount: Int) {
-        val fluid = fluidCapability.currentFluid
-        fluid.shrink(amount)
-        if (fluid.amount == 0) fluidCapability.currentFluid = FluidStack.EMPTY
-        fluidCapability.onFluidChanged()
-    }
-
-    override fun contentsToScatter(destroyed: Boolean): List<ItemStack> {
-        // 拆机不洒水:液体无散落语义,与窑炉一致(#33 定案)
-        if (destroyed) return emptyList()
-        val out = mutableListOf<ItemStack>()
-        for (slot in 0 until itemCapability.slotCount) {
-            val stack = itemCapability.getStack(slot)
-            if (!stack.isEmpty) out += stack.copy()
-        }
-        return out
-    }
 
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)

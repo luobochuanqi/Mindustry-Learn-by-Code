@@ -1,9 +1,8 @@
 package xyz.luobo.mturrets.common.structure
 
 import net.minecraft.core.BlockPos
-import net.minecraft.world.item.ItemStack
-import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.entity.BlockEntity
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.core.capability.impl.ItemCapabilityImpl
 import xyz.luobo.mturrets.core.structure.Blueprint
@@ -21,14 +20,4 @@ class TestStructureAnchorBE(pos: BlockPos, state: BlockState) :
         get() = (blockState.block as BlueprintAnchorBlock).blueprint
 
     override val itemCapability: ItemCapabilityImpl = ItemCapabilityImpl(1)
-
-    override fun contentsToScatter(destroyed: Boolean): List<ItemStack> {
-        if (destroyed) return emptyList() // Health 归零路径:内容全毁(语义随 #31/#34 启用)
-        val out = mutableListOf<ItemStack>()
-        for (slot in 0 until itemCapability.slotCount) {
-            val stack = itemCapability.getStack(slot)
-            if (!stack.isEmpty) out += stack.copy()
-        }
-        return out
-    }
 }

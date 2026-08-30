@@ -201,7 +201,7 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         resetCycle()
         if (!valid) return
         recipe.consume(input)
-        drainWaterInternal(WATER_PER_CRAFT)
+        drainFluidInternal(WATER_PER_CRAFT)
         for (result in recipe.results) {
             val leftover = ItemHandlerHelper.insertItem(itemCapability, result.copy(), false)
             if (!leftover.isEmpty) {
@@ -238,20 +238,6 @@ class KilnBE(pos: BlockPos, state: BlockState) :
 
     private fun bufferSnapshot(): List<ItemStack> =
         (0 until itemCapability.slotCount).map { itemCapability.getStack(it) }
-
-    /** 机器内账扣水:绕开对外 maxExtract=0 的限速;调用方已校验水量。 */
-    private fun drainWaterInternal(amount: Int) {
-        val fluid = fluidCapability.currentFluid
-        fluid.shrink(amount)
-        if (fluid.amount == 0) fluidCapability.currentFluid = FluidStack.EMPTY
-        fluidCapability.onFluidChanged()
-    }
-
-    override fun contentsToScatter(destroyed: Boolean): List<ItemStack> {
-        // 拆机不洒水:液体无散落语义,确定性优先(#33 spec 定案)
-        if (destroyed) return emptyList()
-        return bufferSnapshot().filter { !it.isEmpty }.map { it.copy() }
-    }
 
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)

@@ -12,12 +12,20 @@ interface BlueprintAnchor {
     val currentBlueprint: Blueprint
 
     /**
-     * 结构拆除时散落的内容物。
-     *
-     * @param destroyed true = Health 归零路径:内容全毁,返回空。本期参数语义预留,
-     * Health 结算(#31/#34)落地后由该路径调用;常规拆除(玩家挖/爆炸)传 false。
+     * 结构拆除时散落的内容物。默认实现 = Buffer 全量拷贝;拆机不洒液体
+     * (液体无散落语义,确定性优先,#33 定案);destroyed = Health 归零路径,内容全毁返回空。
+     * 本期参数语义预留,Health 结算(#31/#34)落地后由该路径调用;常规拆除(玩家挖/爆炸)传 false。
      */
-    fun contentsToScatter(destroyed: Boolean): List<ItemStack>
+    fun contentsToScatter(destroyed: Boolean): List<ItemStack> {
+        if (destroyed) return emptyList()
+        val cap = itemCapability ?: return emptyList()
+        val out = mutableListOf<ItemStack>()
+        for (slot in 0 until cap.slotCount) {
+            val stack = cap.getStack(slot)
+            if (!stack.isEmpty) out += stack.copy()
+        }
+        return out
+    }
 
     /** 成员格能力路由的物品入口(#32):成员面查询解析到锚点后返回此能力。 */
     val itemCapability: IItemCapability?

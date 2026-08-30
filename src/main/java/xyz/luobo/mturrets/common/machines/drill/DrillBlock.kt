@@ -65,7 +65,8 @@ class DrillBlock : BlueprintAnchorBlock(structureProperties()) {
         if (FluidUtil.interactWithFluidHandler(player, hand, drill.fluidCapability)) {
             return ItemInteractionResult.CONSUME
         }
-        return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+        // 空手限定(#35 spec):手持其他物品不做任何事(无放料通道),避免落到 useWithoutItem 误取
+        return ItemInteractionResult.FAIL
     }
 
     override fun useWithoutItem(

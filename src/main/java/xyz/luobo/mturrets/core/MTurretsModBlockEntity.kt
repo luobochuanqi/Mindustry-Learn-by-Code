@@ -225,6 +225,18 @@ abstract class MTurretsModBlockEntity(
     }
 
     /**
+     * 机器内账扣液:绕开对外 maxExtract=0 的限速;调用方已校验存量。
+     * 罐空后置 EMPTY,并触发 onFluidChanged(配方缓存/客户端同步关注此信号)。
+     */
+    protected fun drainFluidInternal(amount: Int) {
+        val cap = fluidCapability ?: return
+        val fluid = cap.currentFluid
+        fluid.shrink(amount)
+        if (fluid.amount == 0) cap.currentFluid = FluidStack.EMPTY
+        cap.onFluidChanged()
+    }
+
+    /**
      * 检查槽位是否为输出槽（子类可重写）
      */
     protected open fun isOutputSlot(slot: Int): Boolean = true
