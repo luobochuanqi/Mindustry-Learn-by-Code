@@ -1,279 +1,33 @@
 {
-  "textures": {
-    "all": "mturrets:block/turret/duo_parts"
-  },
-  "elements": [
-    {
-      "from": [
-        2.25,
-        5,
-        6.75
-      ],
-      "to": [
-        3.25,
-        7,
-        11.25
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            64,
-            25,
-            66,
-            27
-          ],
-          "texture": "#all"
-        },
-        "east": {
-          "uv": [
-            64,
-            22,
-            69,
-            24
-          ],
-          "texture": "#all"
-        },
-        "south": {
-          "uv": [
-            64,
-            25,
-            66,
-            27
-          ],
-          "texture": "#all"
-        },
-        "west": {
-          "uv": [
-            64,
-            22,
-            69,
-            24
-          ],
-          "texture": "#all"
-        },
-        "up": {
-          "uv": [
-            4,
-            41,
-            6,
-            51
-          ],
-          "texture": "#all"
-        },
-        "down": {
-          "uv": [
-            64,
-            34,
-            66,
-            35
-          ],
-          "texture": "#all"
-        }
-      }
-    },
-    {
-      "from": [
-        3.25,
-        5,
-        7.75
-      ],
-      "to": [
-        4.25,
-        7,
-        12.25
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            64,
-            25,
-            66,
-            27
-          ],
-          "texture": "#all"
-        },
-        "east": {
-          "uv": [
-            64,
-            22,
-            69,
-            24
-          ],
-          "texture": "#all"
-        },
-        "south": {
-          "uv": [
-            64,
-            25,
-            66,
-            27
-          ],
-          "texture": "#all"
-        },
-        "west": {
-          "uv": [
-            64,
-            22,
-            69,
-            24
-          ],
-          "texture": "#all"
-        },
-        "up": {
-          "uv": [
-            6,
-            39,
-            8,
-            49
-          ],
-          "texture": "#all"
-        },
-        "down": {
-          "uv": [
-            64,
-            34,
-            66,
-            35
-          ],
-          "texture": "#all"
-        }
-      }
-    },
-    {
-      "from": [
-        4.25,
-        5,
-        8.75
-      ],
-      "to": [
-        5.25,
-        7,
-        13.25
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            64,
-            25,
-            66,
-            27
-          ],
-          "texture": "#all"
-        },
-        "east": {
-          "uv": [
-            64,
-            22,
-            69,
-            24
-          ],
-          "texture": "#all"
-        },
-        "south": {
-          "uv": [
-            64,
-            25,
-            66,
-            27
-          ],
-          "texture": "#all"
-        },
-        "west": {
-          "uv": [
-            64,
-            22,
-            69,
-            24
-          ],
-          "texture": "#all"
-        },
-        "up": {
-          "uv": [
-            8,
-            37,
-            10,
-            47
-          ],
-          "texture": "#all"
-        },
-        "down": {
-          "uv": [
-            64,
-            34,
-            66,
-            35
-          ],
-          "texture": "#all"
-        }
-      }
-    },
-    {
-      "from": [
-        5.25,
-        5,
-        9.75
-      ],
-      "to": [
-        6.75,
-        7,
-        13.75
-      ],
-      "faces": {
-        "north": {
-          "uv": [
-            64,
-            25,
-            66,
-            27
-          ],
-          "texture": "#all"
-        },
-        "east": {
-          "uv": [
-            64,
-            22,
-            69,
-            24
-          ],
-          "texture": "#all"
-        },
-        "south": {
-          "uv": [
-            64,
-            25,
-            66,
-            27
-          ],
-          "texture": "#all"
-        },
-        "west": {
-          "uv": [
-            64,
-            22,
-            69,
-            24
-          ],
-          "texture": "#all"
-        },
-        "up": {
-          "uv": [
-            10,
-            36,
-            13,
-            45
-          ],
-          "texture": "#all"
-        },
-        "down": {
-          "uv": [
-            64,
-            34,
-            66,
-            35
-          ],
-          "texture": "#all"
-        }
-      }
-    }
-  ]
+	"format_version": "1.9.0",
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"0": "mturrets:block/turret/duo_parts",
+		"particle": "mturrets:block/turret/duo_parts"
+	},
+	"elements": [
+		{
+			"from": [1, 6, 0],
+			"to": [7, 6, 10],
+			"rotation": {"angle": 0, "axis": "y", "origin": [2, 6, 0]},
+			"faces": {
+				"north": {"uv": [0, 0, 1.5, 0], "texture": "#0"},
+				"east": {"uv": [0, 0, 2.5, 0], "texture": "#0"},
+				"south": {"uv": [0, 0, 1.5, 0], "texture": "#0"},
+				"west": {"uv": [0, 0, 2.5, 0], "texture": "#0"},
+				"up": {"uv": [5.5, 8.5, 4, 6], "texture": "#0"},
+				"down": {"uv": [7, 6, 5.5, 8.5], "texture": "#0"}
+			}
+		}
+	],
+	"groups": [
+		{
+			"name": "barrel_left",
+			"origin": [0, 0, 0],
+			"scope": 0,
+			"color": 0,
+			"children": [0]
+		}
+	]
 }
