@@ -2,16 +2,23 @@ package xyz.luobo.mturrets.core.structure
 
 import com.mojang.serialization.MapCodec
 import net.minecraft.core.BlockPos
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.ItemInteractionResult
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.IntegerProperty
-import net.minecraft.world.entity.player.Player
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.phys.BlockHitResult
 
 /**
- * 成员格(ADR-0003):无 BE、无 tick、无交互;碰撞/选中整格;破坏代理回锚点。
+ * 成员格(ADR-0003):无 BE、无 tick;碰撞/选中整格;破坏代理回锚点。
+ * 交互同样代理回锚点(玩家视角成员 = 锚点,无区别):useItemOn/useWithoutItem
+ * 解码偏移找锚点块后整体转调,位置参数换锚点坐标(交互逻辑与 BE 查询都在锚点上)。
  *
  * 相对锚点的偏移编进 blockstate(0..2,偏置 1 表示 -1..1,与 [Blueprint] 跨距天花板一致;
  * vanilla 的 IntegerProperty 不允许负最小值),锚点坐标 = 本格坐标 - 解码偏移,
@@ -59,6 +66,41 @@ class StructuralBlock(properties: Properties) : Block(properties) {
             }
         }
         super.onRemove(state, level, pos, newState, movedByPiston)
+    }
+
+    /** 交互代理:右键成员格 = 右键锚点格(hitResult 保留玩家点击面,位置换锚点)。 */
+    override fun useItemOn(
+        stack: ItemStack,
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hand: InteractionHand,
+        hitResult: BlockHitResult
+    ): ItemInteractionResult {
+        val anchorPos = pos.subtract(decodeOffset(state))
+        val anchorBlock = level.getBlockState(anchorPos).block as? BlueprintAnchorBlock
+        return if (anchorBlock != null) {
+            anchorBlock.memberUseItemOn(stack, level.getBlockState(anchorPos), level, anchorPos, player, hand, hitResult)
+        } else {
+            super.useItemOn(stack, state, level, pos, player, hand, hitResult)
+        }
+    }
+
+    override fun useWithoutItem(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hitResult: BlockHitResult
+    ): InteractionResult {
+        val anchorPos = pos.subtract(decodeOffset(state))
+        val anchorBlock = level.getBlockState(anchorPos).block as? BlueprintAnchorBlock
+        return if (anchorBlock != null) {
+            anchorBlock.memberUseWithoutItem(level.getBlockState(anchorPos), level, anchorPos, player, hitResult)
+        } else {
+            super.useWithoutItem(state, level, pos, player, hitResult)
+        }
     }
 
     override fun codec(): MapCodec<out Block> = CODEC

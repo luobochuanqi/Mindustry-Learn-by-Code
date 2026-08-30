@@ -696,11 +696,14 @@ object ModGameTests {
             if (countItem(helper, drillPos, copper) != 1) {
                 helper.fail("non-empty hand must not trigger takeout")
             }
-            // 1.21.1 的 Block#useWithoutItem 为 protected;公开入口是 BlockStateBase 的同名方法(经 BlockState 调用)
-            state.useWithoutItem(
-                helper.level, player,
-                BlockHitResult(Vec3.ZERO, Direction.UP, helper.absolutePos(drillPos), false)
+            // 空手右键:真实服务端链路先走 useItemOn(EMPTY) 并在空手分支消费取出
+            val bareUse = state.useItemOn(
+                ItemStack.EMPTY, helper.level, player,
+                net.minecraft.world.InteractionHand.MAIN_HAND, hit
             )
+            if (bareUse != net.minecraft.world.ItemInteractionResult.CONSUME) {
+                helper.fail("empty-hand use must consume on the anchor, got $bareUse")
+            }
             if (countItem(helper, drillPos, copper) != 0) {
                 helper.fail("empty-hand use must transfer the whole buffer stack out")
             }
@@ -745,6 +748,51 @@ object ModGameTests {
             }
             if (countItem(helper, anchorPos, lead) != 2) {
                 helper.fail("anchor buffer must shrink after member extraction")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** ⑥b:成员格交互代理——右键成员 = 右键锚点:手持非流体 FAIL、空手取出 CONSUME(玩家视角成员与锚点无区别)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 140)
+    fun drillMemberForwardsInteractionToAnchor(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val memberPos = BlockPos(2, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(60) {
+            if (countItem(helper, drillPos, copper) < 1) helper.fail("drill produced nothing to take")
+            val memberState = helper.getBlockState(memberPos)
+            if (memberState.block !is StructuralBlock) helper.fail("member block missing at $memberPos")
+            val player = helper.makeMockPlayer(GameType.SURVIVAL)
+            val hit = BlockHitResult(Vec3.ZERO, Direction.UP, helper.absolutePos(memberPos), false)
+            // 手持非流体物品右键成员 → 与锚点一致地拒绝(useItemOn 转发命中锚点 FAIL 分支)
+            val stickUse = memberState.useItemOn(
+                ItemStack(Items.STICK), helper.level, player,
+                net.minecraft.world.InteractionHand.MAIN_HAND, hit
+            )
+            if (stickUse != net.minecraft.world.ItemInteractionResult.FAIL) {
+                helper.fail("member non-fluid use must refuse like the anchor, got $stickUse")
+            }
+            if (countItem(helper, drillPos, copper) != 1) {
+                helper.fail("member stick use must not trigger takeout")
+            }
+            // 空手右键成员 → 经锚点取出(与主块同链路:useItemOn 空手分支)
+            val bareUse = memberState.useItemOn(
+                ItemStack.EMPTY, helper.level, player,
+                net.minecraft.world.InteractionHand.MAIN_HAND, hit
+            )
+            if (bareUse != net.minecraft.world.ItemInteractionResult.CONSUME) {
+                helper.fail("member empty-hand use must consume like the anchor, got $bareUse")
+            }
+            if (countItem(helper, drillPos, copper) != 0) {
+                helper.fail("member empty-hand use must take out from the anchor buffer")
+            }
+            if (!player.inventory.contains(ItemStack(copper))) {
+                helper.fail("member takeout must land in the player inventory")
             }
             helper.succeed()
         }

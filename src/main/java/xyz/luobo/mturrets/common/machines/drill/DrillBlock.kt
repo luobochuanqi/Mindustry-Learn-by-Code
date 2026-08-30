@@ -65,7 +65,15 @@ class DrillBlock : BlueprintAnchorBlock(structureProperties()) {
         if (FluidUtil.interactWithFluidHandler(player, hand, drill.fluidCapability)) {
             return ItemInteractionResult.CONSUME
         }
-        // 空手限定(#35 spec):手持其他物品不做任何事(无放料通道),避免落到 useWithoutItem 误取
+        // 空手右键 = 取出(spec)。1.21.1 服务端只在 useItemOn 返回 PASS_TO_DEFAULT 时才
+        // fallback 到 useWithoutItem,FAIL 会连空手一起短路——取出必须在空手分支内自己消费。
+        if (stack.isEmpty) {
+            val extracted = drill.takeBufferStack()
+                ?: return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
+            ItemHandlerHelper.giveItemToPlayer(player, extracted)
+            return ItemInteractionResult.CONSUME
+        }
+        // 手持其它物品:无放料通道,拒绝并整体短路(避免落回 useWithoutItem 误取出)
         return ItemInteractionResult.FAIL
     }
 

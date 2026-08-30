@@ -2,6 +2,11 @@ package xyz.luobo.mturrets.core.structure
 
 import net.minecraft.core.BlockPos
 import net.minecraft.network.chat.Component
+import net.minecraft.world.InteractionHand
+import net.minecraft.world.InteractionResult
+import net.minecraft.world.ItemInteractionResult
+import net.minecraft.world.entity.player.Player
+import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.util.RandomSource
 import net.minecraft.world.Containers
@@ -21,6 +26,29 @@ import net.minecraft.world.level.material.PushReaction
 abstract class BlueprintAnchorBlock(properties: Properties) : BaseEntityBlock(properties) {
     /** 本锚点方块的固定形状;拆除收口不依赖运行时数据,形状必须静态可知。 */
     abstract val blueprint: Blueprint
+
+    /**
+     * 成员格交互代理入口(#35 修订):成员格解码偏移后转调本方法,玩家视角成员与锚点无区别。
+     * 公开是因为 BlockBehaviour.useItemOn/useWithoutItem 为 protected,Kotlin 的 protected
+     * 只允许经本类型引用调用,兄弟类 StructuralBlock 无法直接转调。
+     */
+    fun memberUseItemOn(
+        stack: ItemStack,
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hand: InteractionHand,
+        hitResult: BlockHitResult
+    ): ItemInteractionResult = useItemOn(stack, state, level, pos, player, hand, hitResult)
+
+    fun memberUseWithoutItem(
+        state: BlockState,
+        level: Level,
+        pos: BlockPos,
+        player: Player,
+        hitResult: BlockHitResult
+    ): InteractionResult = useWithoutItem(state, level, pos, player, hitResult)
 
     override fun getRenderShape(state: BlockState): RenderShape = RenderShape.MODEL
 
