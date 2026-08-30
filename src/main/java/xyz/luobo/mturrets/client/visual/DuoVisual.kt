@@ -173,4 +173,11 @@ object DuoModels {
     val HEAD: PartialModel = part("duo_head")
     val BARREL_L: PartialModel = part("duo_barrel_left")
     val BARREL_R: PartialModel = part("duo_barrel_right")
+
+    /**
+     * 预初始化:触发对象静态初始化,使各 [PartialModel.of] 在客户端早期注册。
+     * 必须赶在首次资源重载的 RegisterAdditional/BakingCompleted 之前——懒加载到
+     * 世界内 visual 创建时再注册会错过烘焙,部件永远拿到未烘焙的 null 模型(黑紫贴图占位)。
+     */
+    fun preload() = Unit
 }

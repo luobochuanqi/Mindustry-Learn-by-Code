@@ -36,6 +36,8 @@ object EventHandler {
     object ClientModEvents : IModBusEvent {
         @SubscribeEvent
         fun onClientSetup(event: FMLClientSetupEvent?) {
+            // 预注册 partial 模型:必须在首次资源重载烘焙之前(懒加载会错过 RegisterAdditional)
+            xyz.luobo.mturrets.client.visual.DuoModels.preload()
             // Duo 动件 visual(ADR-0002/0005):Flywheel GPU 轨接管;visual 缺席时退回静态方块模型
             dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer.builder(
                 xyz.luobo.mturrets.common.ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
