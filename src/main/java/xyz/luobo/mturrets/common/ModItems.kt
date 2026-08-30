@@ -33,6 +33,9 @@ object ModItems {
     // turrets items
     val DUO_BLOCK_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.DUO_BLOCK)
+    // Scatter(#34)
+    val SCATTER_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.SCATTER)
     val ARC_BLOCK_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.ARC_BLOCK)
     val MELTDOWN_BLOCK_ITEM: DeferredItem<BlockItem?> =

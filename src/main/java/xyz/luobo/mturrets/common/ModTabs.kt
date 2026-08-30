@@ -38,6 +38,7 @@ object ModTabs {
             event.accept(ModItems.ORE_COAL_ITEM.get())
             event.accept(ModItems.DRILL_ITEM.get())
             event.accept(ModItems.DUO_BLOCK_ITEM.get())
+            event.accept(ModItems.SCATTER_ITEM.get())
             event.accept(ModItems.ARC_BLOCK_ITEM.get())
             event.accept(ModItems.MELTDOWN_BLOCK_ITEM.get())
             event.accept(ModItems.TEST_STRUCTURE_ANCHOR_2X2_ITEM.get())

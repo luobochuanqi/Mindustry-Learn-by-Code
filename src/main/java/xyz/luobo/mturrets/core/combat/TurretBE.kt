@@ -54,8 +54,6 @@ abstract class TurretBE(
         const val WATER_TANK_CAPACITY = 1000
         /** 枪口高度(块内局部 y):与 barrel 部件齐平。 */
         const val MUZZLE_HEIGHT = 0.44
-        /** 枪口推出距离:锚点中心沿瞄准水平方向外推,保证出生点在空气。 */
-        const val MUZZLE_DISTANCE = 0.75
         /** 后坐衰减(每 tick 递减量)。 */
         const val RECOIL_DECAY = 0.1f
         /** 旋转同步节流(旋转变化最快每 2 tick 上报一次)。 */
@@ -114,6 +112,16 @@ abstract class TurretBE(
     private var targetTimer = 0
     private var totalShots = 0L
     private var lastRotationSync = 0L
+    // ===== 点射队列(#34 首次启用 shots>1/shotDelay>0) =====
+
+    /** 待出膛队列发数(扳机已统一扣账;不持久化——存档丢队列对齐 Mindustry Time.run 语义)。 */
+    private var burstRemaining = 0
+    private var burstDelay = 0f
+    /** 队列各发共用扳机时刻的瞄准方向与枪口(ADR-0009「各发共用扳机时刻瞄准角」)。 */
+    private var burstDir = Vec3.ZERO
+    private var burstMuzzle = Vec3.ZERO
+    /** 队列弹种 = 扳机时刻的尾弹种(扣账后弹仓可能已变,队列不跟随)。 */
+    private var burstType: BulletType? = null
 
     /** 弹种定义查询;非本炮台弹药返回 null。 */
     fun ammoTypeFor(item: net.minecraft.world.item.Item): AmmoType? =
@@ -143,9 +151,12 @@ abstract class TurretBE(
             findTarget(lv)
         }
 
-        // 装填累加:封顶 reload;Coolant 生效(罐内 ≥ 一发耗水)则 ×1.5(#28 决议)
+        // 装填累加:封顶 reload;速率 = 尾弹种 reloadMultiplier × (Coolant 生效则 ×1.5)(ADR-0009,#34)
         val coolantActive = fluidCapability.currentFluid.amount >= spec.coolantPerShot
-        val reloadSpeed = if (coolantActive) spec.coolantReloadMultiplier else 1f
+        val tailMult = magazine.tail?.let { tail ->
+            spec.ammoTypes.firstOrNull { it.item == tail.item }?.bullet?.reloadMultiplier ?: 1f
+        } ?: 1f
+        val reloadSpeed = (if (coolantActive) spec.coolantReloadMultiplier else 1f) * tailMult
         if (reloadCounter < spec.reloadTicks) {
             reloadCounter = minOf(spec.reloadTicks, reloadCounter + reloadSpeed)
         }
@@ -177,6 +188,18 @@ abstract class TurretBE(
             reloadCounter = 0f
         }
 
+        // 点射队列排程:队列 (shots-1) 发按 shotDelay 依次出膛;独立于目标存活(扳机已扣账),
+        // 也不阻塞下一扳机(装填与队列不重叠:所有现行 spec 均 reload > (shots-1)*shotDelay)
+        if (burstRemaining > 0) {
+            burstDelay -= 1f
+            if (burstDelay <= 0f) {
+                burstRemaining--
+                burstDelay = spec.shotDelay
+                val queuedType = burstType
+                if (queuedType != null) spawnBullet(lv, queuedType, burstMuzzle, burstDir)
+            }
+        }
+
         // 后坐衰减
         if (curRecoil > 0f) {
             curRecoil = maxOf(0f, curRecoil - RECOIL_DECAY)
@@ -186,21 +209,27 @@ abstract class TurretBE(
 
     // ===== 索敌 =====
 
-    /** 目标过滤:只打 Monster(ADR-0009);不伤友好生物与玩家。 */
+    /** 目标过滤:只打 Monster(ADR-0009);按 spec 对空/对地标记过滤(#34:Scatter 只打不落地的怪)。 */
     protected open fun isValidTarget(entity: LivingEntity): Boolean =
         entity is Monster && entity.isAlive && !entity.isRemoved &&
+            ((spec.targetAir && !entity.onGround()) || (spec.targetGround && entity.onGround())) &&
             entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range
 
     private fun findTarget(lv: Level) {
-        val area = AABB(worldPosition).inflate(spec.range.toDouble())
+        // 预筛选盒覆盖整个结构跨距(2×2 时锚点单格盒会漏掉 +x/+z 侧射程边缘目标)
+        val area = AABB(worldPosition.center, worldPosition.offset(spec.size - 1, 0, spec.size - 1).center)
+            .inflate(spec.range.toDouble())
         val candidates = lv.getEntitiesOfClass(LivingEntity::class.java, area) { isValidTarget(it) }
         target = candidates.minByOrNull { it.distanceToSqr(anchorCenter()) }
     }
 
     // ===== 旋转与瞄准 =====
 
-    private fun anchorCenter(): Vec3 = worldPosition.center
-
+    /** 发射/瞄准/旋转共用中心:2×2 起 = 锚点中心 + (size-1)/2 每水平轴(结构中心,#34)。 */
+    private fun anchorCenter(): Vec3 {
+        val half = (spec.size - 1) / 2f
+        return worldPosition.center.add(half.toDouble(), 0.0, half.toDouble())
+    }
     /** 提前量瞄准点:对移动目标按弹速解命中时间外推位置(LeadCalculator 存活件);瞄胸口而非脚底。 */
     protected open fun aimPoint(tgt: LivingEntity): Vec3 {
         val look = tgt.position().add(0.0, tgt.eyeHeight * 0.5.toDouble(), 0.0)
@@ -241,24 +270,25 @@ abstract class TurretBE(
         val entry = magazine.tail ?: return
         val ammo = spec.ammoTypes.firstOrNull { it.item == entry.item } ?: return
         val aim = aimPoint(tgt)
-        // 枪口:锚点中心,沿瞄准水平方向外推,保证出生点在空气(不与自己方块碰撞)
+        // 枪口:结构中心,沿瞄准水平方向外推(2×2 结构中心离格边 1 格,外推距离随 size 放大),
+        // 保证出生点在空气(不与自己方块碰撞)
         val horizontal = Vec3(aim.x - anchorCenter().x, 0.0, aim.z - anchorCenter().z).normalize()
+        val muzzleDistance = spec.size / 2f + 0.25f
         val muzzle = anchorCenter().add(
-            horizontal.x * MUZZLE_DISTANCE,
+            horizontal.x * muzzleDistance,
             MUZZLE_HEIGHT - 0.5,
-            horizontal.z * MUZZLE_DISTANCE
+            horizontal.z * muzzleDistance
         )
         var dir = aim.subtract(muzzle).normalize()
         dir = jitter(dir, spec.inaccuracy + ammo.bullet.inaccuracy, lv.random)
 
-        // 点射排程:本期 shots=1、shotDelay=0 同刻齐出
-        // ponytail: shotgun burst scheduling (shots>1 / shotDelay>0) deferred to #34 Scatter
-        repeat(spec.shots) {
-            val bullet = ModEntities.TURRET_BULLET.get().create(lv) ?: return
-            bullet.moveTo(muzzle.x, muzzle.y, muzzle.z, 0f, 0f)
-            bullet.init(ammo.bullet, dir)
-            lv.addFreshEntity(bullet)
-        }
+        // 点射排程:首发出膛 + 队列 (shots-1) 发,共用扳机时刻瞄准方向(ADR-0009;#34 首用)
+        spawnBullet(lv, ammo.bullet, muzzle, dir)
+        burstRemaining = spec.shots - 1
+        burstDelay = if (burstRemaining > 0) spec.shotDelay else 0f
+        burstDir = dir
+        burstMuzzle = muzzle
+        burstType = ammo.bullet
 
         // 扳机扣账(点射各发共用同一次扣账,ADR-0009)
         magazine.drainOne()
@@ -270,6 +300,14 @@ abstract class TurretBE(
         curRecoil = 1f
         syncData() // 开火计数器脉冲即时上报(枪管动画)
     }
+
+    private fun spawnBullet(lv: Level, type: BulletType, muzzle: Vec3, dir: Vec3) {
+        val bullet = ModEntities.TURRET_BULLET.get().create(lv) ?: return
+        bullet.moveTo(muzzle.x, muzzle.y, muzzle.z, 0f, 0f)
+        bullet.init(type, dir)
+        lv.addFreshEntity(bullet)
+    }
+
 
     /** 出生散布:绕竖直轴与水平轴各转 ±inaccuracy(度内均匀随机)。 */
     private fun jitter(dir: Vec3, degrees: Float, random: net.minecraft.util.RandomSource): Vec3 {

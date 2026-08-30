@@ -28,8 +28,8 @@ import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.liquids.Liquids
 import xyz.luobo.mturrets.core.recipe.MachineRecipe
+import xyz.luobo.mturrets.core.structure.StructuralBlock
 import java.util.concurrent.CompletableFuture
-
 object DataGen {
     fun generate(event: GatherDataEvent) {
         val generator: DataGenerator = event.generator
@@ -93,9 +93,9 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
 
         // Blocks
         this.add(ModBlocks.POWER_NODE.get(), "Power Node")
-        this.add(ModBlocks.BATTERY.get(), "Battery")
-        this.add(ModBlocks.KILN.get(), "Kiln")
         this.add(ModBlocks.DUO_BLOCK.get(), "Duo")
+        this.add(ModBlocks.SCATTER.get(), "Scatter")
+        this.add(ModBlocks.SCATTER_STRUCTURAL.get(), "Scatter Member")
         this.add(ModBlocks.ARC_BLOCK.get(), "Arc")
         this.add(ModBlocks.ORE_COPPER.get(), "Copper Ore")
         this.add(ModBlocks.ORE_LEAD.get(), "Lead Ore")
@@ -212,6 +212,26 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         val duo = ModBlocks.DUO_BLOCK.get()
         this.simpleBlockWithItem(duo, this.models().getExistingFile(this.modLoc("block/turret/duo_base")))
 
+        // Scatter(#34):静态基座 = 四格各自块状态角模型(共用一角模型),锚点 y0;
+        // 成员格按编码偏移 variant 做 y 旋转(结构中心 = 锚点 + (1,1) 局部,每格贡献自己那一角)
+        val scatterCorner = this.models().getExistingFile(this.modLoc("block/turret/scatter_base_corner"))
+        this.simpleBlockWithItem(ModBlocks.SCATTER.get(), scatterCorner)
+        for (x in 0..2) for (y in 0..2) for (z in 0..2) {
+            // 存储值偏置 1(真偏移 = 存储-1);(1,0,0)→90°、(0,0,1)→270°、(1,0,1)→180° 拼回整座基座
+            val yaw = when (x to z) {
+                2 to 1 -> 90
+                1 to 2 -> 270
+                2 to 2 -> 180
+                else -> 0
+            }
+            this.getVariantBuilder(ModBlocks.SCATTER_STRUCTURAL.get())
+                .partialState()
+                .with(StructuralBlock.OFFSET_X, x)
+                .with(StructuralBlock.OFFSET_Y, y)
+                .with(StructuralBlock.OFFSET_Z, z)
+                .modelForState().modelFile(scatterCorner).rotationY(yaw).addModel()
+        }
+
         // 蓝图管线骨架临时方块(贴图复用现有素材,真内容落地后删除)
         val testTexture = this.modLoc("block/power_node_block")
         this.simpleBlockWithItem(
@@ -245,6 +265,8 @@ class ModBlockLootProvider(registries: HolderLookup.Provider) :
         // 成员格:properties noLootTable() 已豁免(掉落收口在锚点,ADR-0003)
         // 新 Duo(#31):蓝图锚点 dropSelf(控制器物品),拆机内容物折回由锚点散落通道兜住
         this.dropSelf(ModBlocks.DUO_BLOCK.get())
+        // Scatter(#34):同 Duo;成员格 noLootTable(掉落收口在锚点)
+        this.dropSelf(ModBlocks.SCATTER.get())
         // LEGACY 方块:维持现状零掉落
         this.add(ModBlocks.ARC_BLOCK.get(), noDrop())
         this.add(ModBlocks.MELTDOWN_BLOCK.get(), noDrop())

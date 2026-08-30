@@ -17,6 +17,7 @@ import xyz.luobo.mturrets.common.machines.drill.DrillBlock
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlock
 import xyz.luobo.mturrets.common.turrets.DuoBlock
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
+import xyz.luobo.mturrets.common.turrets.ScatterBlock
 
 object ModBlocks {
     val MOD_BLOCKS: DeferredRegister.Blocks = DeferredRegister.createBlocks(MTurrets.MOD_ID)
@@ -47,6 +48,12 @@ object ModBlocks {
 
     // Turrets - 新的 MTurrets 风格炮台系统
     val DUO_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("duo") { DuoBlock() }
+    // Scatter(#34):2×2 蓝图锚点 + 基座成员格(无物品,掉落收口在锚点)
+    val SCATTER: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("scatter") { ScatterBlock() }
+    val SCATTER_STRUCTURAL: DeferredBlock<StructuralBlock> =
+        MOD_BLOCKS.registerBlock("scatter_structural") {
+            StructuralBlock(BlueprintAnchorBlock.structureProperties().noLootTable())
+        }
     val ARC_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("arc") { ArcTurretBlock() }
     val MELTDOWN_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("meltdown") { MeltdownTurretBlock() }
 

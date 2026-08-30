@@ -8,6 +8,8 @@
   "block.mturrets.mechanical_drill": "机械钻头",
   "block.mturrets.mechanical_drill_structural": "机械钻头成员",
   "block.mturrets.duo": "Duo",
+  "block.mturrets.scatter": "Scatter",
+  "block.mturrets.scatter_structural": "Scatter 成员",
   "block.mturrets.arc": "Arc",
   "jade.mturrets.ammo": "弹药: %s/%s",
   "jade.mturrets.energy": "能量: %s/%s FE",

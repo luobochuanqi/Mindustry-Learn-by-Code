@@ -29,6 +29,12 @@ data class TurretSpec(
     val coolantReloadMultiplier: Float,
     /** 每发耗水(mB,开火记账) */
     val coolantPerShot: Int,
+    /** 结构跨度(格):2×2 = 2;发射/瞄准/旋转中心 = 锚点中心 + (size-1)/2 每水平轴(结构中心,#34)。 */
+    val size: Int = 1,
+    /** 对空索敌:悬空(!onGround)的 Monster。 */
+    val targetAir: Boolean = true,
+    /** 对地索敌:落地(onGround)的 Monster。 */
+    val targetGround: Boolean = true,
     /** 弹药表:物品 → 弹定义 + 入仓倍率 */
     val ammoTypes: List<AmmoType>
 )

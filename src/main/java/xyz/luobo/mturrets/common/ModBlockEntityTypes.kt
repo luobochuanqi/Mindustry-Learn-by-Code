@@ -14,6 +14,7 @@ import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
+import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
 import java.util.function.Supplier
 
 object ModBlockEntityTypes {
@@ -59,6 +60,14 @@ object ModBlockEntityTypes {
             BlockEntityType.Builder.of(
                 { pos, state -> DuoTurretBE(pos, state) },
                 ModBlocks.DUO_BLOCK.get()
+            ).build(null)
+        })
+    // Scatter(#34):2×2 蓝图锚点 BE
+    val SCATTER_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<ScatterTurretBE>> =
+        BLOCK_ENTITY_TYPES.register("scatter", Supplier {
+            BlockEntityType.Builder.of(
+                { pos, state -> ScatterTurretBE(pos, state) },
+                ModBlocks.SCATTER.get()
             ).build(null)
         })
 

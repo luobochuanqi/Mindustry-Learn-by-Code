@@ -18,8 +18,18 @@ data class BulletType(
     val color: Int = 0xFFFFFF,
     /** 视觉大小(同步字段,渲染放大倍率) */
     val bulletSize: Float = 0.5f,
+    /** 出生散布(度,与炮台自身 inaccuracy 叠加) */
+    val inaccuracy: Float = 0f,
     /** 重力影响(0 无重力;>0 每 tick 速度 -0.04×gravity) */
     val gravity: Float = 0f,
-    /** 出生散布(度,与炮台自身 inaccuracy 叠加) */
-    val inaccuracy: Float = 0f
+    /** 尾弹种装填倍率(该弹种为队尾时生效,#34;0.8 = 玻璃慢装) */
+    val reloadMultiplier: Float = 1f,
+    /** 溅射伤害(0 = 无溅射):命中点对 Monster 独立于直击结算,线性衰减 中心 100% → 边缘 40%。 */
+    val splashDamage: Float = 0f,
+    /** 溅射半径(格)。 */
+    val splashRadius: Float = 0f,
+    /** 破片数(0 = 无);命中时在命中点按随机水平方向生成。 */
+    val fragCount: Int = 0,
+    /** 破片弹定义(自身为 BulletType,无再分裂)。 */
+    val fragBullet: BulletType? = null
 )

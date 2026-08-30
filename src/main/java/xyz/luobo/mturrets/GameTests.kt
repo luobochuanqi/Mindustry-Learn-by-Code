@@ -19,18 +19,21 @@ import net.minecraft.world.phys.Vec3
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
+import net.minecraft.world.phys.AABB
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.fluids.FluidStack
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.gametest.GameTestHolder
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate
 import xyz.luobo.mturrets.common.ModBlocks
+import xyz.luobo.mturrets.common.ModEntities
 import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
+import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
 import xyz.luobo.mturrets.core.structure.StructuralBlock
 
 /**
@@ -44,8 +47,8 @@ import xyz.luobo.mturrets.core.structure.StructuralBlock
 @GameTestHolder(MTurrets.MOD_ID)
 object ModGameTests {
 
-    /** 给测试僵尸防火,避免日光燃烧干扰伤害断言 */
-    private fun fireproof(entity: net.minecraft.world.entity.monster.Zombie) {
+    /** 给目标防火(幽灵/恶魂/僵尸,避免日光/环境燃烧干扰伤害断言) */
+    private fun fireproof(entity: net.minecraft.world.entity.LivingEntity) {
         entity.addEffect(MobEffectInstance(MobEffects.FIRE_RESISTANCE, 20 * 600, 0))
     }
 
@@ -1022,4 +1025,309 @@ object ModGameTests {
         }
         helper.succeed()
     }
+    // ========== Scatter 2×2 防空炮(#34):蓝图管线 2×2 首验 + 双发点射/LIFO/溅射/破片/对空过滤 ==========
+
+    /**
+     * 悬空靶:恶魂(Monster、4×4 大箱体)悬停不落不烧,子弹 1.575 格/步 100% 命中——
+     * 幽灵 0.9 格箱体在单步 1.575 下会整步越过(实体命中只查终点包围盒),对空断言会全数脱靶。
+     * 位置放模板内 x=0.2(不得越出结构所在区块——先前放 -0.4 时每逢模板起点恰在区块边界,
+     * 恶魂落入未加载的邻区块,t1 索敌看不到它,炮台转而瞄准他例的可见空中靶,断言全数失效)。
+     * 首步落点 (-0.57,2.3,2) 落在 4×4 箱体内,溅射几何按此校准。
+     */
+    private fun hoverGhast(helper: GameTestHelper): net.minecraft.world.entity.monster.Ghast {
+        val ghast = helper.spawnWithNoFreeWill(EntityType.GHAST, Vec3(0.2, 1.0, 2.0))
+        ghast.isNoGravity = true
+        fireproof(ghast)
+        return ghast
+    }
+
+    /** ① 2×2 成型:锚点 + 3 成员(+X/+Z/+X+Z),成员无 BE、编码偏移可重算回锚点,锚点 BE 为 size=2。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun scatterFormsAs2x2(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
+        helper.succeedWhen {
+            for (offset in listOf(BlockPos(1, 0, 0), BlockPos(0, 0, 1), BlockPos(1, 0, 1))) {
+                val memberPos = anchorPos.offset(offset)
+                val state = helper.getBlockState(memberPos)
+                if (!state.`is`(ModBlocks.SCATTER_STRUCTURAL.get())) {
+                    helper.fail("scatter member not formed at $offset: $state")
+                }
+                if (helper.getLevel().getBlockEntity(helper.absolutePos(memberPos)) != null) {
+                    helper.fail("member at $offset must not host a block entity")
+                }
+            }
+            val diagonal = helper.getBlockState(anchorPos.offset(BlockPos(1, 0, 1)))
+            if (anchorPos.offset(BlockPos(1, 0, 1)).subtract(StructuralBlock.decodeOffset(diagonal)) != anchorPos) {
+                helper.fail("encoded offsets do not resolve scatter anchor")
+            }
+            val be = helper.getLevel().getBlockEntity(helper.absolutePos(anchorPos))
+            if (be !is ScatterTurretBE || be.spec.size != 2) {
+                helper.fail("scatter anchor must host a size-2 turret BE")
+            }
+        }
+    }
+
+    /** ② 成员右键装弹:对 +X 成员格灌 1 铅 → 拆机折回 1 铅(4 单位/4),成员交互代理成功入账。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun scatterMemberLoadsAmmo(helper: GameTestHelper) {
+        val anchorPos = BlockPos(1, 1, 1)
+        val memberPos = BlockPos(2, 1, 1)
+        helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
+        helper.runAfterDelay(5) {
+            val lead = ModItems.getMaterial(Materials.LEAD).get()
+            if (mockUseOn(helper, memberPos, ItemStack(lead, 1)) != ItemInteractionResult.CONSUME) {
+                helper.fail("member ammo load must consume the held stack")
+            }
+            breakForDrops(helper, anchorPos)
+        }
+        helper.succeedWhen {
+            val lead = ModItems.getMaterial(Materials.LEAD).get()
+            if (countDrops(helper, anchorPos, lead) != 1) {
+                helper.fail("member-loaded lead must refund 1 on teardown (4 units / 4)")
+            }
+        }
+    }
+
+    /**
+     * ③ 双发点射:1 铅(4 单位)+ 悬空恶魂;首扳机 t6 首发出膛(t7 命中击杀),
+     * t9 余弹仍在飞行(队列第 2 发,方向为扳机时刻锁定)——"一扳机两弹";
+     * 拆机折回 = 0(4-1=3 → floor(3/4))——"一扳机扣 1 单位"。
+     * NOTE: 每发间隔 2t、模板靶距上限下两弹同飞窗口不足 1 tick 不可观测,
+     * 故用「首发命中 + 尾弹仍在飞」双证据替代(发数等价)。
+     */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun scatterDoubleShotPerTrigger(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        if (mockUseOn(helper, turretPos, ItemStack(lead, 1)) != ItemInteractionResult.CONSUME) {
+            helper.fail("lead must load")
+        }
+        val ghast = hoverGhast(helper)
+        helper.runAfterDelay(9) {
+            // 恶魂已被首发直击+溅射击杀;队列第 2 发仍在飞行(首发 t7 已消失)。
+            // 计数用 level 级 AABB:helper.getEntities 会与模板边界求交,出界子弹会被漏数
+            if (!ghast.isRemoved && ghast.health >= 20f) {
+                helper.fail("first shot must hit and kill the ghast, hp=${ghast.health}")
+            }
+            val bullets = helper.level.getEntities(
+                ModEntities.TURRET_BULLET.get(),
+                AABB(helper.absolutePos(turretPos)).inflate(4.0)
+            ) { true }
+            if (bullets.size != 1) {
+                helper.fail("queued second shot must still be in flight, found ${bullets.size}")
+            }
+            breakForDrops(helper, turretPos)
+        }
+        helper.succeedWhen {
+            if (countDrops(helper, turretPos, lead) != 0) {
+                helper.fail("one trigger burns exactly 1 unit: floor((4-1)/4)=0 lead expected")
+            }
+        }
+    }
+
+    /** ④ LIFO 后入为主:先 1 铅后 1 玻璃;1 扳机烧队尾玻璃(5-1=4 → 0),拆机折回 1 铅(4/4)。
+     * 恶魂上吸收甲:共享世界 legacy 炮台(射程 20+ 的 Arc/Meltdown/Duo)流弹会先杀裸靶,玻璃 0.8 装填更慢。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun scatterLifoBurnsTailFirst(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        val glass = ModItems.getMaterial(Materials.METAGLASS).get()
+        mockUseOn(helper, turretPos, ItemStack(lead, 1))
+        mockUseOn(helper, turretPos, ItemStack(glass, 1))
+        val ghast = hoverGhast(helper)
+        ghast.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 1, 399))
+        helper.runAfterDelay(10) { breakForDrops(helper, turretPos) }
+        helper.succeedWhen {
+            if (countDrops(helper, turretPos, glass) != 0) {
+                helper.fail("tail glass must burn first (5-1=4 units → 0 glass)")
+            }
+            if (countDrops(helper, turretPos, lead) != 1) {
+                helper.fail("lead must remain untouched (4 units → 1 lead)")
+            }
+        }
+    }
+
+    /** ⑤a 对空-only(无空中目标):僵尸落地不被索敌——t5 拆机(装填 6t 内不可能开火)足额折回 4 铅。
+     * 共享测试世界有他例的悬空靶(8 格外),拉长窗口会把流弹烧进弹仓,故拆机前置到首个可开火时刻前。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun scatterIgnoresGroundedOnly(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        mockUseOn(helper, turretPos, ItemStack(lead, 4))
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(0, 1, 2))
+        fireproof(zombie)
+        // 吸收甲防共享测试世界里他例炮台的流弹(44 用例并行,见 duoDoesNotFireAtFriendlyOnly 注记)
+        zombie.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 600, 199))
+        helper.runAfterDelay(5) { breakForDrops(helper, turretPos) }
+        helper.runAfterDelay(40) {
+            if (zombie.health != 20f) {
+                helper.fail("grounded zombie must never be targeted, hp=${zombie.health}")
+            }
+        }
+        helper.succeedWhen {
+            if (countDrops(helper, turretPos, lead) != 4) {
+                helper.fail("no air target → no trigger within the first reload → full lead refund expected")
+            }
+        }
+    }
+
+    /** ⑤b 对空+对地同框:恶魂掉血死亡、僵尸满血(溅射半径外的落地怪只被无视,不直接索敌)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun scatterAirOnlySkipsGroundedAlongside(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        val ghast = hoverGhast(helper)
+        // 僵尸放碰撞远角(距命中点 ~2.4 > 铅溅射 2):只验证"不被索敌",不吃溅射
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(2, 1, 0))
+        fireproof(zombie)
+        zombie.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 600, 199))
+        helper.runAfterDelay(40) {
+            if (!ghast.isRemoved && ghast.health >= 20f) {
+                helper.fail("airborne ghast must be engaged")
+            }
+            if (zombie.health != 20f) {
+                helper.fail("grounded zombie must stay full HP, hp=${zombie.health}")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** ⑥ 溅射:恶魂与僵尸相邻——恶魂吃直击+溅射,僵尸(不在索敌内)受溅射伤(Monster 阵营内结算)。
+     * 恶魂上吸收甲:共享世界里 Duo 射程 20 的流弹会先打死裸靶,吸收甲使目标稳定存活到自炮命中。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun scatterSplashHitsNearbyMonster(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        val ghast = hoverGhast(helper)
+        ghast.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 1, 399))
+        // 僵尸落点距命中点 ~1.7 < 2,落入溅射带(落地的它不在索敌内,只吃溅射)
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(0, 1, 1))
+        fireproof(zombie)
+        // NOTE: 落地僵尸在 t1-2 是悬空(下坠中)会同为候选,索敌打向同 yaw(90°),首扳机 t6 附近。
+        // 24t 容错并行世界偶发的索敌起步延迟(目标被推离/邻区块加载抖动),溅射在 t23 前定局
+        helper.runAfterDelay(24) {
+            if (!ghast.isRemoved && ghast.absorptionAmount >= 1600f) {
+                helper.fail("ghast must take direct hit + splash, absorb=${ghast.absorptionAmount}")
+            }
+            if (!zombie.isRemoved && zombie.health >= 20f) {
+                val be = helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as? ScatterTurretBE
+                helper.fail(
+                    "adjacent grounded zombie must take splash damage, hp=${zombie.health} " +
+                        "fire=${be?.fireCount} yaw=${be?.yaw?.toInt()} targetYaw=${be?.targetYaw?.toInt()}"
+                )
+            }
+            helper.succeed()
+        }
+    }
+
+    /** ⑦ 破片:玻璃命中 → 命中点 +6 碎片实体(自身弹种、随机水平方向),1-2 tick 窗口内计数。
+     * NOTE: 玻璃尾弹种 reloadMultiplier 0.8 → 首扳机 t8(6/0.8=7.5t),命中 t9;碎片出生免撞 2t,
+     * t11 时仍全数在命中点近旁。恶魂吸收甲防共享世界流弹先杀靶;fireCount 门禁确认首发确已出膛。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun scatterGlassSpawnsFragments(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
+        val glass = ModItems.getMaterial(Materials.METAGLASS).get()
+        if (mockUseOn(helper, turretPos, ItemStack(glass, 1)) != ItemInteractionResult.CONSUME) {
+            helper.fail("glass must load")
+        }
+        val ghast = hoverGhast(helper)
+        ghast.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 1, 399))
+        helper.runAfterDelay(18) {
+            // 计数用 level 级 AABB(同 ③:helper.getEntities 的模板求交会漏数出界子弹)。
+            // 18t 容纳玻璃 0.8 装填(t8 首扳机)与并行世界偶发索敌起步延迟(t16 次扳机):任一首发命中即出 6 碎片
+            val allBullets = helper.level.getEntities(
+                ModEntities.TURRET_BULLET.get(),
+                AABB(helper.absolutePos(turretPos)).inflate(4.0)
+            ) { true }
+            val be = helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as? ScatterTurretBE
+            val fire = be?.fireCount ?: -1
+            if (fire < 1L || allBullets.size < 4) {
+                helper.fail(
+                    "glass impact must spawn ~6 fragments, found ${allBullets.size} fire=$fire " +
+                        "ghastAlive=${ghast.isAlive} absorb=${ghast.absorptionAmount} " +
+                        "yaw=${be?.yaw?.toInt()} targetYaw=${be?.targetYaw?.toInt()}"
+                )
+            }
+            helper.succeed()
+        }
+    }
+
+    /**
+     * ⑧ Coolant 倍率(单测对比,fireCount 判据):同一炮塔分两窗——0-16t 无水 → 灌水 → 16-32t。
+     * 装填 6t÷1(干)=2 扳机(t6/t12) vs 6t÷1.5(湿)=4 扳机(t20/24/28/32),湿 − 干 ≥ 2 即证明水加成生效。
+     * 窗口取 16/32 落在共享世界流弹干扰(他例炮台抢空中靶)通常开始前的安静期。
+     */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 200)
+    fun scatterCoolantAcceleratesReload(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 20))
+        val ghast = hoverGhast(helper)
+        ghast.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 1, 399))
+        var fireDry = 0L
+        var fireWet = 0L
+        helper.runAfterDelay(16) {
+            fireDry = (helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as? ScatterTurretBE)?.fireCount ?: -1
+            fillKilnTank(helper, turretPos)
+        }
+        // 湿 4th 扳机在 t32,捕获放 t34 避开与拆窗回调的 tick 序竞态
+        helper.runAfterDelay(34) {
+            fireWet = (helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as? ScatterTurretBE)?.fireCount ?: -1
+            val dry = fireDry
+            val wet = fireWet - fireDry
+            if (wet - dry < 2) {
+                helper.fail("coolant must outpace dry reload: dry=$dry wet=$wet (expected ~2 vs ~4)")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** ⑨ 成员破坏 → 整体拆除:控制器物品 + 余量折回散落(4 铅 → 四格清空)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun scatterMemberBreakTearsDown(helper: GameTestHelper) {
+        val anchorPos = BlockPos(1, 1, 1)
+        val memberPos = BlockPos(2, 1, 1)
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
+        helper.runAfterDelay(5) {
+            mockUseOn(helper, anchorPos, ItemStack(lead, 4))
+            helper.level.destroyBlock(helper.absolutePos(memberPos), true)
+        }
+        helper.succeedWhen {
+            if (!helper.getBlockState(anchorPos).isAir) {
+                helper.fail("breaking a member must tear down the anchor")
+            }
+            for (offset in listOf(BlockPos(1, 0, 0), BlockPos(0, 0, 1), BlockPos(1, 0, 1))) {
+                if (!helper.getBlockState(anchorPos.offset(offset)).isAir) {
+                    helper.fail("member not cleared at $offset")
+                }
+            }
+            if (countDrops(helper, anchorPos, lead) != 4) {
+                helper.fail("full magazine must refund 4 lead on member-break teardown")
+            }
+            val anchorItem = ModBlocks.SCATTER.get().asItem()
+            val drops = helper.getEntities(EntityType.ITEM, anchorPos, 4.0)
+            if (drops.none { (it as? ItemEntity)?.item?.`is`(anchorItem) == true }) {
+                helper.fail("controller item must drop on member-break teardown")
+            }
+        }
+    }
+
 }

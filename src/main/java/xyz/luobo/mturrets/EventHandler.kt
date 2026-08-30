@@ -38,12 +38,21 @@ object EventHandler {
         fun onClientSetup(event: FMLClientSetupEvent?) {
             // 预注册 partial 模型:必须在首次资源重载烘焙之前(懒加载会错过 RegisterAdditional)
             xyz.luobo.mturrets.client.visual.DuoModels.preload()
+            xyz.luobo.mturrets.client.visual.ScatterModels.preload()
             // Duo 动件 visual(ADR-0002/0005):Flywheel GPU 轨接管;visual 缺席时退回静态方块模型
             dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer.builder(
                 xyz.luobo.mturrets.common.ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
             )
                 .factory { ctx, be, pt ->
                     xyz.luobo.mturrets.client.visual.DuoVisual(ctx, be, pt)
+                }
+                .apply()
+            // Scatter 动件 visual(#34):旋转头 + -mid 后坐中段
+            dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer.builder(
+                xyz.luobo.mturrets.common.ModBlockEntityTypes.SCATTER_BLOCK_ENTITY.get()
+            )
+                .factory { ctx, be, pt ->
+                    xyz.luobo.mturrets.client.visual.ScatterVisual(ctx, be, pt)
                 }
                 .apply()
         }
@@ -141,6 +150,14 @@ object EventHandler {
             if (be is xyz.luobo.mturrets.common.turrets.DuoTurretBE) be.fluidCapability else null
         }
 
+        // Scatter(#34):同 Duo 只暴露 Coolant 内罐(锚点);成员格 block 级路由(见下方注册)
+        event.registerBlockEntity(
+            Capabilities.FluidHandler.BLOCK,
+            ModBlockEntityTypes.SCATTER_BLOCK_ENTITY.get()
+        ) { be, _ ->
+            if (be is xyz.luobo.mturrets.common.turrets.ScatterTurretBE) be.fluidCapability else null
+        }
+
         // 电池(#30):对外充放 capability(各限 200 FE/次);节点零储能不注册能力,
         // 节点读不到储能——电能只住在电池与耗电结构本地缓冲
         event.registerBlockEntity(
@@ -163,9 +180,6 @@ object EventHandler {
         ) { be, _ ->
             if (be is xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity) be.energyCapability else null
         }
-
-        // 蓝图管线(ADR-0003):成员格 block 级 capability,查询时解析到锚点 BE 返回其能力
-        // (可插任意成员面等效操作整机);按相对坐标判面归属为扩展位,本期不区分面。
         // 钻头(#35)真内容与测试脚手架同款语义;脚手架随 #34 退役。
         event.registerBlock(
             Capabilities.ItemHandler.BLOCK,
@@ -175,6 +189,16 @@ object EventHandler {
             },
             ModBlocks.TEST_STRUCTURAL.get(),
             ModBlocks.DRILL_STRUCTURAL.get()
+        )
+
+        // Scatter(#34):成员格流体路由回锚点 Coolant 内罐(装水经成员面可插任意成员格)
+        event.registerBlock(
+            Capabilities.FluidHandler.BLOCK,
+            { level, pos, state, _, _ ->
+                val anchorPos = pos.subtract(StructuralBlock.decodeOffset(state))
+                (level.getBlockEntity(anchorPos) as? xyz.luobo.mturrets.common.turrets.ScatterTurretBE)?.fluidCapability
+            },
+            ModBlocks.SCATTER_STRUCTURAL.get()
         )
     }
 }
