@@ -39,7 +39,7 @@ repositories {
         url = uri("https://api.modrinth.com/maven")
     }
     maven {
-        name = "BlameJared (JEI 官方 maven)"
+        name = "BlameJared"
         url = uri("https://maven.blamejared.com")
         content {
             includeGroup("mezz.jei")
