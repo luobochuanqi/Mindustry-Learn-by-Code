@@ -31,9 +31,9 @@ data class TurretSpec(
     val coolantPerShot: Int,
     /** 结构跨度(格):2×2 = 2;发射/瞄准/旋转中心 = 锚点中心 + (size-1)/2 每水平轴(结构中心,#34)。 */
     val size: Int = 1,
-    /** 对空索敌:悬空(!onGround)的 Monster。 */
+    /** 对空索敌:飞行怪(FlyingMob 恶魂/幻翼、无重力恼鬼、烈焰人);与高度/着地无关——低空擦地仍算空中(#53)。 */
     val targetAir: Boolean = true,
-    /** 对地索敌:落地(onGround)的 Monster。 */
+    /** 对地索敌:非飞行怪(跳跃/坠落中的地面怪仍算地面单位,重力束缚即地面)。 */
     val targetGround: Boolean = true,
     /** 弹药表:物品 → 弹定义 + 入仓倍率 */
     val ammoTypes: List<AmmoType>

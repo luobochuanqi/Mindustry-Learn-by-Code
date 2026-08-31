@@ -6,6 +6,8 @@ import net.minecraft.nbt.CompoundTag
 import net.minecraft.util.Mth
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.monster.Monster
+import net.minecraft.world.entity.FlyingMob
+import net.minecraft.world.entity.monster.Blaze
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.state.BlockState
@@ -208,11 +210,19 @@ abstract class TurretBE(
 
     // ===== 索敌 =====
 
-    /** 目标过滤:只打 Monster(ADR-0009);按 spec 对空/对地标记过滤(#34:Scatter 只打不落地的怪)。 */
+    /**
+     * 目标过滤:只打 Monster(ADR-0009);按 spec 对空/对地标记过滤。
+     * 空中单位 = 飞行怪谓词(FlyingMob 恶魂/幻翼、无重力恼鬼、反推力悬浮的烈焰人),与高度/着地无关:
+     * 不用 !onGround——低空悬停的恶魂 4×4 箱体贴地 → onGround=true,旧判据会把它当落地怪放弃(用户实测)。
+     */
     private fun isValidTarget(entity: LivingEntity): Boolean =
         entity is Monster && entity.isAlive && !entity.isRemoved &&
-            ((spec.targetAir && !entity.onGround()) || (spec.targetGround && entity.onGround())) &&
+            ((spec.targetAir && isAirUnit(entity)) || (spec.targetGround && !isAirUnit(entity))) &&
             entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range
+
+    /** 空中单位判定:原版飞行怪抽象(FlyingMob)+ 恒无重力者(恼鬼)+ 烈焰人(重力学悬浮,最低空也悬停)。 */
+    private fun isAirUnit(entity: LivingEntity): Boolean =
+        entity is FlyingMob || entity.isNoGravity() || entity is Blaze
 
     private fun findTarget(lv: Level) {
         // 预筛选盒覆盖整个结构跨距(2×2 时锚点单格盒会漏掉 +x/+z 侧射程边缘目标)

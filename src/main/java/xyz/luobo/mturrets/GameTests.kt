@@ -1192,6 +1192,58 @@ object ModGameTests {
         }
     }
 
+
+
+    /**
+     * ⑤c 对空谓词回归(用户实测 #53):no-AI 僵尸从不 move → onGround 恒 false,旧判据 !onGround
+     * 把它当空中单位且比恶魂近 → 炮台打僵尸不打恶魂;修订为飞行怪谓词后:僵尸(重力束缚=地面单位)
+     * 不占用对空槽,更远的恶魂被接战、僵尸满血。吸收甲防他例流弹(僵尸血量非本测试信号)。
+     */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun scatterAirPredicateSkipsNearbyGroundUnit(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
+        mockUseOn(helper, anchorPos, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        helper.setBlock(BlockPos(1, 0, 2), Blocks.STONE)
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
+        fireproof(zombie)
+        zombie.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 600, 199))
+        // 恶魂 4×4 箱体放 (2,1,4):避开炮台 2×2 格体(防窒息)且比僵尸远(4.3 vs 1.9)
+        val ghast = helper.spawnWithNoFreeWill(EntityType.GHAST, BlockPos(2, 1, 4))
+        fireproof(ghast)
+        helper.runAfterDelay(50) {
+            if (!ghast.isRemoved && ghast.health >= 20f) {
+                helper.fail("air turret must engage the farther flying ghast, not the nearer ground zombie, ghast hp=${ghast.health}")
+            }
+            if (zombie.health != 20f) {
+                helper.fail("ground zombie must stay untouched, hp=${zombie.health}")
+            }
+            helper.succeed()
+        }
+    }
+
+    /**
+     * ⑤d 真实 AI 恶魂(用户实测 #53):真实 AI 下恶魂无重力靠 GhastMoveControl 推送,随机游荡目标
+     * 偏低时 4×4 箱体贴地擦行 → onGround=true,旧判据整段放弃;飞行怪谓词与高度无关,低空必被接战。
+     */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun scatterEngagesRealAiLowHoveringGhast(helper: GameTestHelper) {
+        val anchorPos = BlockPos(0, 1, 0)
+        helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
+        mockUseOn(helper, anchorPos, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
+        helper.setBlock(BlockPos(2, 0, 4), Blocks.STONE)
+        // 真 AI(sans spawnWithNoFreeWill):会游荡、会贴地擦行;箱体 (2,1,4) 避开炮台格体
+        val ghast = helper.spawn(EntityType.GHAST, BlockPos(2, 1, 4))
+        fireproof(ghast)
+        helper.runAfterDelay(60) {
+            if (!ghast.isRemoved && ghast.health >= 20f) {
+                helper.fail("real-AI ghast hovering at floor level must be engaged, hp=${ghast.health}")
+            }
+            helper.succeed()
+        }
+    }
     /** ⑨ 成员破坏 → 整体拆除:控制器物品 + 余量折回散落(4 铅 → 四格清空)。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
