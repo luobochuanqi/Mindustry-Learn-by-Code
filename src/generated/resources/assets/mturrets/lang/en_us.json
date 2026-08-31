@@ -1,9 +1,7 @@
 {
-  "block.mturrets.arc": "Arc",
   "block.mturrets.duo": "Duo",
   "block.mturrets.mechanical_drill": "Mechanical Drill",
   "block.mturrets.mechanical_drill_structural": "Mechanical Drill Member",
-  "block.mturrets.meltdown": "Meltdown",
   "block.mturrets.ore_coal": "Coal Ore",
   "block.mturrets.ore_copper": "Copper Ore",
   "block.mturrets.ore_lead": "Lead Ore",
@@ -57,7 +55,6 @@
   "item.mturrets.water": "Water",
   "itemGroup.mturrets": "MTurrets",
   "jade.mturrets.ammo": "Ammo: %s/%s",
-  "jade.mturrets.energy": "Energy: %s/%s FE",
   "jade.mturrets.progress": "Progress: %s%%",
   "mturrets.message.blueprint_blocked": "Not enough space for structure"
 }

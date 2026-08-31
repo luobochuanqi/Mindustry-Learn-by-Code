@@ -167,19 +167,6 @@ object EventHandler {
             if (be is xyz.luobo.mturrets.common.power.BatteryBE) be.energyCapability else null
         }
 
-        // 注册能量炮台(Arc/Meltdown)的能量存储 Capability
-        event.registerBlockEntity(
-            Capabilities.EnergyStorage.BLOCK,
-            ModBlockEntityTypes.ARC_BLOCK_ENTITY.get()
-        ) { be, _ ->
-            if (be is xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity) be.energyCapability else null
-        }
-        event.registerBlockEntity(
-            Capabilities.EnergyStorage.BLOCK,
-            ModBlockEntityTypes.MELTDOWN_BLOCK_ENTITY.get()
-        ) { be, _ ->
-            if (be is xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity) be.energyCapability else null
-        }
         // 钻头(#35)真内容与测试脚手架同款语义;脚手架随 #34 退役。
         event.registerBlock(
             Capabilities.ItemHandler.BLOCK,

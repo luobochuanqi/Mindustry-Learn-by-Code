@@ -12,10 +12,8 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 **Turrets**
 
-- **Duo** — twin-barrel turret fed with items. Copper is cheap and quick (5 damage), iron pierces up to two extra targets at 70% damage, gold hits hardest (12 damage) and flies fastest. Holds 30 rounds, reaches 20 blocks, tracks ground and air, and leads moving targets instead of shooting where they are now.
-- **Arc** — instant lightning strike, 12 damage, 15-block range, draws power instead of ammo.
-- **Meltdown** — continuous red beam, 60 damage per second, 25-block range, passes through every entity in its path without losing strength and sets them alight. Needs a warm-up before it fires and burns 300 FE/s, so it wants a real power network behind it.
-- Turrets fire on hostile mobs and players; passive creatures and pets are never targeted.
+- **Duo** — twin-barrel turret fed with items. Copper is the ammo (1 item = 2 rounds, 9 damage per hit). Holds 100 rounds, reaches 20 blocks, tracks ground and air, and leads moving targets instead of shooting where they are now. Pouring water in speeds up reload by half.
+- Turrets fire on hostile mobs; passive creatures, pets and players are never targeted.
 
 **Production**
 
@@ -25,12 +23,10 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 **Interface**
 
-- Jade tooltips now show a turret's ammo or energy, the Kiln's progress and energy, and a Power Node's charge — just look at the block.
-
-### Changed
-
-- Arc and Meltdown are now actually visible — they used to render as nothing.
+- Jade tooltips now show a turret's ammo, the Kiln's progress and energy, and a Power Node's charge — just look at the block.
 
 ### Removed
+
+- Arc and Meltdown are gone: the pre-renovation turret implementations and their shared framework were deleted. Power-fed turrets return with a rebuild on the new skeleton.
 
 - Debug and example items, plus the throwaway test screens, are gone from the creative tab.

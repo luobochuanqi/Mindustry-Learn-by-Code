@@ -21,7 +21,6 @@ import xyz.luobo.mturrets.core.capability.impl.FluidCapabilityImpl
 import xyz.luobo.mturrets.core.structure.Blueprint
 import xyz.luobo.mturrets.core.structure.BlueprintAnchor
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
-import xyz.luobo.mturrets.core.turret.logic.LeadCalculator
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.sign
@@ -29,7 +28,7 @@ import kotlin.math.sqrt
 
 /**
  * 新范式炮台锚点 BE(ADR-0009,#31):单层承载索敌/旋转/装填/开火管线、Magazine 单位账、
- * Coolant 内罐与 Health。不沿用 legacy 四层链(旧框架保留给 Arc/Meltdown)。
+ * Coolant 内罐与 Health。
  *
  * 每 tick 时序(对位 ADR-0009):目标校验 → 装填累加(封顶 reload;Coolant 生效 ×1.5)→
  * 每 7t 索敌(Monster-only、最近优先)→ 旋转逼近目标角(rotateSpeed 封顶)→ 开火门
@@ -85,7 +84,7 @@ abstract class TurretBE(
     var yaw: Float = 0f
         private set
 
-    /** 当前枪口俯仰(度;负 = 向上,与 legacy 约定一致)。 */
+    /** 当前枪口俯仰(度;负 = 向上)。 */
     var pitch: Float = 0f
         private set
 
@@ -253,7 +252,7 @@ abstract class TurretBE(
         val dz = pos.z - anchorCenter().z
         val dy = pos.y - (worldPosition.y + MUZZLE_HEIGHT)
         val horizontal = sqrt(dx * dx + dz * dz)
-        // 负 = 向上(与 legacy 约定一致,visual 直接消费)
+        // 负 = 向上(visual 直接消费)
         return -Math.toDegrees(atan2(dy, horizontal)).toFloat()
     }
 

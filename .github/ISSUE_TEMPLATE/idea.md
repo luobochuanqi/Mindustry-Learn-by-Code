@@ -6,6 +6,7 @@ assignees: ""
 ---
 
 > Filling guide (delete this block once the issue is ready):
+>
 > - This is the "thinking out loud" template: sketch the direction, name the pain points and the open questions. No full spec needed — that happens after discussion (usually a `wayfinder:grilling` issue).
 > - Cite concrete references (file paths, upstream pins, mods doing it differently) so the discussion is grounded.
 

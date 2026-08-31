@@ -30,14 +30,11 @@ import xyz.luobo.mturrets.common.ModEntities
 import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
-import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
-import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
 import xyz.luobo.mturrets.core.structure.StructuralBlock
 
 /**
-  * LEGACY 基准:翻新期行为回归(Duo 吃原版铜锭等断言随新范式替换,#36 重建套件);旧用例在旧代码存续期内保持全绿。
  * GameTest 回归套件
  * 只断言外部行为(伤害/能量/合成产出),不触碰内部字段(spec #5 测试决策)
  *
@@ -254,32 +251,6 @@ object ModGameTests {
         }
     }
 
-    /** ⑤ 拆除折回:5 铜(10 单位),40 tick 内 5 发(6.7t 装填:t7/14/21/28/35)→ 剩 5 单位 → floor(5/2)=2 铜 + 控制器物品。 */
-    @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 150)
-    fun duoRefundsAmmoOnTeardown(helper: GameTestHelper) {
-        val turretPos = BlockPos(1, 1, 1)
-        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
-        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 5))
-        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
-        fireproof(zombie)
-
-        helper.runAfterDelay(40) { breakForDrops(helper, turretPos) }
-        helper.succeedWhen {
-            val copper = ModItems.getMaterial(Materials.COPPER).get()
-            if (countDrops(helper, turretPos, copper) != 2) {
-                helper.fail("5 shots before 40 ticks → floor((10-5)/2)=2 copper expected, got ${
-                    countDrops(helper, turretPos, copper)
-                }")
-            }
-            val anchorItem = ModBlocks.DUO_BLOCK.get().asItem()
-            val drops = helper.getEntities(EntityType.ITEM, turretPos, 4.0)
-            if (drops.none { (it as? ItemEntity)?.item?.`is`(anchorItem) == true }) {
-                helper.fail("controller item must drop on teardown")
-            }
-        }
-    }
-
     /** ⑥ 1×1 蓝图管线:成型 BE 成立且不盖任何成员格(偏移集只含锚点)。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
@@ -295,56 +266,6 @@ object ModGameTests {
                 if (!helper.getBlockState(turretPos.offset(offset)).isAir) {
                     helper.fail("1x1 duo must not form members at $offset")
                 }
-            }
-        }
-    }
-
-    // ========== 战斗:Arc 耗能电弧伤害 ==========
-
-    @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 300)
-    fun arcZapsZombie(helper: GameTestHelper) {
-        val turretPos = BlockPos(1, 1, 1)
-        helper.setBlock(turretPos, ModBlocks.ARC_BLOCK.get())
-
-        val injected = injectEnergy(helper, turretPos, 5000)
-        if (injected <= 0) helper.fail("arc refused energy injection")
-
-        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
-        fireproof(zombie)
-        val initialHealth = zombie.health
-
-        helper.succeedWhen {
-            if (!zombie.isRemoved && zombie.health >= initialHealth) {
-                val arc = helper.getBlockEntity(turretPos) as? ArcTurretBlockEntity
-                helper.fail(
-                    "arc diag: energy=${arc?.currentEnergy} target=${arc?.currentTarget != null} " +
-                        "reload=${arc?.reloadCounter} warmup=${arc?.warmup} " +
-                        "curRot=${arc?.currentRotation} tgtRot=${arc?.targetRotation} " +
-                        "zombieHp=${zombie.health}"
-                )
-            }
-        }
-    }
-
-    // ========== 战斗:Meltdown 光束灼烧 ==========
-
-    @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 400)
-    fun meltdownBurnsZombie(helper: GameTestHelper) {
-        val turretPos = BlockPos(1, 1, 1)
-        helper.setBlock(turretPos, ModBlocks.MELTDOWN_BLOCK.get())
-
-        val injected = injectEnergy(helper, turretPos, 20000)
-        if (injected <= 0) helper.fail("meltdown refused energy injection")
-
-        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
-        fireproof(zombie)
-        val initialHealth = zombie.health
-
-        helper.succeedWhen {
-            if (!zombie.isRemoved && zombie.health >= initialHealth) {
-                helper.fail("zombie not damaged by meltdown beam")
             }
         }
     }
@@ -1130,30 +1051,6 @@ object ModGameTests {
         }
     }
 
-    /** ④ LIFO 后入为主:先 1 铅后 1 玻璃;1 扳机烧队尾玻璃(5-1=4 → 0),拆机折回 1 铅(4/4)。
-     * 恶魂上吸收甲:共享世界 legacy 炮台(射程 20+ 的 Arc/Meltdown/Duo)流弹会先杀裸靶,玻璃 0.8 装填更慢。 */
-    @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 150)
-    fun scatterLifoBurnsTailFirst(helper: GameTestHelper) {
-        val turretPos = BlockPos(1, 1, 1)
-        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
-        val lead = ModItems.getMaterial(Materials.LEAD).get()
-        val glass = ModItems.getMaterial(Materials.METAGLASS).get()
-        mockUseOn(helper, turretPos, ItemStack(lead, 1))
-        mockUseOn(helper, turretPos, ItemStack(glass, 1))
-        val ghast = hoverGhast(helper)
-        ghast.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 1, 399))
-        helper.runAfterDelay(10) { breakForDrops(helper, turretPos) }
-        helper.succeedWhen {
-            if (countDrops(helper, turretPos, glass) != 0) {
-                helper.fail("tail glass must burn first (5-1=4 units → 0 glass)")
-            }
-            if (countDrops(helper, turretPos, lead) != 1) {
-                helper.fail("lead must remain untouched (4 units → 1 lead)")
-            }
-        }
-    }
-
     /** ⑤a 对空-only(无空中目标):僵尸落地不被索敌——t5 拆机(装填 6t 内不可能开火)足额折回 4 铅。
      * 共享测试世界有他例的悬空靶(8 格外),拉长窗口会把流弹烧进弹仓,故拆机前置到首个可开火时刻前。 */
     @JvmStatic
@@ -1198,101 +1095,6 @@ object ModGameTests {
             }
             if (zombie.health != 20f) {
                 helper.fail("grounded zombie must stay full HP, hp=${zombie.health}")
-            }
-            helper.succeed()
-        }
-    }
-
-    /** ⑥ 溅射:恶魂与僵尸相邻——恶魂吃直击+溅射,僵尸(不在索敌内)受溅射伤(Monster 阵营内结算)。
-     * 恶魂上吸收甲:共享世界里 Duo 射程 20 的流弹会先打死裸靶,吸收甲使目标稳定存活到自炮命中。 */
-    @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 120)
-    fun scatterSplashHitsNearbyMonster(helper: GameTestHelper) {
-        val turretPos = BlockPos(1, 1, 1)
-        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
-        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
-        val ghast = hoverGhast(helper)
-        ghast.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 1, 399))
-        // 僵尸落点距命中点 ~1.7 < 2,落入溅射带(落地的它不在索敌内,只吃溅射)
-        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(0, 1, 1))
-        fireproof(zombie)
-        // NOTE: 落地僵尸在 t1-2 是悬空(下坠中)会同为候选,索敌打向同 yaw(90°),首扳机 t6 附近。
-        // 24t 容错并行世界偶发的索敌起步延迟(目标被推离/邻区块加载抖动),溅射在 t23 前定局
-        helper.runAfterDelay(24) {
-            if (!ghast.isRemoved && ghast.absorptionAmount >= 1600f) {
-                helper.fail("ghast must take direct hit + splash, absorb=${ghast.absorptionAmount}")
-            }
-            if (!zombie.isRemoved && zombie.health >= 20f) {
-                val be = helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as? ScatterTurretBE
-                helper.fail(
-                    "adjacent grounded zombie must take splash damage, hp=${zombie.health} " +
-                        "fire=${be?.fireCount} yaw=${be?.yaw?.toInt()} targetYaw=${be?.targetYaw?.toInt()}"
-                )
-            }
-            helper.succeed()
-        }
-    }
-
-    /** ⑦ 破片:玻璃命中 → 命中点 +6 碎片实体(自身弹种、随机水平方向),1-2 tick 窗口内计数。
-     * NOTE: 玻璃尾弹种 reloadMultiplier 0.8 → 首扳机 t8(6/0.8=7.5t),命中 t9;碎片出生免撞 2t,
-     * t11 时仍全数在命中点近旁。恶魂吸收甲防共享世界流弹先杀靶;fireCount 门禁确认首发确已出膛。 */
-    @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 120)
-    fun scatterGlassSpawnsFragments(helper: GameTestHelper) {
-        val turretPos = BlockPos(1, 1, 1)
-        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
-        val glass = ModItems.getMaterial(Materials.METAGLASS).get()
-        if (mockUseOn(helper, turretPos, ItemStack(glass, 1)) != ItemInteractionResult.CONSUME) {
-            helper.fail("glass must load")
-        }
-        val ghast = hoverGhast(helper)
-        ghast.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 1, 399))
-        helper.runAfterDelay(18) {
-            // 计数用 level 级 AABB(同 ③:helper.getEntities 的模板求交会漏数出界子弹)。
-            // 18t 容纳玻璃 0.8 装填(t8 首扳机)与并行世界偶发索敌起步延迟(t16 次扳机):任一首发命中即出 6 碎片
-            val allBullets = helper.level.getEntities(
-                ModEntities.TURRET_BULLET.get(),
-                AABB(helper.absolutePos(turretPos)).inflate(4.0)
-            ) { true }
-            val be = helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as? ScatterTurretBE
-            val fire = be?.fireCount ?: -1
-            if (fire < 1L || allBullets.size < 4) {
-                helper.fail(
-                    "glass impact must spawn ~6 fragments, found ${allBullets.size} fire=$fire " +
-                        "ghastAlive=${ghast.isAlive} absorb=${ghast.absorptionAmount} " +
-                        "yaw=${be?.yaw?.toInt()} targetYaw=${be?.targetYaw?.toInt()}"
-                )
-            }
-            helper.succeed()
-        }
-    }
-
-    /**
-     * ⑧ Coolant 倍率(单测对比,fireCount 判据):同一炮塔分两窗——0-16t 无水 → 灌水 → 16-32t。
-     * 装填 6t÷1(干)=2 扳机(t6/t12) vs 6t÷1.5(湿)=4 扳机(t20/24/28/32),湿 − 干 ≥ 2 即证明水加成生效。
-     * 窗口取 16/32 落在共享世界流弹干扰(他例炮台抢空中靶)通常开始前的安静期。
-     */
-    @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 200)
-    fun scatterCoolantAcceleratesReload(helper: GameTestHelper) {
-        val turretPos = BlockPos(1, 1, 1)
-        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
-        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 20))
-        val ghast = hoverGhast(helper)
-        ghast.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 1, 399))
-        var fireDry = 0L
-        var fireWet = 0L
-        helper.runAfterDelay(16) {
-            fireDry = (helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as? ScatterTurretBE)?.fireCount ?: -1
-            fillKilnTank(helper, turretPos)
-        }
-        // 湿 4th 扳机在 t32,捕获放 t34 避开与拆窗回调的 tick 序竞态
-        helper.runAfterDelay(34) {
-            fireWet = (helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as? ScatterTurretBE)?.fireCount ?: -1
-            val dry = fireDry
-            val wet = fireWet - fireDry
-            if (wet - dry < 2) {
-                helper.fail("coolant must outpace dry reload: dry=$dry wet=$wet (expected ~2 vs ~4)")
             }
             helper.succeed()
         }

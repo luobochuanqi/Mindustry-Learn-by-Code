@@ -96,13 +96,11 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         this.add(ModBlocks.DUO_BLOCK.get(), "Duo")
         this.add(ModBlocks.SCATTER.get(), "Scatter")
         this.add(ModBlocks.SCATTER_STRUCTURAL.get(), "Scatter Member")
-        this.add(ModBlocks.ARC_BLOCK.get(), "Arc")
         this.add(ModBlocks.ORE_COPPER.get(), "Copper Ore")
         this.add(ModBlocks.ORE_LEAD.get(), "Lead Ore")
         this.add(ModBlocks.ORE_COAL.get(), "Coal Ore")
         this.add(ModBlocks.DRILL.get(), "Mechanical Drill")
         this.add(ModBlocks.DRILL_STRUCTURAL.get(), "Mechanical Drill Member")
-        this.add(ModBlocks.MELTDOWN_BLOCK.get(), "Meltdown")
         Materials.ALL.forEach { material ->
             this.add(ModItems.getMaterial(material).get(), material.displayName)
         }
@@ -125,7 +123,6 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
 
         // Jade tooltips
         this.add("jade.mturrets.ammo", "Ammo: %s/%s")
-        this.add("jade.mturrets.energy", "Energy: %s/%s FE")
         this.add("jade.mturrets.progress", "Progress: %s%%")
 
         // Jade plugin config entries(缺失会导致客户端断言崩溃)
@@ -201,11 +198,6 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
             )
         )
 
-        // 静态模型炮台(贴图提取自 Mindustry 开源仓库,出处见 textures/ATTRIBUTION.md)
-        val arc = ModBlocks.ARC_BLOCK.get()
-        this.simpleBlockWithItem(arc, this.cubeAll(arc))
-        val meltdown = ModBlocks.MELTDOWN_BLOCK.get()
-        this.simpleBlockWithItem(meltdown, this.cubeAll(meltdown))
         // Duo(#31):块状态模型 = 静态基座(与 Flywheel 部件同几何)。
         // 块状态模型走 chunk mesh 独立渲染路径,全立方会整体罩住内部部件——
         // 基座只占底部 1/4,旋转炮身/炮管由 Flywheel visual 在其上叠加,互不遮挡。
@@ -246,7 +238,6 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
 }
 /**
  * 掉落表:锚点 dropSelf(控制器物品);成员 noDrop(掉落收口在锚点,ADR-0003)。
- * LEGACY 方块补 noDrop 表维持现状(零掉落),真内容落地时随各票改表。
  */
 class ModBlockLootProvider(registries: HolderLookup.Provider) :
     BlockLootSubProvider(emptySet<Item>(), FeatureFlags.DEFAULT_FLAGS, registries) {
@@ -267,9 +258,6 @@ class ModBlockLootProvider(registries: HolderLookup.Provider) :
         this.dropSelf(ModBlocks.DUO_BLOCK.get())
         // Scatter(#34):同 Duo;成员格 noLootTable(掉落收口在锚点)
         this.dropSelf(ModBlocks.SCATTER.get())
-        // LEGACY 方块:维持现状零掉落
-        this.add(ModBlocks.ARC_BLOCK.get(), noDrop())
-        this.add(ModBlocks.MELTDOWN_BLOCK.get(), noDrop())
     }
 }
 

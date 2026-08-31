@@ -14,9 +14,7 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 import xyz.luobo.mturrets.core.structure.StructuralBlock
 import xyz.luobo.mturrets.common.machines.kiln.KilnBlock
 import xyz.luobo.mturrets.common.machines.drill.DrillBlock
-import xyz.luobo.mturrets.common.turrets.ArcTurretBlock
 import xyz.luobo.mturrets.common.turrets.DuoBlock
-import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlock
 import xyz.luobo.mturrets.common.turrets.ScatterBlock
 
 object ModBlocks {
@@ -54,8 +52,6 @@ object ModBlocks {
         MOD_BLOCKS.registerBlock("scatter_structural") {
             StructuralBlock(BlueprintAnchorBlock.structureProperties().noLootTable())
         }
-    val ARC_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("arc") { ArcTurretBlock() }
-    val MELTDOWN_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("meltdown") { MeltdownTurretBlock() }
 
     // 蓝图管线(ADR-0003):骨架临时测试方块,真内容(#33/#34)复用同基类后删除
     val TEST_STRUCTURAL: DeferredBlock<StructuralBlock> =

@@ -11,9 +11,7 @@ import xyz.luobo.mturrets.common.power.PowerNodeBE
 import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
 import xyz.luobo.mturrets.common.machines.drill.DrillBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
-import xyz.luobo.mturrets.common.turrets.ArcTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
-import xyz.luobo.mturrets.common.turrets.MeltdownTurretBlockEntity
 import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
 import java.util.function.Supplier
 
@@ -68,22 +66,6 @@ object ModBlockEntityTypes {
             BlockEntityType.Builder.of(
                 { pos, state -> ScatterTurretBE(pos, state) },
                 ModBlocks.SCATTER.get()
-            ).build(null)
-        })
-
-    val ARC_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<ArcTurretBlockEntity>> =
-        BLOCK_ENTITY_TYPES.register("arc", Supplier {
-            BlockEntityType.Builder.of(
-                { pos, state -> ArcTurretBlockEntity(pos, state) },
-                ModBlocks.ARC_BLOCK.get()
-            ).build(null)
-        })
-
-    val MELTDOWN_BLOCK_ENTITY: DeferredHolder<BlockEntityType<*>, BlockEntityType<MeltdownTurretBlockEntity>> =
-        BLOCK_ENTITY_TYPES.register("meltdown", Supplier {
-            BlockEntityType.Builder.of(
-                { pos, state -> MeltdownTurretBlockEntity(pos, state) },
-                ModBlocks.MELTDOWN_BLOCK.get()
             ).build(null)
         })
 

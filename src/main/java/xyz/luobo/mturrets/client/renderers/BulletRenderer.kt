@@ -14,7 +14,7 @@ import xyz.luobo.mturrets.common.entity.bullet.BulletEntity
 /**
  * 飞行弹渲染器(#31):面向相机的四边形,颜色/大小来自实体同步数据。
  * 用 entityTranslucentEmissive + FULL_BRIGHT:发射性材质不依赖环境光照,
- * 白天的天空与暗处地形下都醒目(legacy 的 RenderType.lightning 加色混合在明空下几乎不可见)。
+ * 白天的天空与暗处地形下都醒目(加色混合的闪电材质在明空下几乎不可见)。
  */
 class BulletRenderer(context: EntityRendererProvider.Context) :
     EntityRenderer<BulletEntity>(context) {

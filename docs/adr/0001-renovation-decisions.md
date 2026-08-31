@@ -18,7 +18,7 @@ mod id、资源命名空间与包名(含语言键)全部迁移为 mturrets。代
 
 ## 4. Mindustry 开源资产保留并注明出处
 
-贴图等资产继续保留在本仓库(含从 Mindustry 仓库提取的 Arc/Meltdown 炮台贴图),并新增出处说明。Mindustry 与 MTurrets 同为 GPL-3.0,资产引用合法。否决以 git 子模块方式引入整个 Mindustry 仓库(体积大、混入源码、增加构建链外部依赖)。本项目定位是"把 Mindustry 玩法移植到 Minecraft",不是完全原创,资产沿用与定位一致。
+贴图等资产继续保留在本仓库(含从 Mindustry 仓库提取的炮台/机器贴图),并新增出处说明。Mindustry 与 MTurrets 同为 GPL-3.0,资产引用合法。否决以 git 子模块方式引入整个 Mindustry 仓库(体积大、混入源码、增加构建链外部依赖)。本项目定位是"把 Mindustry 玩法移植到 Minecraft",不是完全原创,资产沿用与定位一致。
 
 ## 5. datagen 产物入库,CI 校验新鲜度
 
