@@ -17,10 +17,12 @@ import net.minecraft.world.item.Item
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.phys.BlockHitResult
 import net.minecraft.world.phys.Vec3
+import net.minecraft.world.level.ClipContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.Items
 import net.minecraft.world.level.block.Blocks
 import net.minecraft.world.phys.AABB
+import net.minecraft.world.phys.shapes.CollisionContext
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.fluids.FluidStack
 import net.minecraft.world.level.material.Fluids
@@ -204,6 +206,60 @@ object ModGameTests {
             if (countDrops(helper, turretPos, copper) != 0) {
                 helper.fail("2 units spent on non-friendly targets in 80 ticks, expected 0 copper refund")
             }
+        }
+    }
+    /**
+     * ③d 视线闸门(#43):墙后僵尸无视线→炮台不得锁定;拆墙恢复视线后→该僵尸被锁定。
+     *
+     * 布局(4×4 模板,确定性):所有元素在结构内 [0,3]³,barrier 隔离壳在 [-1,4] 外缘,不干扰。
+     *  - 炮台 (2,1,0),Duo(1×1,对空+对地),中心 (2.5,1,0.5);
+     *  - 墙 (2,1,2):枪口(muzzle,中心外推外接圆半径≈1.46)→僵尸胸口的视线射线穿过 (2,1,2)
+     *    → 墙在时 BLOCK(无视线);拆墙后该格 air → 射线直达僵尸 → MISS(有视线);
+     *  - 僵尸 (2,1,3)(结构内缘,非 barrier 壳):no-free-will 固定不动,巨额生命防他例流弹击杀;
+     *  - 地板 (2,0,0)/(2,0,3) 让炮台与僵尸落脚不悬空;
+     *  - 断言按僵尸身份(===/!==)隔离:共享世界 44 用例并行,他例怪在他例 barrier 壳内,
+     *    本僵尸是本炮台唯一在结构内的 Monster,无论墙在与否都应是「最近有效目标」——墙在时被
+     *    LOS 排除,墙去时纳入。
+     */
+    @JvmStatic
+    @GameTest(template = "empty4x4", timeoutTicks = 200)
+    fun duoDoesNotAcquireThroughWalls(helper: GameTestHelper) {
+        val turretPos = BlockPos(2, 1, 0)
+        helper.setBlock(BlockPos(2, 0, 0), Blocks.STONE) // 炮台脚下地板
+        helper.setBlock(BlockPos(2, 0, 3), Blocks.STONE) // 僵尸脚下地板
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get()))
+        val turret = helper.level.getBlockEntity(helper.absolutePos(turretPos)) as DuoTurretBE
+        helper.setBlock(BlockPos(2, 1, 2), Blocks.STONE) // 墙:muzzle(z≈1.46)→僵尸胸口的射线穿过此格
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(2, 1, 3))
+        fireproof(zombie)
+        zombie.getAttribute(Attributes.MAX_HEALTH)?.baseValue = 1_000_000.0
+        zombie.health = 1_000_000f
+
+        fun diag(): String {
+            val center = helper.absolutePos(turretPos).center
+            val chest = zombie.position().add(0.0, zombie.eyeHeight * 0.5, 0.0)
+            val hz = Vec3(chest.x - center.x, 0.0, chest.z - center.z).normalize()
+            val muzzle = center.add(hz.x * 0.957, 0.44 - 0.5, hz.z * 0.957)
+            val clip = helper.level.clip(
+                ClipContext(muzzle, chest, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty())
+            )
+            val tgt = turret.target
+            return "wall@(2,1,2)=${helper.getBlockState(BlockPos(2, 1, 2)).isAir}" +
+                " zbCell@(2,1,3)=${helper.getBlockState(BlockPos(2, 1, 3)).isAir}" +
+                " clip=${clip?.type} zAlive=${zombie.isAlive}" +
+                " target=${if (tgt == null) "null" else tgt::class.simpleName}"
+        }
+
+        // 阶段 1(墙在):LOS 被挡 → 不得锁定;随后拆墙
+        helper.runAfterDelay(60) {
+            if (turret.target === zombie) helper.fail("wall-up [${diag()}]")
+            helper.setBlock(BlockPos(2, 1, 2), Blocks.AIR)
+        }
+        // 阶段 2(拆墙后):视线恢复 → 该僵尸被锁定
+        helper.runAfterDelay(90) {
+            if (turret.target !== zombie) helper.fail("wall-down [${diag()}]")
+            helper.succeed()
         }
     }
 

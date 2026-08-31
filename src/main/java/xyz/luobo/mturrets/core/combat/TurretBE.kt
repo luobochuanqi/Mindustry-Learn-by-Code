@@ -10,11 +10,14 @@ import net.minecraft.world.entity.FlyingMob
 import net.minecraft.world.entity.monster.Blaze
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
+import net.minecraft.world.level.ClipContext
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.material.Fluids
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import net.minecraft.world.phys.HitResult
+import net.minecraft.world.phys.shapes.CollisionContext
 import org.joml.Quaternionf
 import org.joml.Vector3f
 import xyz.luobo.mturrets.common.ModEntities
@@ -218,7 +221,8 @@ abstract class TurretBE(
     private fun isValidTarget(entity: LivingEntity): Boolean =
         entity is Monster && entity.isAlive && !entity.isRemoved &&
             ((spec.targetAir && isAirUnit(entity)) || (spec.targetGround && !isAirUnit(entity))) &&
-            entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range
+            entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range &&
+            hasLosTo(entity)
 
     /** 空中单位判定:原版飞行怪抽象(FlyingMob)+ 恒无重力者(恼鬼)+ 烈焰人(重力学悬浮,最低空也悬停)。 */
     private fun isAirUnit(entity: LivingEntity): Boolean =
@@ -230,6 +234,34 @@ abstract class TurretBE(
             .inflate(spec.range.toDouble())
         val candidates = lv.getEntitiesOfClass(LivingEntity::class.java, area) { isValidTarget(it) }
         target = candidates.minByOrNull { it.distanceToSqr(anchorCenter()) }
+    }
+    /**
+     * 视线判定(#43):枪口([muzzleFor])→ 目标胸口,只测方块碰撞形状(COLLIDER,与弹头 move 碰撞一致)、
+     * 流体不挡、不测实体,与原版 [LivingEntity.hasLineOfSight] 同判据。起点用枪口外推点而非锚点中心
+     * (否则 1×1 中心落在自身实心方块内自命中、2×2 对角落在角成员方块内,详见 [muzzleFor])。
+     * 谓词末位调用:短求值保证 clip 只在通过阵营/存活/对空地/射程过滤的候选上跑。
+     */
+    private fun hasLosTo(entity: LivingEntity): Boolean {
+        val lv = level ?: return false
+        val to = entity.position().add(0.0, entity.eyeHeight * 0.5, 0.0)
+        return lv.clip(ClipContext(muzzleFor(entity.position()), to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty()))
+            ?.type == HitResult.Type.MISS
+    }
+
+    /**
+     * LOS 射线起点(枪口外推点):结构中心沿目标水平方向外推、y = 结构中心 + MUZZLE_HEIGHT - 0.5。
+     * 外推距离 = 结构外接圆半径(size/2·√2) + 0.25 间隙——必须超过角点半径,否则 2×2 时对角方位的
+     * 射线起点落在角成员方块内,clip 自命中 → LOS 恒 false(致盲);1×1 时 0.957 > 0.707 半对角,安全。
+     * 起点在 [fire] 弹头出生点之外、仍处空气中:最近墙体距炮台 ≥1 格,不改变「可见 ⟹ 弹可及」结论。
+     */
+    private fun muzzleFor(tgt: Vec3): Vec3 {
+        val horizontal = Vec3(tgt.x - anchorCenter().x, 0.0, tgt.z - anchorCenter().z).normalize()
+        val muzzleDistance = (spec.size / 2f) * 1.41421356f + 0.25f
+        return anchorCenter().add(
+            horizontal.x * muzzleDistance,
+            MUZZLE_HEIGHT - 0.5,
+            horizontal.z * muzzleDistance
+        )
     }
 
     // ===== 旋转与瞄准 =====
