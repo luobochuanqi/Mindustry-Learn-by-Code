@@ -121,12 +121,19 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         // 蓝图管线
         this.add("mturrets.message.blueprint_blocked", "Not enough space for structure")
 
-        // Jade tooltips
+        // Jade tooltips(与 zh_cn.json 手工维护的 key 一一对应)
         this.add("jade.mturrets.ammo", "Ammo: %s/%s")
         this.add("jade.mturrets.progress", "Progress: %s%%")
+        this.add("jade.mturrets.health", "Health: %s/%s")
+        this.add("jade.mturrets.supply", "Supply: %s%%")
+        this.add("jade.mturrets.energy", "Energy: %s/%s FE")
+        this.add("jade.mturrets.drill_lock", "Lock: %s")
+        this.add("jade.mturrets.drill_reserve", "Remaining: %s")
+        this.add("jade.mturrets.drill_buffer", "Buffer: %s")
+        this.add("jade.mturrets.auto", "Auto")
 
         // Jade plugin config entries(缺失会导致客户端断言崩溃)
-        this.add("config.jade.plugin_mturrets.turret_data", "Turret Info")
+        this.add("config.jade.plugin_mturrets.structure_data", "Structure Info")
     }
 }
 

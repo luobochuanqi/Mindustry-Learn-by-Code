@@ -29,6 +29,7 @@ import xyz.luobo.mturrets.common.ModBlocks
 import xyz.luobo.mturrets.common.ModEntities
 import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
+import xyz.luobo.mturrets.common.machines.drill.DrillBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
@@ -924,6 +925,55 @@ object ModGameTests {
             if (!player.inventory.contains(ItemStack(copper))) {
                 helper.fail("member takeout must land in the player inventory")
             }
+            helper.succeed()
+        }
+    }
+
+    // ===== 钻头储量读数(#52,Jade 数据面):自动全矿计数/采掘消耗递减/锁定矿种过滤 =====
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun drillReserveCountsColumnOres(helper: GameTestHelper) {
+        val drillPos = BlockPos(1, 2, 1)
+        helper.setBlock(BlockPos(1, 1, 1), ModBlocks.ORE_COPPER.get())
+        helper.setBlock(BlockPos(1, 0, 1), ModBlocks.ORE_LEAD.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(5) {
+            val reserves = (helper.getBlockEntity(drillPos) as? DrillBE)?.reserves ?: -1
+            if (reserves != 2) helper.fail("auto reserves must count all ores in the column, got $reserves")
+            helper.succeed()
+        }
+    }
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun drillReserveDecaysAfterMining(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, copper) > 0) {
+                val reserves = (helper.getBlockEntity(drillPos) as? DrillBE)?.reserves ?: -1
+                if (reserves != 0) helper.fail("reserves must drop to 0 once the only ore is mined, got $reserves")
+            }
+        }
+    }
+
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun drillLockFiltersReserveCount(helper: GameTestHelper) {
+        val drillPos = BlockPos(1, 2, 1)
+        helper.setBlock(BlockPos(1, 1, 1), ModBlocks.ORE_COPPER.get())
+        helper.setBlock(BlockPos(1, 0, 1), ModBlocks.ORE_LEAD.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        helper.runAfterDelay(10) {
+            val drill = helper.getBlockEntity(drillPos) as? DrillBE
+                ?: throw IllegalStateException("drill BE missing")
+            drill.oreLock = lead // 右键循环切换属钻头开采票(#50),这里直走 #52 的读数数据面
+            if (drill.reserves != 1) helper.fail("lead lock must count only lead in the column, got ${drill.reserves}")
             helper.succeed()
         }
     }

@@ -165,8 +165,10 @@ class KilnBE(pos: BlockPos, state: BlockState) :
                 val deficit = due - energyCapability.currentEnergy
                 val granted = grid.requestDrain(lv.gameTime, deficit)
                 if (granted <= 0) {
+                    // 断电起始一脚同步:进度冻结后节流同步永不触发,不补这脚 Jade 供给行会一直显示旧比例
+                    val enteredBrownout = supplyRatio > 0f
                     supplyRatio = 0f // 断电:进度保持不倒退
-                    setChanged()
+                    if (enteredBrownout) syncData() else setChanged()
                     return
                 }
                 // 图供能补齐缺口,本 tick 实耗 = 本地余量 + 图给量(棕停时给量 < 缺口)

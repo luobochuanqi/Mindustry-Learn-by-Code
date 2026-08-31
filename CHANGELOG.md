@@ -23,7 +23,7 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 **Interface**
 
-- Jade tooltips now show a turret's ammo, the Kiln's progress and energy, and a Power Node's charge — just look at the block.
+- Jade tooltips now cover every phase-1 structure: turrets show ammo and structure health, the Kiln shows progress and its power-supply ratio during brownouts, the Battery shows stored FE, and the Drill shows its ore lock, column reserves and buffer contents. Hovering a member block of a multiblock shows the same info as its anchor.
 
 ### Removed
 

@@ -2,7 +2,10 @@ package xyz.luobo.mturrets.common.machines.drill
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
+import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.resources.ResourceLocation
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.Containers
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
@@ -69,6 +72,21 @@ class DrillBE(pos: BlockPos, state: BlockState) :
 
     private var progress = 0
 
+    // 显示面读数(Jade #52 消费;锁循环切换行为归钻头区域开采票 #50)
+
+    /** 当前锁定的矿种;null = 自动(全矿)。设置即重算储量并同步客户端。 */
+    var oreLock: Item? = null
+        set(value) {
+            if (field != value) {
+                field = value
+                refreshReserves()
+            }
+        }
+
+    /** 柱内储量:锚点正下方矿柱中锁定矿种(自动 = 全部矿石)的剩余块数;服务端权威。 */
+    var reserves: Int = 0
+        private set
+
     /** Buffer 准入:只存三种矿石物品(钻头产物;放料通道对无配方输入的钻头无意义)。 */
     fun isOreItem(stack: ItemStack): Boolean = ORE_OUTPUTS.containsValue(stack.item)
 
@@ -98,6 +116,7 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         progress = 0
         // 采集语义:吞掉矿石格、回填宿主石头;浅层 stone / 深层 deepslate
         lv.setBlock(mouth, hostStoneFor(mouth), 3)
+        refreshReserves() // 采口被吞,储量读数当场更新(Jade 不滞后一个周期)
         if (boosted) drainFluidInternal(WATER_PER_ITEM)
         val leftover = ItemHandlerHelper.insertItem(itemCapability, ItemStack(oreItem), false)
         if (!leftover.isEmpty) {
@@ -110,13 +129,44 @@ class DrillBE(pos: BlockPos, state: BlockState) :
     private fun hostStoneFor(pos: BlockPos): BlockState =
         if (pos.y < 0) Blocks.DEEPSLATE.defaultBlockState() else Blocks.STONE.defaultBlockState()
 
+    /**
+     * 重算储量:扫锚点正下方矿柱,逐格匹配 ORE_OUTPUTS;锁定态只数锁定矿种,自动态数全矿。
+     * 扫描面 = 现采口 1×1 列;#50 把开采扩到 2×2 柱时同步扩这里。
+     */
+    private fun refreshReserves() {
+        val lv = level
+        if (lv !is ServerLevel) return
+        val locked = oreLock
+        var count = 0
+        var y = worldPosition.y - 1
+        while (y >= lv.minBuildHeight) {
+            val item = ORE_OUTPUTS[lv.getBlockState(BlockPos(worldPosition.x, y, worldPosition.z)).block]
+            if (item != null && (locked == null || item == locked)) count++
+            y--
+        }
+        reserves = count
+        syncData()
+    }
+
+    /** 首次放置/区块重载即给客户端准确初值,不必等首个采掘周期;客户端值随 update tag 覆盖,不重算。 */
+    override fun onLoad() {
+        super.onLoad()
+        if (level is ServerLevel) refreshReserves()
+    }
+
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)
         tag.putInt("drill_progress", progress)
+        tag.putString("drill_ore_lock", oreLock?.let { BuiltInRegistries.ITEM.getKey(it).toString() } ?: "")
+        tag.putInt("drill_reserves", reserves)
     }
 
     override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.loadAdditional(tag, registries)
         progress = tag.getInt("drill_progress")
+        oreLock = tag.getString("drill_ore_lock").takeIf { it.isNotEmpty() }?.let {
+            ResourceLocation.tryParse(it)?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(null) }
+        }
+        reserves = tag.getInt("drill_reserves")
     }
 }

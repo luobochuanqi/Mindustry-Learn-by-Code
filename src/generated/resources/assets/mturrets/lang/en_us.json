@@ -10,7 +10,7 @@
   "block.mturrets.scatter_structural": "Scatter Member",
   "block.mturrets.test_structure_anchor_2x2": "Test Structure Anchor (2x2)",
   "block.mturrets.test_structure_structural": "Test Structure Member",
-  "config.jade.plugin_mturrets.turret_data": "Turret Info",
+  "config.jade.plugin_mturrets.structure_data": "Structure Info",
   "fluid.mturrets.arkycite": "Arkycite",
   "fluid.mturrets.cryofluid": "Cryofluid",
   "fluid.mturrets.cyanogen": "Cyanogen",
@@ -55,6 +55,13 @@
   "item.mturrets.water": "Water",
   "itemGroup.mturrets": "MTurrets",
   "jade.mturrets.ammo": "Ammo: %s/%s",
+  "jade.mturrets.auto": "Auto",
+  "jade.mturrets.drill_buffer": "Buffer: %s",
+  "jade.mturrets.drill_lock": "Lock: %s",
+  "jade.mturrets.drill_reserve": "Remaining: %s",
+  "jade.mturrets.energy": "Energy: %s/%s FE",
+  "jade.mturrets.health": "Health: %s/%s",
   "jade.mturrets.progress": "Progress: %s%%",
+  "jade.mturrets.supply": "Supply: %s%%",
   "mturrets.message.blueprint_blocked": "Not enough space for structure"
 }
