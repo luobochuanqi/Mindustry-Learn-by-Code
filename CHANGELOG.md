@@ -34,4 +34,4 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 ### Fixed
 
 - Faces of blocks next to turrets, machines and their member blocks are no longer culled away (structure blocks are non-occluding, like Create's multiblock parts).
-- Jade tooltips now show the real model for Scatter member blocks instead of an empty placeholder — the member item model pointed at a non-existent `minecraft:block/scatter_structural`; it now uses the same base model as the Scatter anchor.
+- Jade tooltips now show the structure's model for multiblock member blocks: members register no item, so picking and the Jade icon proxy to the anchor's item stack (Create-style master proxy), instead of rendering an empty placeholder.

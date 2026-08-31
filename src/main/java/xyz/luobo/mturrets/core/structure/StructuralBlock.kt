@@ -10,6 +10,7 @@ import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.LevelReader
 import net.minecraft.world.level.block.state.StateDefinition
 import net.minecraft.world.level.block.state.properties.IntegerProperty
 import net.minecraft.world.level.block.Blocks
@@ -37,6 +38,22 @@ class StructuralBlock(properties: Properties) : Block(properties) {
     override fun createBlockStateDefinition(builder: StateDefinition.Builder<Block, BlockState>) {
         builder.add(OFFSET_X, OFFSET_Y, OFFSET_Z)
     }
+
+    /**
+     * 成员无物品(ADR-0003),拾取栈代理回锚点方块(Create 大水车结构块同语义):
+     * Jade 悬浮成员显示结构本体图标,创造中键拾取成员也拿到控制器物品。
+     * Jade 的 picked result 与创造 pick 都经 IBlockExtension 默认实现收敛到本方法。
+     */
+    @Suppress("DEPRECATION")
+    override fun getCloneItemStack(level: LevelReader, pos: BlockPos, state: BlockState): ItemStack {
+        val anchorState = level.getBlockState(pos.subtract(decodeOffset(state)))
+        if (anchorState.block !is BlueprintAnchorBlock) {
+            // 孤立成员/拆除中:无锚点可代理,回退默认(空栈),不崩溃
+            return super.getCloneItemStack(level, pos, state)
+        }
+        return ItemStack(anchorState.block.asItem())
+    }
+    
     /**
      * 玩家敲击成员格的创造路径:预先无痕摘除锚点。ServerPlayerGameMode 创造分支
      * 走 removeBlock(不掉落),但成员 onRemove 代理的 destroyBlock(锚点, drop=true)

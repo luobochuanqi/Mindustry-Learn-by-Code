@@ -142,17 +142,19 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
     override fun registerModels() {
         // 方块物品:默认引用同名方块模型。必须带 mturrets 命名空间——无命名空间的 "block/x"
         // 会被解析成 minecraft:block/x(缺失 → 物品/Jade 图标渲染成空骨架,#47)
-        ModBlocks.MOD_BLOCKS.entries.forEach { entry ->
-            val name = entry.id.path
-            getBuilder(name).parent(ModelFile.UncheckedModelFile(modLoc("block/$name").toString()))
-        }
+        // 成员格无物品(#59 定案:拾取栈代理回锚点),不生成死 item 模型
+        ModBlocks.MOD_BLOCKS.entries
+            .filterNot { it.get() is StructuralBlock }
+            .forEach { entry ->
+                val name = entry.id.path
+                getBuilder(name).parent(ModelFile.UncheckedModelFile(modLoc("block/$name").toString()))
+            }
 
         // 炮台基座模型在 block/turret/ 下,与 "同名 block/<name>" 约定不同,必须显式指定
         // (无此覆盖时物品/创造标签/锚点 Jade 图标会引用不存在的 block/duo 而渲染成骨架)
         mapOf(
             "duo" to "block/turret/duo_base",
-            "scatter" to "block/turret/scatter_base_corner",
-            "scatter_structural" to "block/turret/scatter_base_corner"
+            "scatter" to "block/turret/scatter_base_corner"
         ).forEach { (name, model) ->
             getBuilder(name).parent(ModelFile.UncheckedModelFile(modLoc(model).toString()))
         }
@@ -204,7 +206,7 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
                 this.modLoc("block/mechanical_drill_top")
             )
         )
-        this.simpleBlockWithItem(
+        this.simpleBlock(
             ModBlocks.DRILL_STRUCTURAL.get(),
             this.models().cubeBottomTop(
                 "mechanical_drill_structural",
@@ -246,7 +248,7 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
             ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get(),
             this.models().cubeAll("test_structure_anchor_2x2", testTexture)
         )
-        this.simpleBlockWithItem(
+        this.simpleBlock(
             ModBlocks.TEST_STRUCTURAL.get(),
             this.models().cubeAll("test_structure_structural", testTexture)
         )

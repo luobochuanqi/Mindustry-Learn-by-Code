@@ -978,6 +978,26 @@ object ModGameTests {
         }
     }
 
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun memberPickProxiesToAnchorItem(helper: GameTestHelper) {
+        val drillPos = BlockPos(1, 2, 1)
+        val memberPos = BlockPos(2, 2, 1)
+        val drillItem = ModItems.DRILL_ITEM.get()!!
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(5) {
+            val memberState = helper.getBlockState(memberPos)
+            if (memberState.block !is StructuralBlock) helper.fail("member block missing at $memberPos")
+            // Jade 图标/创造拾取都走 picked result → clone item stack(成员代理回锚点,#59)
+            val hit = BlockHitResult(Vec3.ZERO, Direction.UP, helper.absolutePos(memberPos), false)
+            val picked = memberState.getCloneItemStack(
+                hit, helper.level, helper.absolutePos(memberPos), helper.makeMockPlayer(GameType.CREATIVE)
+            )
+            if (!picked.`is`(drillItem)) helper.fail("member pick must return the anchor item, got ${picked.item}")
+            helper.succeed()
+        }
+    }
+
     /** ⑦:镐子挖矿石 → 固定掉 1 对应材料物品(手挖语义,无 fortune/silk 分支)。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
