@@ -4,7 +4,7 @@
 
 新范式炮台 = 单层 `TurretBE`（继承 ADR-0003 锚点 BE）承载索敌/旋转/装填/开火管线、Magazine、Coolant 内罐与 Health，弹种差异全部进数据表（TurretSpec Kotlin 代码表 + BulletType，分工依 ADR-0006）。Mindustry 的四层继承链（BaseTurret←ReloadTurret←Turret←ItemTurret）是其 Java 数据驱动注册的副产品，一期 Duo/Scatter 都是物品弹，照搬等于为不存在的复用矩阵交税；ADR-0004 的族内复用一个类即满足。每 tick 时序对位 Mindustry：目标校验 → 装填累加（封顶 reload；尾弹种 reloadMultiplier；Coolant 生效则 ×1.5）→ 每 7 tick 索敌 → 旋转逼近目标角 → 开火门（装填满 ∧ 入 shootCone）→ 扳机扣账 + 按 `(shots, shotDelay)` 排程出膛；装填与瞄准解耦。
 
-关键语义：**Magazine 是单位账**（物品×ammoMultiplier 折算入仓、cap 按单位计），不存物理物品；选弹**后入为主（LIFO）**；点射共享同一次扣账（Scatter 一扳机 2 发扣 1 单位，对位 consumeAmmoOnce）。装弹/退料走**手持右键**：右键结构任一格（Member 代理回锚点）整堆折算入仓、超 cap 拒收；拆除或毁坏时按 `floor(单位/multiplier)` 折回物品散落。阵营过滤 = **只打 Monster**（MC 无队伍系统，避免误伤建造中的自己人）。同步遵 ADR-0005：只发目标 yaw/pitch（低频 update tag）+ 单调开火计数器，瞬时角不上网；后坐值 curRecoil 是 Flywheel 枪管动画的唯一逻辑量。结构 Health 取 Mindustry 原值 1:1（Duo 250、Scatter 200），玩家挖掘走拆除不走伤害。量纲换算规则（全炮台通用）：时长 ×⅓、距离 ÷8、弹速 ×⅜、角速度 ×3。
+关键语义：**Magazine 是单位账**（物品×ammoMultiplier 折算入仓、cap 按单位计），不存物理物品；选弹**后入为主（LIFO）**；点射共享同一次扣账（Scatter 一扳机 2 发扣 1 单位，对位 consumeAmmoOnce）。装弹/退料走**手持右键**：右键结构任一格（Member 代理回锚点）整堆折算入仓、超 cap 部分折算、手持堆按接受量 shrink（#46 取代整堆拒收的 #31 决议，2026-08 打磨阶段定案）；拆除或毁坏时按 `floor(单位/multiplier)` 折回物品散落。阵营过滤 = **只打 Monster**（MC 无队伍系统，避免误伤建造中的自己人）。同步遵 ADR-0005：只发目标 yaw/pitch（低频 update tag）+ 单调开火计数器，瞬时角不上网；后坐值 curRecoil 是 Flywheel 枪管动画的唯一逻辑量。结构 Health 取 Mindustry 原值 1:1（Duo 250、Scatter 200），玩家挖掘走拆除不走伤害。量纲换算规则（全炮台通用）：时长 ×⅓、距离 ÷8、弹速 ×⅜、角速度 ×3。
 
 ## Considered Options
 

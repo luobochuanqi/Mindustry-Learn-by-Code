@@ -209,7 +209,7 @@ abstract class TurretBE(
     // ===== 索敌 =====
 
     /** 目标过滤:只打 Monster(ADR-0009);按 spec 对空/对地标记过滤(#34:Scatter 只打不落地的怪)。 */
-    protected open fun isValidTarget(entity: LivingEntity): Boolean =
+    private fun isValidTarget(entity: LivingEntity): Boolean =
         entity is Monster && entity.isAlive && !entity.isRemoved &&
             ((spec.targetAir && !entity.onGround()) || (spec.targetGround && entity.onGround())) &&
             entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range
@@ -230,7 +230,7 @@ abstract class TurretBE(
         return worldPosition.center.add(half.toDouble(), 0.0, half.toDouble())
     }
     /** 提前量瞄准点:对移动目标按弹速解命中时间外推位置(LeadCalculator 存活件);瞄胸口而非脚底。 */
-    protected open fun aimPoint(tgt: LivingEntity): Vec3 {
+    private fun aimPoint(tgt: LivingEntity): Vec3 {
         val look = tgt.position().add(0.0, tgt.eyeHeight * 0.5.toDouble(), 0.0)
         val bullet = spec.ammoTypes.firstOrNull { it.item == magazine.tail?.item }?.bullet ?: return look
         val time = LeadCalculator.solveLeadEquation(
