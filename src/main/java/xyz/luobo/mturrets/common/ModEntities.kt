@@ -22,7 +22,8 @@ object ModEntities {
                 MobCategory.MISC
             )
                 .sized(0.25f, 0.25f)
-                .clientTrackingRange(8)
+                // 子弹 ≤20 tick 寿命,4 = 原版箭值(#53):8 只为无人看见落点的弹丸输送 tracker 流量
+                .clientTrackingRange(4)
                 .updateInterval(2)
                 .build(ResourceLocation.fromNamespaceAndPath(MTurrets.MOD_ID, "turret_bullet").toString())
         })

@@ -25,6 +25,10 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 - Jade tooltips now cover every phase-1 structure: turrets show ammo and structure health, the Kiln shows progress and its power-supply ratio during brownouts, the Battery shows stored FE, and the Drill shows its ore lock, column reserves and buffer contents. Hovering a member block of a multiblock shows the same info as its anchor.
 
+### Changed
+
+- Bullets now render as proper two-layer shells (Mindustry's back/front sprite pair, tinted per ammo type) that face their direction of flight instead of flat white squares, and visibly shrink away right before despawning instead of popping out of existence.
+
 ### Removed
 
 - Arc and Meltdown are gone: the pre-renovation turret implementations and their shared framework were deleted. Power-fed turrets return with a rebuild on the new skeleton.
@@ -35,3 +39,4 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 - Faces of blocks next to turrets, machines and their member blocks are no longer culled away (structure blocks are non-occluding, like Create's multiblock parts).
 - Jade tooltips now show the structure's model for multiblock member blocks: members register no item, so picking and the Jade icon proxy to the anchor's item stack (Create-style master proxy), instead of rendering an empty placeholder.
+- Fast bullets can no longer slip clean through a thin or crossing monster between ticks: hit detection sweeps the whole tick's path. Splash damage and fragments erupt from the point where the bullet actually touches its target (a fast round no longer splashes a block behind it), and a bullet stopped by a wall still settles everything it passed through that tick.

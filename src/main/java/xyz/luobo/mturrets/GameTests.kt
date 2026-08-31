@@ -10,6 +10,7 @@ import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.effect.MobEffectInstance
 import net.minecraft.world.effect.MobEffects
 import net.minecraft.world.entity.EntityType
+import net.minecraft.world.entity.ai.attributes.Attributes
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.entity.item.ItemEntity
 import net.minecraft.world.item.Item
@@ -33,6 +34,7 @@ import xyz.luobo.mturrets.common.machines.drill.DrillBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
+import xyz.luobo.mturrets.core.combat.BulletType
 import xyz.luobo.mturrets.core.structure.StructuralBlock
 
 /**
@@ -205,6 +207,26 @@ object ModGameTests {
         }
     }
 
+    /** ③c 扫掠命中(漏怪修复):3 格/tick 弹一发——tick 末静态盒必漏(整段跨过僵尸),起止并集盒必中;
+     * 伤害恰一次(20-6=14)兼防双结算。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun bulletSweptProbeHitsMidTickTarget(helper: GameTestHelper) {
+        helper.setBlock(BlockPos(1, 0, 1), Blocks.STONE)
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 1))
+        fireproof(zombie)
+        // 清甲 + 地板:消除甲减免与重力两个无关变量,伤害断言保持精确(20-6=14)
+        zombie.getAttribute(Attributes.ARMOR)?.baseValue = 0.0
+        val bullet = helper.spawn(ModEntities.TURRET_BULLET.get(), BlockPos(1, 2, -1))
+        bullet.init(BulletType(damage = 6f, speed = 3f, lifetime = 3), Vec3(0.0, 0.0, 1.0))
+
+        helper.runAfterDelay(10) {
+            if (zombie.health != 14f) {
+                helper.fail("fast bullet must hit its mid-tick target exactly once, hp=${zombie.health}")
+            }
+            helper.succeed()
+        }
+    }
     /** ④a 无水基准:20 铜(40 单位),60 tick 窗口内 8 发(6.7t 装填)→ 拆机折回 16 铜。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 150)
