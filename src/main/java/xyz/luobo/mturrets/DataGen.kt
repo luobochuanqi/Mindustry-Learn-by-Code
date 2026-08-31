@@ -140,12 +140,21 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
 class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileHelper) :
     ItemModelProvider(output, MTurrets.MOD_ID, existingFileHelper) {
     override fun registerModels() {
-        // 方块物品:直接引用 blockstate 提供器同轮生成的方块模型
-        // (使用 Unchecked 父模型,保证单次 runData 即可全量产出,CI 新鲜度校验可幂等)
+        // 方块物品:默认引用同名方块模型。必须带 mturrets 命名空间——无命名空间的 "block/x"
+        // 会被解析成 minecraft:block/x(缺失 → 物品/Jade 图标渲染成空骨架,#47)
         ModBlocks.MOD_BLOCKS.entries.forEach { entry ->
             val name = entry.id.path
-            getBuilder(name)
-                .parent(ModelFile.UncheckedModelFile("block/$name"))
+            getBuilder(name).parent(ModelFile.UncheckedModelFile(modLoc("block/$name").toString()))
+        }
+
+        // 炮台基座模型在 block/turret/ 下,与 "同名 block/<name>" 约定不同,必须显式指定
+        // (无此覆盖时物品/创造标签/锚点 Jade 图标会引用不存在的 block/duo 而渲染成骨架)
+        mapOf(
+            "duo" to "block/turret/duo_base",
+            "scatter" to "block/turret/scatter_base_corner",
+            "scatter_structural" to "block/turret/scatter_base_corner"
+        ).forEach { (name, model) ->
+            getBuilder(name).parent(ModelFile.UncheckedModelFile(modLoc(model).toString()))
         }
 
         // Materials

@@ -30,3 +30,8 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 - Arc and Meltdown are gone: the pre-renovation turret implementations and their shared framework were deleted. Power-fed turrets return with a rebuild on the new skeleton.
 
 - Debug and example items, plus the throwaway test screens, are gone from the creative tab.
+
+### Fixed
+
+- Faces of blocks next to turrets, machines and their member blocks are no longer culled away (structure blocks are non-occluding, like Create's multiblock parts).
+- Jade tooltips now show the real model for Scatter member blocks instead of an empty placeholder — the member item model pointed at a non-existent `minecraft:block/scatter_structural`; it now uses the same base model as the Scatter anchor.

@@ -128,7 +128,10 @@ abstract class BlueprintAnchorBlock(properties: Properties) : BaseEntityBlock(pr
     }
 
     companion object {
-        /** 锚点与成员共同的 block properties:拒绝活塞/水流推动,结构完整性不受环境影响。 */
-        fun structureProperties(): Properties = Properties.of().pushReaction(PushReaction.BLOCK)
+        /** 锚点与成员共同的 block properties:拒绝活塞/水流推动,结构完整性不受环境影响;不遮挡
+         * (Create 大水车同款——全立方遮挡会让贴邻方块的面被剔除,露出空洞)。 */
+        fun structureProperties(): Properties = Properties.of()
+            .pushReaction(PushReaction.BLOCK)
+            .noOcclusion()
     }
 }
