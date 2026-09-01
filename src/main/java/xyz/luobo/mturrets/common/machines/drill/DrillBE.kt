@@ -132,6 +132,7 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         // 采集语义:吞掉矿石格、回填宿主石头;浅层 stone / 深层 deepslate
         lv.setBlock(mouth, hostStoneFor(mouth), 3)
         refreshReserves() // 采口被吞,储量读数当场更新(Jade 不滞后一个周期)
+        if (boosted) drainFluidInternal(WATER_PER_ITEM)
         val leftover = ItemHandlerHelper.insertItem(itemCapability, ItemStack(item), false)
         if (!leftover.isEmpty) {
             // 预检已保证有位,理论不可达;确定性兜底不丢物品
