@@ -135,22 +135,19 @@ object ModGameTests {
         }
     }
 
-    /** ② 超 cap 整堆拒收:51 铜(102 单位 > cap 100)物品原样保留;50 铜(恰 100)全收;再 1 铜拒收。 */
+    /** ② 部分装弹(#46,取代 #31 整堆拒收):空仓收 51 铜(102 单位 > cap 100)按整件向下取整——
+     * 收 50、手持留 1、弹仓满;再 1 铜(已满)拒收。倍率 2,折算单位 100/2=50 件恰满。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
-    fun duoRejectsAmmoOverCapacity(helper: GameTestHelper) {
+    fun duoPartiallyLoadsAmmoOverCapacity(helper: GameTestHelper) {
         val turretPos = BlockPos(1, 1, 1)
         helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
 
         val copper = ModItems.getMaterial(Materials.COPPER).get()
 
         val over = ItemStack(copper, 51)
-        if (mockUseOn(helper, turretPos, over) != ItemInteractionResult.FAIL || over.count != 51) {
-            helper.fail("over-cap stack must be rejected whole, count=${over.count}")
-        }
-        val exact = ItemStack(copper, 50)
-        if (mockUseOn(helper, turretPos, exact) != ItemInteractionResult.CONSUME || !exact.isEmpty) {
-            helper.fail("exactly-full stack must be accepted, count=${exact.count}")
+        if (mockUseOn(helper, turretPos, over) != ItemInteractionResult.CONSUME || over.count != 1) {
+            helper.fail("over-cap stack must be partially loaded, 51 -> 50 accepted, 1 left, count=${over.count}")
         }
         val extra = ItemStack(copper, 1)
         if (mockUseOn(helper, turretPos, extra) != ItemInteractionResult.FAIL || extra.count != 1) {

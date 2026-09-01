@@ -26,10 +26,14 @@ class Magazine(private val cap: Int) {
     /** 队尾弹种(当前选弹);空仓为 null。 */
     val tail: Entry? get() = entries.lastOrNull()
 
-    /** 整堆入仓:折算超 cap 整堆拒收(物品原样保留,#31 决议)。 */
-    fun load(item: Item, count: Int, unitMultiplier: Int): Boolean {
-        val units = count * unitMultiplier
-        if (units <= 0 || total + units > cap) return false
+    /** 部分装弹:按剩余容量向下取整到整件物品,返回接受件数(0 = 整堆拒收,物品原样保留,#46 取代 #31)。 */
+    fun load(item: Item, count: Int, unitMultiplier: Int): Int {
+        val free = cap - total
+        if (free <= 0 || count <= 0 || unitMultiplier <= 0) return 0
+        // 向下取整到整件:不足一件的余量(free % mult)保持空着,不造免费弹药(守恒)
+        val acceptedItems = minOf(count, free / unitMultiplier)
+        if (acceptedItems <= 0) return 0
+        val units = acceptedItems * unitMultiplier
         val existing = entries.firstOrNull { it.item == item }
         if (existing != null) {
             existing.units += units
@@ -40,7 +44,7 @@ class Magazine(private val cap: Int) {
             entries.add(Entry(item, units, unitMultiplier))
         }
         total += units
-        return true
+        return acceptedItems
     }
 
     /** 扳机扣 1 单位(队尾优先);不足返回 false。 */

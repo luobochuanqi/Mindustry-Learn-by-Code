@@ -21,7 +21,7 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 
 /**
  * Duo(蓝图管线 1×1,ADR-0003/0008/0009):偏移集只含锚点,放置/拆除/回滚由管线兜住。
- * 交互无 GUI:可倒出液体的手持物右键灌 Coolant 内罐(水);手持弹药右键整堆入仓(超 cap 拒收);
+ * 交互无 GUI:可倒出液体的手持物右键灌 Coolant 内罐(水);手持弹药右键部分入仓(按整件向下取整,#46);
  * 无取出通道(单位账不存物理物品,拆除按倍率折回散落,ADR-0009)。
  */
 class DuoBlock : BlueprintAnchorBlock(structureProperties()) {
@@ -57,10 +57,11 @@ class DuoBlock : BlueprintAnchorBlock(structureProperties()) {
         if (FluidUtil.interactWithFluidHandler(player, hand, turret.fluidCapability)) {
             return ItemInteractionResult.CONSUME
         }
-        // 手持弹药右键装弹:整堆折算入仓,超 cap 整堆拒收(物品原样保留)
+        // 手持弹药右键装弹:按剩余容量向下取整到整件,部分入仓,手持堆按接受件数缩小(#46 取代 #31 整堆拒收)
         if (turret.ammoTypeFor(stack.item) != null) {
-            return if (turret.tryLoadAmmo(stack)) {
-                stack.shrink(stack.count)
+            val accepted = turret.tryLoadAmmo(stack)
+            return if (accepted > 0) {
+                stack.shrink(accepted)
                 ItemInteractionResult.CONSUME
             } else {
                 ItemInteractionResult.FAIL

@@ -23,7 +23,7 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 /**
  * Scatter(蓝图 2×2,#34):角锚点 +X/+Z 生长(#26 约定),3 成员格为基座外观结构块;
  * 静态基座四格各用一角模型 + 成员按偏移 variant 做 y 旋转(#34 spec 渲染决策)。
- * 交互与 Duo 同语义:可倒出手持物灌 Coolant 内罐(水);手持弹药右键整堆入仓(超 cap 拒收);
+ * 交互与 Duo 同语义:可倒出手持物灌 Coolant 内罐(水);手持弹药右键部分入仓(按整件向下取整,#46);
  * 无取出通道(单位账不存物理物品,拆除按倍率折回散落,ADR-0009);成员格交互经管线代理回锚点。
  */
 class ScatterBlock : BlueprintAnchorBlock(structureProperties()) {
@@ -65,10 +65,11 @@ class ScatterBlock : BlueprintAnchorBlock(structureProperties()) {
         if (FluidUtil.interactWithFluidHandler(player, hand, turret.fluidCapability)) {
             return ItemInteractionResult.CONSUME
         }
-        // 手持弹药右键装弹:整堆折算入仓,超 cap 整堆拒收(物品原样保留)
+        // 手持弹药右键装弹:按剩余容量向下取整到整件,部分入仓,手持堆按接受件数缩小(#46 取代 #31 整堆拒收)
         if (turret.ammoTypeFor(stack.item) != null) {
-            return if (turret.tryLoadAmmo(stack)) {
-                stack.shrink(stack.count)
+            val accepted = turret.tryLoadAmmo(stack)
+            return if (accepted > 0) {
+                stack.shrink(accepted)
                 ItemInteractionResult.CONSUME
             } else {
                 ItemInteractionResult.FAIL

@@ -131,9 +131,9 @@ abstract class TurretBE(
     fun ammoTypeFor(item: net.minecraft.world.item.Item): AmmoType? =
         spec.ammoTypes.firstOrNull { it.item == item }
 
-    /** 整堆装弹:折算超 cap 整堆拒收(物品原样保留)。 */
-    fun tryLoadAmmo(stack: ItemStack): Boolean {
-        val ammo = ammoTypeFor(stack.item) ?: return false
+    /** 部分装弹:按剩余容量向下取整到整件,返回接受件数(0 = 整堆拒收,非本炮台弹药同为 0)。 */
+    fun tryLoadAmmo(stack: ItemStack): Int {
+        val ammo = ammoTypeFor(stack.item) ?: return 0
         return magazine.load(stack.item, stack.count, ammo.unitMultiplier)
     }
 
