@@ -18,6 +18,7 @@ import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBlock
 import xyz.luobo.mturrets.common.power.BatteryBE
 import xyz.luobo.mturrets.common.power.BatteryBlock
+import xyz.luobo.mturrets.common.power.PowerSourceBE
 import xyz.luobo.mturrets.common.turrets.DuoBlock
 import xyz.luobo.mturrets.common.turrets.ScatterBlock
 import xyz.luobo.mturrets.core.combat.TurretBE
@@ -65,6 +66,9 @@ object StructureDataProvider : IBlockComponentProvider {
             }
             is BatteryBE -> {
                 tooltip.add(Component.translatable("jade.mturrets.energy", be.batteryEnergy, be.batteryCapacity))
+            }
+            is PowerSourceBE -> {
+                tooltip.add(Component.translatable("jade.mturrets.production", PowerSourceBE.PRODUCTION_PER_TICK))
             }
             is DrillBE -> {
                 val lock = be.oreLock

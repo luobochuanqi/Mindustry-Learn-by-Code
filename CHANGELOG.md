@@ -19,7 +19,7 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 - **Kiln** — bakes lead + sand into metaglass (1:1:1) while powered. A blackout pauses it and keeps its progress; power returns and it resumes where it stopped. Breaking it returns what was inside.
 - **Power Node** — stores energy and relays it to adjacent nodes, machines and turrets at up to 100 FE per tick, so a reactor can feed a turret across a base. Accepts and supplies standard NeoForge energy.
-- 20 Mindustry materials (copper, lead, silicon, metaglass, graphite, surge alloy, plastanium, phase fabric, …) and 11 fluids, all under the MTurrets creative tab.
+- **Power Source** (debug) — a creative-tab block that produces a constant 333,320 FE per tick into the grid it's wired into, enough to run any phase-1 machine at full speed without a battery. Surplus production charges adjacent batteries; it has no recipe and no fuel, purely a dev aid for powering test setups.
 
 **Interface**
 
@@ -27,6 +27,7 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 ### Changed
 
+- Kiln's internal energy buffer is now one craft's worth (500 FE) instead of twenty: it no longer acts as a hidden battery, so grid power (and the brownout ratio it shows) reflects what actually flows from the network. External energy injection still works.
 - Bullets now render as proper two-layer shells (Mindustry's back/front sprite pair, tinted per ammo type) that face their direction of flight instead of flat white squares, and visibly shrink away right before despawning instead of popping out of existence.
 
 ### Removed

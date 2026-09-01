@@ -1,5 +1,6 @@
 {
   "block.mturrets.power_node": "电力节点",
+  "block.mturrets.power_source": "电源",
   "block.mturrets.battery": "电池",
   "block.mturrets.kiln": "窑炉",
   "block.mturrets.ore_copper": "铜矿石",
@@ -14,6 +15,7 @@
   "jade.mturrets.progress": "进度: %s%%",
   "jade.mturrets.health": "生命: %s/%s",
   "jade.mturrets.supply": "供给: %s%%",
+  "jade.mturrets.production": "生产: %s FE/t",
   "jade.mturrets.energy": "储能: %s/%s FE",
   "jade.mturrets.drill_lock": "锁定: %s",
   "jade.mturrets.drill_reserve": "剩余: %s",

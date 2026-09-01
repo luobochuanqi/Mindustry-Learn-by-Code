@@ -42,8 +42,10 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         const val WATER_TANK_CAPACITY = 1000
         /** 每轮耗水(mB):机器语义(CONTEXT:Kiln 水=必需输入),不进配方 JSON。 */
         const val WATER_PER_CRAFT = 50
-        /** 储能:容纳多轮能耗;对外只收不吐,注入限速 200 FE/t(#27 口径)。 */
-        const val ENERGY_CAPACITY = 10000
+        /** 本地储能 = 一轮配方能耗(500 FE):Mindustry 非缓冲建筑只存 status×1、储能归电池,
+         * 10,000 旧值是隐式大电池,违反 ADR-0007 "节点零储能、电池储能" 模型(#49 grill 修订)。
+         * 500 覆盖单轮,本地缓冲先于电网消耗(外部 mod FE 仍可注入,能力保留)。 */
+        const val ENERGY_CAPACITY = 500
         const val MAX_ENERGY_RECEIVE = 200
         /** 进度定点记账单位(棕停按 ratio 分数推进,定点防浮点漂移;满速 = 每 tick +UNIT)。 */
         const val PROGRESS_UNIT = 8

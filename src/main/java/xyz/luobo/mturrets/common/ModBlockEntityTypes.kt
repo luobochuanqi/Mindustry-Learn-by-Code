@@ -8,6 +8,7 @@ import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.power.BatteryBE
 import xyz.luobo.mturrets.common.power.PowerNodeBE
+import xyz.luobo.mturrets.common.power.PowerSourceBE
 import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
 import xyz.luobo.mturrets.common.machines.drill.DrillBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
@@ -32,6 +33,13 @@ object ModBlockEntityTypes {
             BlockEntityType.Builder.of(
                 { pos, state -> BatteryBE(pos, state) },
                 ModBlocks.BATTERY.get()
+            ).build(null)
+        })
+    val POWER_SOURCE: DeferredHolder<BlockEntityType<*>, BlockEntityType<PowerSourceBE>> =
+        BLOCK_ENTITY_TYPES.register("power_source", Supplier {
+            BlockEntityType.Builder.of(
+                { pos, state -> PowerSourceBE(pos, state) },
+                ModBlocks.POWER_SOURCE.get()
             ).build(null)
         })
 

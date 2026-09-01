@@ -130,6 +130,7 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
 
         // Blocks
         this.add(ModBlocks.POWER_NODE.get(), "Power Node")
+        this.add(ModBlocks.POWER_SOURCE.get(), "Power Source")
         this.add(ModBlocks.DUO_BLOCK.get(), "Duo")
         this.add(ModBlocks.SCATTER.get(), "Scatter")
         this.add(ModBlocks.SCATTER_STRUCTURAL.get(), "Scatter Member")
@@ -164,6 +165,7 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         this.add("jade.mturrets.health", "Health: %s/%s")
         this.add("jade.mturrets.supply", "Supply: %s%%")
         this.add("jade.mturrets.energy", "Energy: %s/%s FE")
+        this.add("jade.mturrets.production", "Production: %s FE/t")
         this.add("jade.mturrets.drill_lock", "Lock: %s")
         this.add("jade.mturrets.drill_reserve", "Remaining: %s")
         this.add("jade.mturrets.drill_buffer", "Buffer: %s")
@@ -231,6 +233,11 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
                 this.modLoc("block/battery_top"),
                 this.modLoc("block/battery_top")
             )
+        )
+        // 电源(#49,调试):暂沿用节点贴图占位,新模型随"全模型资产架构"票落定
+        this.simpleBlockWithItem(
+            ModBlocks.POWER_SOURCE.get(),
+            this.models().cubeAll("power_source", this.modLoc("block/power_node_block"))
         )
         // 窑炉:贴图沿用 kiln_block(与 legacy 视觉一致,#33 决议)
         this.simpleBlockWithItem(ModBlocks.KILN.get(), this.models().cubeAll("kiln", this.modLoc("block/kiln_block")))
@@ -312,6 +319,7 @@ class ModBlockLootProvider(registries: HolderLookup.Provider) :
         this.dropSelf(ModBlocks.DRILL.get())
         this.dropSelf(ModBlocks.POWER_NODE.get())
         this.dropSelf(ModBlocks.BATTERY.get())
+        this.dropSelf(ModBlocks.POWER_SOURCE.get())
         this.dropSelf(ModBlocks.TEST_STRUCTURE_ANCHOR_2X2.get())
         // 成员格:properties noLootTable() 已豁免(掉落收口在锚点,ADR-0003)
         // 新 Duo(#31):蓝图锚点 dropSelf(控制器物品),拆机内容物折回由锚点散落通道兜住

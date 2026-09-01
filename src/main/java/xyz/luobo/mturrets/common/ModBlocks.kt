@@ -9,6 +9,7 @@ import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.power.BatteryBlock
 import xyz.luobo.mturrets.common.power.PowerNodeBlock
+import xyz.luobo.mturrets.common.power.PowerSourceBlock
 import xyz.luobo.mturrets.common.structure.TestStructureAnchor2x2Block
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 import xyz.luobo.mturrets.core.structure.StructuralBlock
@@ -23,6 +24,8 @@ object ModBlocks {
     // 电网(ADR-0007,#30):节点纯导线零储能;电池储能 8 万 FE。均 1×1 蓝图锚点。
     val POWER_NODE: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("power_node") { PowerNodeBlock() }
     val BATTERY: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("battery") { BatteryBlock() }
+    // 电源(#49,调试):常量 333,320 FE/t 生产,1×1 锚点,无配方。
+    val POWER_SOURCE: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("power_source") { PowerSourceBlock() }
 
 
     // Machines

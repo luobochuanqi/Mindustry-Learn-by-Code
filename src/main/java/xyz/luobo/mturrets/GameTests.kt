@@ -33,6 +33,7 @@ import xyz.luobo.mturrets.common.ModEntities
 import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.machines.drill.DrillBE
+import xyz.luobo.mturrets.common.power.BatteryBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
@@ -434,7 +435,8 @@ object ModGameTests {
             if (kiln == null || kiln.supplyRatio > 0f) {
                 helper.fail("kiln must report supplyRatio 0 while cut off from power, got ${kiln?.supplyRatio}")
             }
-            // 30 FE @ 5 FE/t = 6 个扣账 tick + 起始 tick,进度冻结在 7%:断电不倒退、补电后续转
+            // 窑炉起始本地 0 FE:每 tick 全 5 FE 走电网,电池 30 FE 撑 6 tick 后归零,
+            // 再申 1 次得 0 → 断电;进度冻结在 7(本地缓冲 500 不影响,起始即空)
             if (kiln?.progressPercent != 7) {
                 helper.fail("kiln progress must freeze at 7%, got ${kiln?.progressPercent}")
             }
@@ -490,6 +492,50 @@ object ModGameTests {
         }
     }
 
+    /** 电源(#49,调试):常量 333,320 FE/t 生产,经电网维持窑炉满速——棕停 ratio 恒 1、持续产出。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun sourceSustainsKilnAtFullSpeed(helper: GameTestHelper) {
+        val sourcePos = BlockPos(0, 1, 1)
+        val kilnPos = BlockPos(1, 1, 1)
+        helper.setBlock(sourcePos, ModBlocks.POWER_SOURCE.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND, 4))
+        fillKilnTank(helper, kilnPos)
+
+        helper.succeedWhen {
+            val kiln = helper.getBlockEntity(kilnPos) as? KilnBE
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("kiln did not craft from source power")
+            }
+            // 产量 333,320 FE/t 远超窑炉 ~5 FE/t 需求:无棕停,supplyRatio 恒 1
+            if (kiln == null || kiln.supplyRatio < 1f) {
+                helper.fail("kiln must run at full speed under source, got ratio=${kiln?.supplyRatio}")
+            }
+        }
+    }
+
+    /** 电源 + 空闲电池:无耗电方时,生产按空余容量比例充入电池直至满电。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun sourceChargesIdleBattery(helper: GameTestHelper) {
+        val sourcePos = BlockPos(0, 1, 1)
+        val batteryPos = BlockPos(1, 1, 1)
+        helper.setBlock(sourcePos, ModBlocks.POWER_SOURCE.get())
+        helper.setBlock(batteryPos, ModBlocks.BATTERY.get())
+
+        if (storedEnergy(helper, batteryPos) != 0) helper.fail("battery must start empty")
+
+        helper.succeedWhen {
+            // 图内充电瞬时(镜像扣账),333,320 FE/t 一 tick 即灌满 80,000
+            if (storedEnergy(helper, batteryPos) < BatteryBE.ENERGY_CAPACITY) {
+                helper.fail("battery must reach full from source, got ${storedEnergy(helper, batteryPos)}")
+            }
+        }
+    }
+
     // 生产:窑炉(#33 新范式:蓝图管线 1×1 + datapack 配方 + 水/能量)
 
     /** 经流体能力向内罐灌水(GameTestHelper 无桶物品交互,走能力注入面) */
@@ -538,19 +584,20 @@ object ModGameTests {
         helper.setBlock(kilnPos, ModBlocks.KILN.get())
 
         // 配方(生成 JSON):1 铅 + 1 原版沙 → 1 金属玻璃,100 tick,500 FE;水 50 mB/轮
+        // 本地缓冲 = 一轮能耗(500,#49 grill 修订):注入 500 恰好撑满一轮
         insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
         insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
         fillKilnTank(helper, kilnPos)
-        val injected = injectEnergyUpTo(helper, kilnPos, 600)
-        if (injected < 600) helper.fail("kiln refused energy injection: $injected/600")
+        val injected = injectEnergyUpTo(helper, kilnPos, 500)
+        if (injected != 500) helper.fail("kiln must accept 500 FE (one craft's energy): $injected")
 
         helper.succeedWhen {
             if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
                 helper.fail("kiln produced no metaglass")
             }
-            // 能量按配方总耗扣除:600 - 500 = 100
+            // 能量按配方总耗扣除:500 - 500 = 0
             val left = storedEnergy(helper, kilnPos)
-            if (left != 100) helper.fail("expected 100 FE left after 500 FE recipe, got $left")
+            if (left != 0) helper.fail("expected 0 FE left after 500 FE recipe, got $left")
         }
     }
 
@@ -562,14 +609,14 @@ object ModGameTests {
 
         insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
         insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
-        injectEnergyUpTo(helper, kilnPos, 600)
+        injectEnergyUpTo(helper, kilnPos, 500)
 
         // 缺水:加工从不启动;40 tick 后确认零产出且能量分毫未耗(未开工)
         helper.runAfterDelay(40) {
             if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) > 0) {
                 helper.fail("kiln produced without water")
             }
-            if (storedEnergy(helper, kilnPos) != 600) {
+            if (storedEnergy(helper, kilnPos) != 500) {
                 helper.fail("kiln consumed energy without water: ${storedEnergy(helper, kilnPos)}")
             }
             fillKilnTank(helper, kilnPos)

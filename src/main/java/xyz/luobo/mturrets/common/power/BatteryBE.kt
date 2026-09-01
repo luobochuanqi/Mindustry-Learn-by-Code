@@ -36,6 +36,21 @@ class BatteryBE(pos: BlockPos, state: BlockState) :
         graph?.onBatteryDelta(-amount)
         energyCapability.onEnergyChanged()
     }
+
+    /**
+     * 图按比例充电:直改本块电量并同步聚合(确定性面,与 [drainFromGrid] 对称、图内
+     * 瞬时),不走对外 capability 的限速面——图内充放都是瞬时记账,限速只约束对外交互。
+     */
+    override fun chargeFromGrid(amount: Int) {
+        if (amount <= 0) return
+        val before = energyCapability.currentEnergy
+        energyCapability.currentEnergy = (before + amount).coerceAtMost(energyCapability.energyCapacity)
+        val added = energyCapability.currentEnergy - before
+        if (added > 0) {
+            graph?.onBatteryDelta(added)
+            energyCapability.onEnergyChanged()
+        }
+    }
 }
 
 /** 电池储能:对外充放后把差额同步进图聚合缓存(simulate 不记账,防重复扣减)。 */

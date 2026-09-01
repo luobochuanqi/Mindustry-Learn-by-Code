@@ -32,6 +32,7 @@ object ModTabs {
         if (event.tabKey === EXAMPLE_TAB.getKey()) {
             event.accept(ModItems.POWER_NODE_ITEM.get())
             event.accept(ModItems.BATTERY_ITEM.get())
+            event.accept(ModItems.POWER_SOURCE_ITEM.get())
             event.accept(ModItems.KILN_ITEM.get())
             event.accept(ModItems.ORE_COPPER_ITEM.get())
             event.accept(ModItems.ORE_LEAD_ITEM.get())

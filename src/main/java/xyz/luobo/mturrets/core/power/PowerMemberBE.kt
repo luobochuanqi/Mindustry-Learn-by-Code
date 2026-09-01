@@ -25,8 +25,14 @@ abstract class PowerMemberBE(
     open val batteryEnergy: Int get() = 0
     open val batteryCapacity: Int get() = 0
 
+    /** 生产者角色视图:每 tick 常量产量(FE),结算点聚合;非生产者恒为 0。 */
+    open val productionPerTick: Int get() = 0
+
     /** 图按比例扣账时的储能侧入口;非储能构件为空操作。 */
     open fun drainFromGrid(amount: Int) {}
+
+    /** 图按比例充电时的储能侧入口;非储能构件为空操作。图内瞬时(与 [drainFromGrid] 对称)。 */
+    open fun chargeFromGrid(amount: Int) {}
 
     /** 区块卸载标记:卸载路径的 setRemoved 不触发重染(卸载不是拓扑变化)。 */
     private var unloadedByChunk = false
