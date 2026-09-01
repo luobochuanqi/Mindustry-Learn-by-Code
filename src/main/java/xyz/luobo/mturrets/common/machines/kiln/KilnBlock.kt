@@ -35,8 +35,13 @@ class KilnBlock : BlueprintAnchorBlock(structureProperties()) {
         state: BlockState,
         type: BlockEntityType<E>
     ): BlockEntityTicker<E>? {
-        if (level.isClientSide || type !== ModBlockEntityTypes.KILN.get()) return null
-        val ticker = BlockEntityTicker<KilnBE> { _, _, _, be -> be.tickServer() }
+        if (type !== ModBlockEntityTypes.KILN.get()) return null
+        // 服务端:推进加工;客户端:驱动运转 hum(#57)。MachineHum 按 HummingMachine 接口统一,
+        // 客户端类在 common 文件走 FQN(与 visual 注册惯例一致)。
+        val ticker = BlockEntityTicker<KilnBE> { lvl, _, _, be ->
+            if (lvl.isClientSide) xyz.luobo.mturrets.client.audio.MachineHum.tick(be)
+            else be.tickServer()
+        }
         @Suppress("UNCHECKED_CAST")
         return ticker as BlockEntityTicker<E>
     }

@@ -1,6 +1,8 @@
 package xyz.luobo.mturrets.core.combat
 
+import net.minecraft.sounds.SoundEvent
 import net.minecraft.world.item.Item
+import java.util.function.Supplier
 
 /**
  * 炮台静态数值表(ADR-0009):形状与默认数值在 Kotlin 代码表,弹种差异全进数据。
@@ -36,7 +38,9 @@ data class TurretSpec(
     /** 对地索敌:非飞行怪(跳跃/坠落中的地面怪仍算地面单位,重力束缚即地面)。 */
     val targetGround: Boolean = true,
     /** 弹药表:物品 → 弹定义 + 入仓倍率 */
-    val ammoTypes: List<AmmoType>
+    val ammoTypes: List<AmmoType>,
+    /** 枪声(#57,每炮台各一,对齐上游 shootDuo/shootScatter);Supplier 延迟到开火时才取 registry。 */
+    val shootSound: Supplier<SoundEvent>
 )
 
 /** 一种弹药物品:入仓 1 物品折算 [unitMultiplier] 单位;每扳机扣 1 单位。 */

@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.world.level.block.state.BlockState
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.common.ModItems
+import xyz.luobo.mturrets.common.ModSounds
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.core.combat.AmmoType
 import xyz.luobo.mturrets.core.combat.BulletType
@@ -74,6 +75,7 @@ class ScatterTurretBE(pos: BlockPos, state: BlockState) :
                     ),
                     unitMultiplier = 5
                 )
-            )
+            ),
+            shootSound = { ModSounds.SHOOT_SCATTER.get() }
         )
     )

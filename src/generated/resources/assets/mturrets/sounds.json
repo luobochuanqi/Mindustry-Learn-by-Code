@@ -1,0 +1,26 @@
+{
+  "machine_hum": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "mturrets:machine_hum"
+      }
+    ]
+  },
+  "shoot_duo": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "mturrets:shoot_duo"
+      }
+    ]
+  },
+  "shoot_scatter": {
+    "sounds": [
+      {
+        "type": "file",
+        "name": "mturrets:shoot_scatter"
+      }
+    ]
+  }
+}

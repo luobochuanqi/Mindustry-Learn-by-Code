@@ -605,6 +605,62 @@ object ModGameTests {
         }
     }
 
+    /** 运转 hum 门控缝(#57):窑炉空闲(无料)isRunning=false;喂料开工后转 true。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 200)
+    fun kilnIsRunningReflectsProcessing(helper: GameTestHelper) {
+        val kilnPos = BlockPos(1, 1, 1)
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+        val kiln = helper.getBlockEntity(kilnPos) as KilnBE
+        if (kiln.isRunning) helper.fail("idle empty kiln must not be running")
+        // 喂料开工:1 铅 + 1 沙 + 水 + 能量 → 进入加工
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
+        fillKilnTank(helper, kilnPos)
+        injectEnergyUpTo(helper, kilnPos, 600)
+        helper.succeedWhen {
+            if (!(helper.getBlockEntity(kilnPos) as KilnBE).isRunning) {
+                helper.fail("fed kiln must be running")
+            }
+        }
+    }
+
+    /** 运转 hum 门控缝(#57):钻头采口有矿 ∧ Buffer 空 → isRunning=true;Buffer 满 → false。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun drillIsRunningReflectsMining(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        val drill = helper.getBlockEntity(drillPos) as DrillBE
+        helper.runAfterDelay(5) {
+            if (!drill.isRunning) helper.fail("drill over ore with empty buffer must be running")
+        }
+        // 塞满 Buffer → 满载停转 → isRunning 转 false
+        repeat(20) { insertItem(helper, drillPos, it, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 64)) }
+        helper.succeedWhen {
+            if ((helper.getBlockEntity(drillPos) as DrillBE).isRunning) {
+                helper.fail("drill with full buffer must stop running")
+            }
+        }
+    }
+
+    /** 客户端同步缝(#57):钻头 getUpdateTag 携带 isRunning(hum 客户端据此淡入淡出)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 60)
+    fun drillUpdateTagCarriesRunningState(helper: GameTestHelper) {
+        val drillPos = BlockPos(1, 2, 1)
+        val orePos = BlockPos(1, 1, 1)
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        val drill = helper.getBlockEntity(drillPos) as DrillBE
+        val tag = drill.getUpdateTag(helper.level.registryAccess())
+        if (!tag.contains("drill_is_running")) {
+            helper.fail("drill update tag must carry drill_is_running for client hum sync")
+        }
+        helper.succeed()
+    }
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
     fun breakingKilnScattersBuffer(helper: GameTestHelper) {

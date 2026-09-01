@@ -1,7 +1,9 @@
 package xyz.luobo.mturrets
 
 import net.minecraft.core.HolderLookup
+import net.minecraft.data.CachedOutput
 import net.minecraft.data.DataGenerator
+import net.minecraft.data.DataProvider
 import net.minecraft.data.PackOutput
 import net.minecraft.data.loot.BlockLootSubProvider
 import net.minecraft.data.loot.LootTableProvider
@@ -22,6 +24,9 @@ import net.neoforged.neoforge.common.data.LanguageProvider
 import net.neoforged.neoforge.data.event.GatherDataEvent
 import net.minecraft.tags.BlockTags
 import net.neoforged.neoforge.common.data.BlockTagsProvider
+import com.google.gson.JsonArray
+import com.google.gson.JsonObject
+import xyz.luobo.mturrets.common.ModSounds
 import xyz.luobo.mturrets.common.worldgen.OreWorldGenProvider
 import xyz.luobo.mturrets.common.ModBlocks
 import xyz.luobo.mturrets.common.ModItems
@@ -29,6 +34,7 @@ import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.common.liquids.Liquids
 import xyz.luobo.mturrets.core.recipe.MachineRecipe
 import xyz.luobo.mturrets.core.structure.StructuralBlock
+import java.nio.file.Path
 import java.util.concurrent.CompletableFuture
 object DataGen {
     fun generate(event: GatherDataEvent) {
@@ -37,6 +43,7 @@ object DataGen {
         val existingFileHelper = event.existingFileHelper
 
         generator.addProvider(event.includeClient(), ModLanguageProvider(packOutput, "en_us"))
+        generator.addProvider(event.includeClient(), ModSoundProvider(packOutput))
         generator.addProvider(event.includeClient(), ModItemModelProvider(packOutput, existingFileHelper))
         generator.addProvider(event.includeClient(), ModBlockStateProvider(packOutput, existingFileHelper))
         generator.addProvider(
@@ -66,6 +73,35 @@ object DataGen {
             ModRecipeProvider(packOutput, event.lookupProvider)
         )
     }
+}
+
+/**
+ * 声音事件 → sounds.json(#57):3 个 file 型条目,逐一对应 assets/mturrets/sounds/ 下的 ogg。
+ * 事件注册在 [ModSounds](registry 数据);sounds.json 是客户端把事件关联到音源文件的桥,
+ * 由本 provider 生成,CI 以 git diff 把关。type=file 的 name 是完整 resource location。
+ */
+class ModSoundProvider(private val output: PackOutput) : DataProvider {
+    override fun run(cache: CachedOutput): CompletableFuture<*> {
+        val json = JsonObject()
+        listOf(
+            ModSounds.SHOOT_DUO,
+            ModSounds.SHOOT_SCATTER,
+            ModSounds.MACHINE_HUM
+        ).forEach { holder ->
+            val entry = JsonObject()
+            val sounds = JsonArray()
+            val file = JsonObject()
+            file.addProperty("type", "file")
+            file.addProperty("name", holder.id.toString())
+            sounds.add(file)
+            entry.add("sounds", sounds)
+            json.add(holder.id.path, entry)
+        }
+        val path: Path = output.getOutputFolder().resolve("assets/${MTurrets.MOD_ID}/sounds.json")
+        return DataProvider.saveStable(cache, json, path)
+    }
+
+    override fun getName(): String = "MTurrets Sounds"
 }
 
 /**

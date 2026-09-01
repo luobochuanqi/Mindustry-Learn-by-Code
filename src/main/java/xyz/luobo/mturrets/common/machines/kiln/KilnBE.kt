@@ -11,6 +11,7 @@ import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.fluids.FluidStack
 import net.neoforged.neoforge.items.ItemHandlerHelper
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
+import xyz.luobo.mturrets.core.machine.HummingMachine
 import xyz.luobo.mturrets.common.ModRecipeTypes
 import xyz.luobo.mturrets.core.capability.impl.EnergyCapabilityImpl
 import xyz.luobo.mturrets.core.capability.impl.FluidCapabilityImpl
@@ -32,7 +33,7 @@ import kotlin.math.min
  * 贴网后本地缓冲不足部分每 tick 向图申领,按供电比例(棕停)分数推进进度——定点记账防漂移。
  */
 class KilnBE(pos: BlockPos, state: BlockState) :
-    PowerMemberBE(ModBlockEntityTypes.KILN.get(), pos, state), BlueprintAnchor {
+    PowerMemberBE(ModBlockEntityTypes.KILN.get(), pos, state), BlueprintAnchor, HummingMachine {
 
     companion object {
         /** Buffer 槽位数:不设布局语义,余量即自动化余量;20 覆盖一期配方宽度。 */
@@ -134,6 +135,18 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         return if (fallback >= 0) cap.extractItem(fallback, cap.getStack(fallback).count, false) else null
     }
 
+    /** 运行态(客户端 hum 消费,#57):加工中(进度未结算)。服务端权威,切换时随 update tag 同步。 */
+    override var isRunning: Boolean = false
+        private set
+
+    /** 仅在运行态切换时同步(避免每 tick 发包);客户端 hum 据此起停。 */
+    private fun setRunning(running: Boolean) {
+        if (running != isRunning) {
+            isRunning = running
+            syncData()
+        }
+    }
+
     /**
      * 服务端 tick(由 [KilnBlock] 排程):空转查配方、水检过则开工;
      * 加工中按进度均摊扣能,满程结算产出。本地缓冲不足时向图申领(#30):
@@ -145,11 +158,12 @@ class KilnBE(pos: BlockPos, state: BlockState) :
             val recipe = lookupRecipe(lv) ?: return
             // 启动校验:水为必需输入,不足即不开工(停摆、不倒退)
             if (fluidCapability.currentFluid.amount < WATER_PER_CRAFT) return
+            setChanged()
             processingTime = recipe.processingTime
             consumedEnergy = 0
             progress = PROGRESS_UNIT
             supplyRatio = 1f
-            setChanged()
+            setRunning(true)
             return
         }
 
@@ -221,6 +235,7 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         consumedEnergy = 0
         cachedRecipe = null
         recipeKnown = false
+        setRunning(false) // 进度归零 = 停摆,同步客户端 hum 淡出
         setChanged()
     }
 
@@ -240,13 +255,13 @@ class KilnBE(pos: BlockPos, state: BlockState) :
 
     private fun bufferSnapshot(): List<ItemStack> =
         (0 until itemCapability.slotCount).map { itemCapability.getStack(it) }
-
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)
         tag.putInt("kiln_progress", progress)
         tag.putInt("kiln_time", processingTime)
         tag.putInt("kiln_energy_spent", consumedEnergy)
         tag.putFloat("kiln_ratio", supplyRatio) // 随 getUpdateTag 同步到客户端(#37 显示层取数)
+        tag.putBoolean("kiln_is_running", isRunning)
     }
 
     override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
@@ -255,6 +270,7 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         processingTime = tag.getInt("kiln_time")
         consumedEnergy = tag.getInt("kiln_energy_spent")
         supplyRatio = tag.getFloat("kiln_ratio").coerceIn(0f, 1f)
+        isRunning = tag.getBoolean("kiln_is_running")
     }
 
     override fun getUpdatePacket(): ClientboundBlockEntityDataPacket =

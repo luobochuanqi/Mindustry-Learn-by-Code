@@ -4,6 +4,7 @@ import net.minecraft.core.BlockPos
 import net.minecraft.core.HolderLookup
 import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.Containers
@@ -23,6 +24,7 @@ import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.core.MTurretsModBlockEntity
 import xyz.luobo.mturrets.core.capability.impl.FluidCapabilityImpl
 import xyz.luobo.mturrets.core.capability.impl.ItemCapabilityImpl
+import xyz.luobo.mturrets.core.machine.HummingMachine
 import xyz.luobo.mturrets.core.structure.Blueprint
 import xyz.luobo.mturrets.core.structure.BlueprintAnchor
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
@@ -35,8 +37,7 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
  * 采口非矿石则停摆不报错,补料(新矿/重新放置)后续转。
  */
 class DrillBE(pos: BlockPos, state: BlockState) :
-    MTurretsModBlockEntity(ModBlockEntityTypes.DRILL.get(), pos, state), BlueprintAnchor {
-
+    MTurretsModBlockEntity(ModBlockEntityTypes.DRILL.get(), pos, state), BlueprintAnchor, HummingMachine {
     companion object {
         /** Buffer 槽位数:与窑炉一致,只存三种矿石物品。 */
         const val BUFFER_SLOTS = 20
@@ -71,6 +72,13 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         )
 
     private var progress = 0
+
+    /**
+     * 运转态(客户端 hum 消费,#57):采口有矿 ∧ Buffer 可再收(即本 tick 实际在挖)。
+     * 服务端权威、随 update tag 同步(见 getUpdateTag);客户端不做口径判断,只读。
+     */
+    override var isRunning: Boolean = false
+        private set
 
     // 显示面读数(Jade #52 消费;锁循环切换行为归钻头区域开采票 #50)
 
@@ -107,9 +115,16 @@ class DrillBE(pos: BlockPos, state: BlockState) :
     fun tickServer() {
         val lv = level ?: return
         val mouth = worldPosition.below()
-        val oreItem = ORE_OUTPUTS[lv.getBlockState(mouth).block] ?: return
+        val oreItem = ORE_OUTPUTS[lv.getBlockState(mouth).block]
         // 满载停转:模拟插入无位则不吞矿、进度保持(取出后自动续转)
-        if (!ItemHandlerHelper.insertItem(itemCapability, ItemStack(oreItem), true).isEmpty) return
+        val room = oreItem != null && ItemHandlerHelper.insertItem(itemCapability, ItemStack(oreItem), true).isEmpty
+        // 运转态(客户端 hum):采口有矿 ∧ Buffer 可再收;仅在切换时同步,避免每 tick 发包
+        if (room != isRunning) {
+            isRunning = room
+            syncData()
+        }
+        if (!room) return
+        val item = oreItem ?: return
         val boosted = fluidCapability.currentFluid.amount >= WATER_PER_ITEM
         val speed = if (boosted) WATER_TICKS_PER_ITEM else BASE_TICKS_PER_ITEM
         if (++progress < speed) return
@@ -117,8 +132,7 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         // 采集语义:吞掉矿石格、回填宿主石头;浅层 stone / 深层 deepslate
         lv.setBlock(mouth, hostStoneFor(mouth), 3)
         refreshReserves() // 采口被吞,储量读数当场更新(Jade 不滞后一个周期)
-        if (boosted) drainFluidInternal(WATER_PER_ITEM)
-        val leftover = ItemHandlerHelper.insertItem(itemCapability, ItemStack(oreItem), false)
+        val leftover = ItemHandlerHelper.insertItem(itemCapability, ItemStack(item), false)
         if (!leftover.isEmpty) {
             // 预检已保证有位,理论不可达;确定性兜底不丢物品
             Containers.dropItemStack(lv, worldPosition.x + 0.5, worldPosition.y + 0.5, worldPosition.z + 0.5, leftover)
@@ -159,8 +173,8 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         tag.putInt("drill_progress", progress)
         tag.putString("drill_ore_lock", oreLock?.let { BuiltInRegistries.ITEM.getKey(it).toString() } ?: "")
         tag.putInt("drill_reserves", reserves)
+        tag.putBoolean("drill_is_running", isRunning)
     }
-
     override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.loadAdditional(tag, registries)
         progress = tag.getInt("drill_progress")
@@ -168,5 +182,14 @@ class DrillBE(pos: BlockPos, state: BlockState) :
             ResourceLocation.tryParse(it)?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(null) }
         }
         reserves = tag.getInt("drill_reserves")
+        isRunning = tag.getBoolean("drill_is_running")
     }
+
+    // 客户端同步(#57 运转 hum):沿用窑炉/炮台同型——getUpdateTag 走 saveWithoutMetadata,
+    // 使 isRunning(及 progress/oreLock/reserves)经 update tag 达客户端 BE,客户端只读不重算。
+    override fun getUpdatePacket(): ClientboundBlockEntityDataPacket =
+        ClientboundBlockEntityDataPacket.create(this)
+
+    override fun getUpdateTag(registries: HolderLookup.Provider): CompoundTag =
+        saveWithoutMetadata(registries)
 }
