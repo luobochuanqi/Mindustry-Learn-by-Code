@@ -34,11 +34,12 @@ class PowerGraph {
     private var production = 0
 
     /**
-     * 生产者每 tick 调用,触发本 tick 结算(首个申报点)。结算聚合全部成员生产、按空余
-     * 容量比例充电池;未被吸收的留在 [production] 余量供需求方抽取。同 tick 重复调用
-     * 幂等(已结算则直接返回)。无需求方时,此调用是充电路径的唯一入口。
+     * 生产者每 tick 调用的结算入口:本 tick 未结算则触发(聚合生产、按空余容量比例充电池),
+     * 已结算则幂等返回。生产是成员属性、非事件流,故此入口只负责"确保本 tick 已结算",
+     * 不携带任何量。无需求方时,这是充电路径的唯一入口(需求方 [requestDrain] 同样触发
+     * 结算,谁先 tick 谁生效——tick 顺序无关)。
      */
-    fun onProduce(gameTime: Long) {
+    fun ensureSettled(gameTime: Long) {
         if (gameTime == settledTick) return
         settledTick = gameTime
         settle()

@@ -19,7 +19,7 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 - **Kiln** — bakes lead + sand into metaglass (1:1:1) while powered. A blackout pauses it and keeps its progress; power returns and it resumes where it stopped. Breaking it returns what was inside.
 - **Power Node** — stores energy and relays it to adjacent nodes, machines and turrets at up to 100 FE per tick, so a reactor can feed a turret across a base. Accepts and supplies standard NeoForge energy.
-- **Power Source** (debug) — a creative-tab block that produces a constant 333,320 FE per tick into the grid it's wired into, enough to run any phase-1 machine at full speed without a battery. Surplus production charges adjacent batteries; it has no recipe and no fuel, purely a dev aid for powering test setups.
+- **Power Source** (debug) — a creative-tab block that produces a constant 333,320 FE per tick into the grid it's wired into, enough to run any phase-1 machine at full speed without a battery. Surplus production charges the grid's batteries (proportionally to their free capacity); it has no recipe and no fuel, purely a dev aid for powering test setups.
 
 **Interface**
 

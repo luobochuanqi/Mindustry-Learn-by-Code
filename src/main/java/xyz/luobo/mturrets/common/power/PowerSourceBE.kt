@@ -24,6 +24,6 @@ class PowerSourceBE(pos: BlockPos, state: BlockState) :
     /** 服务端每 tick 触发所在图结算(生产者视角的结算入口);无图(未入网)时 no-op。 */
     fun tickServer() {
         val lv = level ?: return
-        graph?.onProduce(lv.gameTime)
+        graph?.ensureSettled(lv.gameTime)
     }
 }
