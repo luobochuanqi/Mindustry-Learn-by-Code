@@ -1,4 +1,5 @@
 {
+  "block.mturrets.combustion_generator": "Combustion Generator",
   "block.mturrets.duo": "Duo",
   "block.mturrets.mechanical_drill": "Mechanical Drill",
   "block.mturrets.mechanical_drill_structural": "Mechanical Drill Member",
@@ -61,6 +62,7 @@
   "jade.mturrets.drill_lock": "Lock: %s",
   "jade.mturrets.drill_reserve": "Remaining: %s",
   "jade.mturrets.energy": "Energy: %s/%s FE",
+  "jade.mturrets.fuel": "Burning: %s t / Fuel: %s",
   "jade.mturrets.health": "Health: %s/%s",
   "jade.mturrets.production": "Production: %s FE/t",
   "jade.mturrets.progress": "Progress: %s%%",

@@ -8,6 +8,7 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.power.BatteryBlock
+import xyz.luobo.mturrets.common.power.CombustionGeneratorBlock
 import xyz.luobo.mturrets.common.power.PowerNodeBlock
 import xyz.luobo.mturrets.common.power.PowerSourceBlock
 import xyz.luobo.mturrets.common.structure.TestStructureAnchor2x2Block
@@ -26,6 +27,8 @@ object ModBlocks {
     val BATTERY: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("battery") { BatteryBlock() }
     // 电源(#49,调试):常量 333,320 FE/t 生产,1×1 锚点,无配方。
     val POWER_SOURCE: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("power_source") { PowerSourceBlock() }
+    // 燃烧发电机(#56,一期打磨):煤燃料槽 + 燃烧计时 → 20 FE/t 入电网,1×1 锚点,无配方。
+    val COMBUSTION_GENERATOR: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("combustion_generator") { CombustionGeneratorBlock() }
 
 
     // Machines

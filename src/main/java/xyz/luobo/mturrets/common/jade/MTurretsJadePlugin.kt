@@ -18,6 +18,8 @@ import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBlock
 import xyz.luobo.mturrets.common.power.BatteryBE
 import xyz.luobo.mturrets.common.power.BatteryBlock
+import xyz.luobo.mturrets.common.power.CombustionGeneratorBE
+import xyz.luobo.mturrets.common.power.CombustionGeneratorBlock
 import xyz.luobo.mturrets.common.power.PowerSourceBE
 import xyz.luobo.mturrets.common.turrets.DuoBlock
 import xyz.luobo.mturrets.common.turrets.ScatterBlock
@@ -40,6 +42,7 @@ class MTurretsJadePlugin : IWailaPlugin {
             KilnBlock::class.java,
             BatteryBlock::class.java,
             DrillBlock::class.java,
+            CombustionGeneratorBlock::class.java,
             StructuralBlock::class.java
         ).forEach { registration.registerBlockComponent(StructureDataProvider, it) }
     }
@@ -69,6 +72,9 @@ object StructureDataProvider : IBlockComponentProvider {
             }
             is PowerSourceBE -> {
                 tooltip.add(Component.translatable("jade.mturrets.production", PowerSourceBE.PRODUCTION_PER_TICK))
+            }
+            is CombustionGeneratorBE -> {
+                tooltip.add(Component.translatable("jade.mturrets.fuel", be.burnTicksLeft, be.fuelCount))
             }
             is DrillBE -> {
                 val lock = be.oreLock

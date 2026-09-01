@@ -536,6 +536,115 @@ object ModGameTests {
         }
     }
 
+    // 燃烧发电机(#56):煤燃料槽 + 燃烧计时 → 20 FE/t 入电网(真实生产面)
+
+    private val generatorCoal: net.minecraft.world.item.Item
+        get() = ModItems.getMaterial(Materials.COAL).get()
+
+    /** 燃料充足时,燃烧发电机(20 FE/t)经电网维持窑炉满速——棕停 ratio 恒 1、持续产出。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun generatorSustainsKilnAtFullSpeed(helper: GameTestHelper) {
+        val genPos = BlockPos(0, 1, 1)
+        val kilnPos = BlockPos(1, 1, 1)
+        helper.setBlock(genPos, ModBlocks.COMBUSTION_GENERATOR.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND, 4))
+        fillKilnTank(helper, kilnPos)
+        insertItem(helper, genPos, 0, ItemStack(generatorCoal, 8))
+
+        helper.succeedWhen {
+            val kiln = helper.getBlockEntity(kilnPos) as? KilnBE
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("kiln did not craft from generator power")
+            }
+            // 产量 20 FE/t 远超窑炉 ~5 FE/t 需求:无棕停,supplyRatio 恒 1
+            if (kiln == null || kiln.supplyRatio < 1f) {
+                helper.fail("kiln must run at full speed under generator, got ratio=${kiln?.supplyRatio}")
+            }
+        }
+    }
+
+    /** 发电机 + 空闲电池:无耗电方时,20 FE/t 生产按空余容量充入电池(实测 ~1600 FE/80 tick)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun generatorChargesIdleBattery(helper: GameTestHelper) {
+        val genPos = BlockPos(0, 1, 1)
+        val batteryPos = BlockPos(1, 1, 1)
+        helper.setBlock(genPos, ModBlocks.COMBUSTION_GENERATOR.get())
+        helper.setBlock(batteryPos, ModBlocks.BATTERY.get())
+
+        if (storedEnergy(helper, batteryPos) != 0) helper.fail("battery must start empty")
+        insertItem(helper, genPos, 0, ItemStack(generatorCoal, 8))
+
+        helper.succeedWhen {
+            val e = storedEnergy(helper, batteryPos)
+            // 20 FE/t × 80 tick ≈ 1600;取 1200 为下限(留 20 tick 余量),证明在充电
+            if (e < 1200) helper.fail("generator must charge the battery at 20 FE/t, got $e")
+        }
+    }
+
+    /** 燃料耗尽(40 tick/煤)后电网无生产、无电池 → 加工中的窑炉棕停 supplyRatio < 1。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun generatorBrownoutWhenFuelRunsOut(helper: GameTestHelper) {
+        val genPos = BlockPos(0, 1, 1)
+        val kilnPos = BlockPos(1, 1, 1)
+        helper.setBlock(genPos, ModBlocks.COMBUSTION_GENERATOR.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND, 4))
+        fillKilnTank(helper, kilnPos)
+        insertItem(helper, genPos, 0, ItemStack(generatorCoal, 1)) // 1 煤 = 40 tick = 800 FE < 一轮 500 FE×2
+
+        helper.runAfterDelay(80) {
+            val kiln = helper.getBlockEntity(kilnPos) as? KilnBE
+            // 1 煤 40 tick 烧尽,窑炉(100 tick/轮)必然卡在加工中 → 断供棕停
+            if (kiln == null || kiln.supplyRatio >= 1f) {
+                helper.fail("kiln must brownout after fuel runs out, ratio=${kiln?.supplyRatio}")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** 燃料槽仅收煤:右键放铜整拒(手持不动),放煤收下。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun generatorRejectsNonCoal(helper: GameTestHelper) {
+        val genPos = BlockPos(1, 1, 1)
+        helper.setBlock(genPos, ModBlocks.COMBUSTION_GENERATOR.get())
+
+        val copper = ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 5)
+        if (mockUseOn(helper, genPos, copper) == ItemInteractionResult.CONSUME || copper.count != 5) {
+            helper.fail("generator must reject non-coal, count=${copper.count}")
+        }
+        val coal = ItemStack(generatorCoal, 5)
+        if (mockUseOn(helper, genPos, coal) != ItemInteractionResult.CONSUME || coal.count != 0) {
+            helper.fail("generator must accept coal, count=${coal.count}")
+        }
+        helper.succeed()
+    }
+
+    /** 拆机散落未燃储备:8 煤入槽,点燃弹 1(燃烧中,离开槽面),拆机散落余下 7。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun generatorScattersUnburntCoalOnTeardown(helper: GameTestHelper) {
+        val genPos = BlockPos(1, 1, 1)
+        helper.setBlock(genPos, ModBlocks.COMBUSTION_GENERATOR.get())
+        insertItem(helper, genPos, 0, ItemStack(generatorCoal, 8))
+
+        helper.runAfterDelay(5) { breakForDrops(helper, genPos) } // 让发电机点燃(弹 1)后拆机
+        helper.succeedWhen {
+            // 8 入槽 − 1 燃烧中 = 7 未燃散落(燃烧中煤不掉落,spec grill 定案)
+            if (countDrops(helper, genPos, generatorCoal) != 7) {
+                helper.fail("7 unburnt coal must scatter (burning coal excluded), got ${countDrops(helper, genPos, generatorCoal)}")
+            }
+        }
+    }
+
     // 生产:窑炉(#33 新范式:蓝图管线 1×1 + datapack 配方 + 水/能量)
 
     /** 经流体能力向内罐灌水(GameTestHelper 无桶物品交互,走能力注入面) */

@@ -132,6 +132,11 @@ object EventHandler {
             Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.KILN.get()
         ) { be, _ -> (be as? KilnBE)?.fluidCapability }
+        // 燃烧发电机(#56):燃料槽(仅煤,总量 8);无能量/液体通道
+        event.registerBlockEntity(
+            Capabilities.ItemHandler.BLOCK,
+            ModBlockEntityTypes.COMBUSTION_GENERATOR.get()
+        ) { be, _ -> (be as? xyz.luobo.mturrets.common.power.CombustionGeneratorBE)?.itemCapability }
         // 钻头(#35):Buffer / 内罐(水加成)两通道(2×2 蓝图锚点,查询即锚点位)
         event.registerBlockEntity(
             Capabilities.ItemHandler.BLOCK,

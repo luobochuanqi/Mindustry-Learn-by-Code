@@ -18,6 +18,9 @@ object ModItems {
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.BATTERY)
     val POWER_SOURCE_ITEM: DeferredItem<BlockItem?> =
         MOD_ITEMS.registerSimpleBlockItem(ModBlocks.POWER_SOURCE)
+    // 燃烧发电机(#56)
+    val COMBUSTION_GENERATOR_ITEM: DeferredItem<BlockItem?> =
+        MOD_ITEMS.registerSimpleBlockItem(ModBlocks.COMBUSTION_GENERATOR)
 
     // machines items
     val KILN_ITEM: DeferredItem<BlockItem?> =

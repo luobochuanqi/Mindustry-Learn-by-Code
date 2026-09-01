@@ -7,6 +7,7 @@ import net.neoforged.neoforge.registries.DeferredRegister
 import thedarkcolour.kotlinforforge.neoforge.forge.MOD_BUS
 import xyz.luobo.mturrets.MTurrets
 import xyz.luobo.mturrets.common.power.BatteryBE
+import xyz.luobo.mturrets.common.power.CombustionGeneratorBE
 import xyz.luobo.mturrets.common.power.PowerNodeBE
 import xyz.luobo.mturrets.common.power.PowerSourceBE
 import xyz.luobo.mturrets.common.structure.TestStructureAnchorBE
@@ -40,6 +41,14 @@ object ModBlockEntityTypes {
             BlockEntityType.Builder.of(
                 { pos, state -> PowerSourceBE(pos, state) },
                 ModBlocks.POWER_SOURCE.get()
+            ).build(null)
+        })
+    // 燃烧发电机(#56)
+    val COMBUSTION_GENERATOR: DeferredHolder<BlockEntityType<*>, BlockEntityType<CombustionGeneratorBE>> =
+        BLOCK_ENTITY_TYPES.register("combustion_generator", Supplier {
+            BlockEntityType.Builder.of(
+                { pos, state -> CombustionGeneratorBE(pos, state) },
+                ModBlocks.COMBUSTION_GENERATOR.get()
             ).build(null)
         })
 
