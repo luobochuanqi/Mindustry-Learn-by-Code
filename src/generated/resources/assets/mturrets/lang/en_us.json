@@ -63,5 +63,8 @@
   "jade.mturrets.health": "Health: %s/%s",
   "jade.mturrets.progress": "Progress: %s%%",
   "jade.mturrets.supply": "Supply: %s%%",
-  "mturrets.message.blueprint_blocked": "Not enough space for structure"
+  "mturrets.message.blueprint_blocked": "Not enough space for structure",
+  "mturrets.subtitle.machine_hum": "Machine running",
+  "mturrets.subtitle.shoot_duo": "Duo Turret",
+  "mturrets.subtitle.shoot_scatter": "Scatter Turret"
 }

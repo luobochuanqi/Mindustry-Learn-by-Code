@@ -605,36 +605,46 @@ object ModGameTests {
         }
     }
 
-    /** 运转 hum 门控缝(#57):窑炉空闲(无料)isRunning=false;喂料开工后转 true。 */
+    /** 运转 hum 门控缝(#57):窑炉 isRunning 随加工态翻转——空闲 false、加工中 true、结算后 false。 */
     @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 200)
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
     fun kilnIsRunningReflectsProcessing(helper: GameTestHelper) {
         val kilnPos = BlockPos(1, 1, 1)
         helper.setBlock(kilnPos, ModBlocks.KILN.get())
         val kiln = helper.getBlockEntity(kilnPos) as KilnBE
         if (kiln.isRunning) helper.fail("idle empty kiln must not be running")
-        // 喂料开工:1 铅 + 1 沙 + 水 + 能量 → 进入加工
+        // 喂料开工:1 铅 + 1 沙 + 水 + 能量 → 进入加工(配方 100 tick)
         insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
         insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
         fillKilnTank(helper, kilnPos)
         injectEnergyUpTo(helper, kilnPos, 600)
-        helper.succeedWhen {
+        helper.runAfterDelay(50) {
             if (!(helper.getBlockEntity(kilnPos) as KilnBE).isRunning) {
-                helper.fail("fed kiln must be running")
+                helper.fail("fed kiln must be running mid-process")
             }
+        }
+        helper.runAfterDelay(200) {
+            if ((helper.getBlockEntity(kilnPos) as KilnBE).isRunning) {
+                helper.fail("kiln must stop running after the recipe settles")
+            }
+            helper.succeed()
         }
     }
 
-    /** 运转 hum 门控缝(#57):钻头采口有矿 ∧ Buffer 空 → isRunning=true;Buffer 满 → false。 */
+    /** 运转 hum 门控缝(#57):钻头 isRunning 随开采态翻转——采口无矿 false、有矿且 Buffer 空 true、Buffer 满 false。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 150)
     fun drillIsRunningReflectsMining(helper: GameTestHelper) {
         val orePos = BlockPos(1, 1, 1)
         val drillPos = BlockPos(1, 2, 1)
         helper.setBlock(drillPos, ModBlocks.DRILL.get())
-        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(orePos, Blocks.STONE) // 采口无矿
         val drill = helper.getBlockEntity(drillPos) as DrillBE
         helper.runAfterDelay(5) {
+            if (drill.isRunning) helper.fail("drill over stone (no ore) must not be running")
+        }
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get()) // 补矿 → 开工
+        helper.runAfterDelay(15) {
             if (!drill.isRunning) helper.fail("drill over ore with empty buffer must be running")
         }
         // 塞满 Buffer → 满载停转 → isRunning 转 false

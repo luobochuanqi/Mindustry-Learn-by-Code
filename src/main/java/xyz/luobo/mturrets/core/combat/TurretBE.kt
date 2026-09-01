@@ -347,10 +347,11 @@ abstract class TurretBE(
         bullet.moveTo(muzzle.x, muzzle.y, muzzle.z, 0f, 0f)
         bullet.init(type, dir)
         lv.addFreshEntity(bullet)
-        // 枪声(#57):每发一次,服务端在枪口定位播放,音调抖动对齐 Mindustry SoundEffect(0.8~1.2);
-        // spawnBullet 对首射与点射各发各调一次,天然是"每发"入口。
+        // 枪声(#57):每发一次,服务端在枪口定位播放,音调 0.8~1.2 / 音量 0.9~1.0 随机抖动,
+        // 对齐 Mindustry SoundEffect;spawnBullet 对首射与点射各发各调一次,天然是"每发"入口。
         val pitch = 0.8f + lv.random.nextFloat() * 0.4f
-        lv.playSound(null, muzzle.x, muzzle.y, muzzle.z, spec.shootSound.get(), net.minecraft.sounds.SoundSource.BLOCKS, 1f, pitch)
+        val volume = 1f - lv.random.nextFloat() * 0.1f
+        lv.playSound(null, muzzle.x, muzzle.y, muzzle.z, spec.shootSound.get(), net.minecraft.sounds.SoundSource.BLOCKS, volume, pitch)
     }
 
 

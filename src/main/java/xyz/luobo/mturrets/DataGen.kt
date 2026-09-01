@@ -95,6 +95,7 @@ class ModSoundProvider(private val output: PackOutput) : DataProvider {
             file.addProperty("name", holder.id.toString())
             sounds.add(file)
             entry.add("sounds", sounds)
+            entry.addProperty("subtitle", "mturrets.subtitle.${holder.id.path}")
             json.add(holder.id.path, entry)
         }
         val path: Path = output.getOutputFolder().resolve("assets/${MTurrets.MOD_ID}/sounds.json")
@@ -167,6 +168,11 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         this.add("jade.mturrets.drill_reserve", "Remaining: %s")
         this.add("jade.mturrets.drill_buffer", "Buffer: %s")
         this.add("jade.mturrets.auto", "Auto")
+
+        // 声音字幕(#57):sounds.json 的 subtitle 字段指向这些 key,声音字幕屏据此显示
+        this.add("mturrets.subtitle.shoot_duo", "Duo Turret")
+        this.add("mturrets.subtitle.shoot_scatter", "Scatter Turret")
+        this.add("mturrets.subtitle.machine_hum", "Machine running")
 
         // Jade plugin config entries(缺失会导致客户端断言崩溃)
         this.add("config.jade.plugin_mturrets.structure_data", "Structure Info")
