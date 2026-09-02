@@ -35,15 +35,14 @@ class RingParticle(
 
     /** 环扩张:age 0→life,半径 base×(0.4+0.6×fin)。 */
     override fun getQuadSize(deltaTick: Float): Float {
-        val fin = age.toFloat() / life
-        val base = if (small) 0.05f else 0.12f
+        val fin = (age + deltaTick) / life.toFloat()
+        val base = if (small) 0.12f else 0.25f
         return base * (0.4f + 0.6f * fin) * 2f
     }
 
     override fun tick() {
         super.tick()
-        // 渐隐:age 增长→alpha 降(单色渐隐,简化上游 white→e.color 渐变)
-        setAlpha(1f - age.toFloat() / life)
+        setAlpha((1f - age.toFloat() / life).coerceAtLeast(0f))
     }
 
     /** FULL_BRIGHT:不依赖环境光照,暗处也醒目(与子弹渲染器一致)。 */

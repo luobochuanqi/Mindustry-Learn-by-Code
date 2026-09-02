@@ -55,12 +55,16 @@ abstract class TurretBE(
     companion object {
         /** 索敌间隔(tick,#28 决议 7t)。 */
         const val TARGET_INTERVAL = 7
+
         /** Coolant 内罐容量(mB):一桶水恰好充满。 */
         const val WATER_TANK_CAPACITY = 1000
+
         /** 枪口高度(块内局部 y):与 barrel 部件齐平。 */
         const val MUZZLE_HEIGHT = 0.44
+
         /** 后坐衰减(每 tick 递减量)。 */
         const val RECOIL_DECAY = 0.1f
+
         /** 旋转同步节流(旋转变化最快每 2 tick 上报一次)。 */
         const val SYNC_THROTTLE = 2
     }
@@ -122,14 +126,17 @@ abstract class TurretBE(
     /** 待出膛队列发数(扳机已统一扣账;不持久化——存档丢队列对齐 Mindustry Time.run 语义)。 */
     private var burstRemaining = 0
     private var burstDelay = 0f
+
     /** 队列各发共用扳机时刻的瞄准方向与枪口(ADR-0009「各发共用扳机时刻瞄准角」)。 */
     private var burstDir = Vec3.ZERO
     private var burstMuzzle = Vec3.ZERO
+
     /** 队列弹种 = 扳机时刻的尾弹种(扣账后弹仓可能已变,队列不跟随)。 */
     private var burstType: BulletType? = null
     // ===== 枪口 FX(#62,纯客户端) =====
     /** 上次观测到的开火计数器(客户端 ticker 消费,跨 tick 比较)。 */
     private var lastMuzzleFire = 0L
+
     /** 弹种定义查询;非本炮台弹药返回 null。 */
     fun ammoTypeFor(item: net.minecraft.world.item.Item): AmmoType? =
         spec.ammoTypes.firstOrNull { it.item == item }
@@ -238,6 +245,7 @@ abstract class TurretBE(
         val candidates = lv.getEntitiesOfClass(LivingEntity::class.java, area) { isValidTarget(it) }
         target = candidates.minByOrNull { it.distanceToSqr(anchorCenter()) }
     }
+
     /**
      * 视线判定(#43):枪口([muzzleFor])→ 目标胸口,只测方块碰撞形状(COLLIDER,与弹头 move 碰撞一致)、
      * 流体不挡、不测实体,与原版 [LivingEntity.hasLineOfSight] 同判据。起点用枪口外推点而非锚点中心
@@ -247,7 +255,15 @@ abstract class TurretBE(
     private fun hasLosTo(entity: LivingEntity): Boolean {
         val lv = level ?: return false
         val to = entity.position().add(0.0, entity.eyeHeight * 0.5, 0.0)
-        return lv.clip(ClipContext(muzzleFor(entity.position()), to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty()))
+        return lv.clip(
+            ClipContext(
+                muzzleFor(entity.position()),
+                to,
+                ClipContext.Block.COLLIDER,
+                ClipContext.Fluid.NONE,
+                CollisionContext.empty()
+            )
+        )
             ?.type == HitResult.Type.MISS
     }
 
@@ -274,6 +290,7 @@ abstract class TurretBE(
         val half = (spec.size - 1) / 2f
         return worldPosition.center.add(half.toDouble(), 0.0, half.toDouble())
     }
+
     /** 提前量瞄准点:对移动目标按弹速解命中时间外推位置(LeadCalculator 存活件);瞄胸口而非脚底。 */
     private fun aimPoint(tgt: LivingEntity): Vec3 {
         val look = tgt.position().add(0.0, tgt.eyeHeight * 0.5.toDouble(), 0.0)
@@ -354,6 +371,7 @@ abstract class TurretBE(
         // 对齐 Mindustry SoundEffect;spawnBullet 对首射与点射各发各调一次,天然是"每发"入口。
         val pitch = 0.8f + lv.random.nextFloat() * 0.4f
         val volume = 1f - lv.random.nextFloat() * 0.1f
+        lv.playSound(null, muzzle.x, muzzle.y, muzzle.z, spec.shootSound.get(), net.minecraft.sounds.SoundSource.BLOCKS, volume, pitch)
     }
 
     /**

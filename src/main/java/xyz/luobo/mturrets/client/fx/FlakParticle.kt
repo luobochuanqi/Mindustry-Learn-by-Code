@@ -28,16 +28,14 @@ class FlakParticle(
 
     override fun getRenderType(): ParticleRenderType = ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT
 
-    /** 爆团点:age 增长→尺寸收缩。 */
     override fun getQuadSize(deltaTick: Float): Float {
-        val fin = age.toFloat() / life
-        return 0.06f * (1f - fin * 0.6f)
+        val fin = (age + deltaTick) / life.toFloat()
+        return 0.12f * (1f - fin * 0.6f)
     }
 
     override fun tick() {
         super.tick()
-        val fin = age.toFloat() / life
-        // 三色调色板(简化上游 bulletYellow→gray→lighterOrange 渐变)
+        val fin = (age.toFloat() / life).coerceAtMost(1f)
         setAlpha(1f - fin)
         setColor(lerp(1f, 0.45f, fin), lerp(0.973f, 0.45f, fin), lerp(0.91f, 0.5f, fin))
     }
