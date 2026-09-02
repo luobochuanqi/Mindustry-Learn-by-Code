@@ -45,6 +45,10 @@ import xyz.luobo.mturrets.core.structure.StructuralBlock
  * 只断言外部行为(伤害/能量/合成产出),不触碰内部字段(spec #5 测试决策)
  *
  * 全部用例使用原版 empty3x3 模板,坐标约束在 3x3 内
+ *
+ * 对空用例(#55)各自独占 batch(批名=方法名):批次严格串行、批内并发,独占批运行时
+ * 世界内无邻居炮台/悬空靶,根除共享世界互扰(邻例炮台抢靶、流弹烧弹药)。
+ * 新对空用例沿用此约定;与邻居无关的本例自持校准(如 hoverGhast 的区块边界防盲)不受此影响。
  */
 @PrefixGameTestTemplate(false)
 @GameTestHolder(MTurrets.MOD_ID)
@@ -1629,7 +1633,7 @@ object ModGameTests {
      * 故用「首发命中 + 尾弹仍在飞」双证据替代(发数等价)。
      */
     @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    @GameTest(template = "empty3x3", batch = "scatterDoubleShotPerTrigger", timeoutTicks = 150)
     fun scatterDoubleShotPerTrigger(helper: GameTestHelper) {
         val turretPos = BlockPos(1, 1, 1)
         helper.setBlock(turretPos, ModBlocks.SCATTER.get())
@@ -1660,10 +1664,9 @@ object ModGameTests {
         }
     }
 
-    /** ⑤a 对空-only(无空中目标):僵尸落地不被索敌——t5 拆机(装填 6t 内不可能开火)足额折回 4 铅。
-     * 共享测试世界有他例的悬空靶(8 格外),拉长窗口会把流弹烧进弹仓,故拆机前置到首个可开火时刻前。 */
+    /** ⑤a 对空-only(无空中目标):僵尸落地不被索敌——t5 拆机(装填 6t 内不可能开火)足额折回 4 铅。 */
     @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    @GameTest(template = "empty3x3", batch = "scatterIgnoresGroundedOnly", timeoutTicks = 120)
     fun scatterIgnoresGroundedOnly(helper: GameTestHelper) {
         val turretPos = BlockPos(1, 1, 1)
         helper.setBlock(turretPos, ModBlocks.SCATTER.get())
@@ -1671,8 +1674,6 @@ object ModGameTests {
         mockUseOn(helper, turretPos, ItemStack(lead, 4))
         val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(0, 1, 2))
         fireproof(zombie)
-        // 吸收甲防共享测试世界里他例炮台的流弹(44 用例并行,见 duoDoesNotFireAtFriendlyOnly 注记)
-        zombie.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 600, 199))
         helper.runAfterDelay(5) { breakForDrops(helper, turretPos) }
         helper.runAfterDelay(40) {
             if (zombie.health != 20f) {
@@ -1688,7 +1689,7 @@ object ModGameTests {
 
     /** ⑤b 对空+对地同框:恶魂掉血死亡、僵尸满血(溅射半径外的落地怪只被无视,不直接索敌)。 */
     @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    @GameTest(template = "empty3x3", batch = "scatterAirOnlySkipsGroundedAlongside", timeoutTicks = 120)
     fun scatterAirOnlySkipsGroundedAlongside(helper: GameTestHelper) {
         val turretPos = BlockPos(1, 1, 1)
         helper.setBlock(turretPos, ModBlocks.SCATTER.get())
@@ -1697,7 +1698,6 @@ object ModGameTests {
         // 僵尸放碰撞远角(距命中点 ~2.4 > 铅溅射 2):只验证"不被索敌",不吃溅射
         val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(2, 1, 0))
         fireproof(zombie)
-        zombie.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 600, 199))
         helper.runAfterDelay(40) {
             if (!ghast.isRemoved && ghast.health >= 20f) {
                 helper.fail("airborne ghast must be engaged")
@@ -1714,10 +1714,10 @@ object ModGameTests {
     /**
      * ⑤c 对空谓词回归(用户实测 #53):no-AI 僵尸从不 move → onGround 恒 false,旧判据 !onGround
      * 把它当空中单位且比恶魂近 → 炮台打僵尸不打恶魂;修订为飞行怪谓词后:僵尸(重力束缚=地面单位)
-     * 不占用对空槽,更远的恶魂被接战、僵尸满血。吸收甲防他例流弹(僵尸血量非本测试信号)。
+     * 不占用对空槽,更远的恶魂被接战、僵尸满血。
      */
     @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    @GameTest(template = "empty3x3", batch = "scatterAirPredicateSkipsNearbyGroundUnit", timeoutTicks = 120)
     fun scatterAirPredicateSkipsNearbyGroundUnit(helper: GameTestHelper) {
         val anchorPos = BlockPos(0, 1, 0)
         helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
@@ -1725,7 +1725,6 @@ object ModGameTests {
         helper.setBlock(BlockPos(1, 0, 2), Blocks.STONE)
         val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
         fireproof(zombie)
-        zombie.addEffect(MobEffectInstance(MobEffects.ABSORPTION, 20 * 600, 199))
         // 恶魂 4×4 箱体放 (2,1,4):避开炮台 2×2 格体(防窒息)且比僵尸远(4.3 vs 1.9)
         val ghast = helper.spawnWithNoFreeWill(EntityType.GHAST, BlockPos(2, 1, 4))
         fireproof(ghast)
@@ -1745,7 +1744,7 @@ object ModGameTests {
      * 偏低时 4×4 箱体贴地擦行 → onGround=true,旧判据整段放弃;飞行怪谓词与高度无关,低空必被接战。
      */
     @JvmStatic
-    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    @GameTest(template = "empty3x3", batch = "scatterEngagesRealAiLowHoveringGhast", timeoutTicks = 150)
     fun scatterEngagesRealAiLowHoveringGhast(helper: GameTestHelper) {
         val anchorPos = BlockPos(0, 1, 0)
         helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
