@@ -7,6 +7,7 @@ import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.ModSounds
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.core.combat.AmmoType
+import xyz.luobo.mturrets.core.combat.BulletFx
 import xyz.luobo.mturrets.core.combat.BulletType
 import xyz.luobo.mturrets.core.combat.TurretBE
 import xyz.luobo.mturrets.core.combat.TurretSpec
@@ -49,7 +50,9 @@ class ScatterTurretBE(pos: BlockPos, state: BlockState) :
                         color = 0x8C7FA9,
                         bulletSize = 0.5f,
                         splashDamage = 40.5f,
-                        splashRadius = 2f
+                        splashRadius = 2f,
+                        // 命中 FX(#62):flak 爆团(固定三色调色板,忽略 hitColor),对齐上游 FlakBulletType
+                        hitEffect = BulletFx.FLAK
                     ),
                     unitMultiplier = 4
                 ),
@@ -64,13 +67,19 @@ class ScatterTurretBE(pos: BlockPos, state: BlockState) :
                         reloadMultiplier = 0.8f,
                         splashDamage = 45f,
                         splashRadius = 2.5f,
+                        // 命中 FX(#62):flak 爆团(固定三色调色板),对齐上游 FlakBulletType;
+                        // 到寿消散用 RING(上游玻璃 despawnEffect = hitBulletColor)
+                        hitEffect = BulletFx.FLAK,
+                        despawnEffect = BulletFx.RING,
                         fragCount = 6,
                         fragBullet = BulletType(
                             damage = 5f,
                             speed = 1.125f,
                             lifetime = 7,
                             color = 0xEBEEF5,
-                            bulletSize = 0.5f
+                            bulletSize = 0.5f,
+                            // 破片命中 FX(#62):上游 frag 默认 hitBulletSmall,对位 SMALL
+                            hitEffect = BulletFx.SMALL
                         )
                     ),
                     unitMultiplier = 5

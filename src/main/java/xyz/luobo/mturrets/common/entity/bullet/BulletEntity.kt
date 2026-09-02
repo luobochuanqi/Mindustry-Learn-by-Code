@@ -8,10 +8,14 @@ import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.MoverType
 import net.minecraft.world.entity.monster.Monster
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.Vec3
+import xyz.luobo.mturrets.common.BulletFxPayload
 import xyz.luobo.mturrets.common.ModEntities
+import xyz.luobo.mturrets.common.Payloads
+import xyz.luobo.mturrets.core.combat.BulletFx
 import xyz.luobo.mturrets.core.combat.BulletType
 
 /**
@@ -34,6 +38,10 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
     private var fragBullet: BulletType? = null
     /** 出生免撞期(tick):碎片在命中点生成,仍在原目标箱体内,头几 tick 不结算碰撞以免原地自消(#34)。 */
     private var graceTicks = 0
+    // 命中/到寿 FX(数据驱动,#62):服务端结算时发 payload,客户端只消费解析好的描述符(弹种表不进客户端)
+    private var hitFx: BulletFx = BulletFx.RING
+    private var despawnFx: BulletFx = BulletFx.SMALL
+    private var hitColor: Int = 0xFFFFFF
 
     /** RGB 颜色 + 顶字节 lifetime(ADR-0010:客户端推导收缩进度;渲染只取 RGB,零新增同步字段) */
     var bulletColor: Int
@@ -65,6 +73,9 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
         splashRadius = bulletType.splashRadius
         fragCount = bulletType.fragCount
         fragBullet = bulletType.fragBullet
+        hitFx = bulletType.hitEffect
+        despawnFx = bulletType.despawnEffect
+        hitColor = bulletType.hitColor
         graceTicks = grace
         deltaMovement = direction.scale(bulletType.speed.toDouble())
         syncDirection()
@@ -92,6 +103,9 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
         if (level().isClientSide) return
 
         if (tickCount >= maxLifetime || position().y < level().minBuildHeight - 16) {
+            // 到寿只放消散、不放爆团(#62 决策):MTurrets 到寿只 discard 不结算溅射,与 Mindustry flak
+            // 到寿引爆不同——避免"爆炸却没伤害"的违和。
+            sendFx(level(), despawnFx, position())
             discard()
             return
         }
@@ -165,9 +179,21 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
             }
         }
 
+        // 命中 FX(#62):按弹种 hitEffect 数据在命中点发 payload;破片各自经同一路径各自爆(不抑制)。
+        // 纯客户端表现——专用服务端 sendFx 内判 ServerLevel 后跳过。
+        sendFx(level(), hitFx, origin)
         discard()
     }
 
+    /**
+     * 命中/到寿 FX 发送(#62):仅服务端发(payload 纯客户端表现)。
+     * [Level] 客户端是 ClientLevel 非 ServerLevel,`as? ServerLevel` 守卫天然跳过客户端;
+     * 服务端(含专用)对整服玩家广播——FX 视觉-only,玩家规模小,按视距裁剪推后。
+     */
+    private fun sendFx(lv: Level, fx: BulletFx, at: Vec3) {
+        val sl = lv as? ServerLevel ?: return
+        Payloads.send(sl, BulletFxPayload(fx, hitColor, at))
+    }
     /** 朝向同步:yRot/xRot 携带飞行方向,客户端视线轴滚转对齐用(原版 move 包同步,零新增字段)。 */
     private fun syncDirection() {
         val dx = deltaMovement.x

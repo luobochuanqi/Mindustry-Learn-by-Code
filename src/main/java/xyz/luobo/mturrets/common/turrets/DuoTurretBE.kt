@@ -7,6 +7,7 @@ import xyz.luobo.mturrets.common.ModItems
 import xyz.luobo.mturrets.common.ModSounds
 import xyz.luobo.mturrets.common.items.Materials
 import xyz.luobo.mturrets.core.combat.AmmoType
+import xyz.luobo.mturrets.core.combat.BulletFx
 import xyz.luobo.mturrets.core.combat.BulletType
 import xyz.luobo.mturrets.core.combat.TurretBE
 import xyz.luobo.mturrets.core.combat.TurretSpec
@@ -41,7 +42,11 @@ class DuoTurretBE(pos: BlockPos, state: BlockState) :
                         speed = 0.94f,
                         lifetime = 20,
                         color = 0xFFD37F,
-                        bulletSize = 0.5f
+                        bulletSize = 0.5f,
+                        // 命中 FX(#62):渐隐环,色取上游 hitColor = back 铜橙 #d39169(非渲染色 #FFD37F)
+                        hitColor = 0xD39169,
+                        // 到寿消散上游铜弹 = hitBulletColor(与命中同选型),对位 RING
+                        despawnEffect = BulletFx.RING
                     ),
                     unitMultiplier = 2
                 )

@@ -1,6 +1,7 @@
 package xyz.luobo.mturrets.core.combat
 
 import net.minecraft.core.BlockPos
+import net.minecraft.core.particles.ParticleTypes
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.util.Mth
@@ -126,7 +127,9 @@ abstract class TurretBE(
     private var burstMuzzle = Vec3.ZERO
     /** 队列弹种 = 扳机时刻的尾弹种(扣账后弹仓可能已变,队列不跟随)。 */
     private var burstType: BulletType? = null
-
+    // ===== 枪口 FX(#62,纯客户端) =====
+    /** 上次观测到的开火计数器(客户端 ticker 消费,跨 tick 比较)。 */
+    private var lastMuzzleFire = 0L
     /** 弹种定义查询;非本炮台弹药返回 null。 */
     fun ammoTypeFor(item: net.minecraft.world.item.Item): AmmoType? =
         spec.ammoTypes.firstOrNull { it.item == item }
@@ -351,7 +354,34 @@ abstract class TurretBE(
         // 对齐 Mindustry SoundEffect;spawnBullet 对首射与点射各发各调一次,天然是"每发"入口。
         val pitch = 0.8f + lv.random.nextFloat() * 0.4f
         val volume = 1f - lv.random.nextFloat() * 0.1f
-        lv.playSound(null, muzzle.x, muzzle.y, muzzle.z, spec.shootSound.get(), net.minecraft.sounds.SoundSource.BLOCKS, volume, pitch)
+    }
+
+    /**
+     * 枪口闪光(#62,纯客户端):开火计数器跳变即在枪口放一次 FLAME+SMOKE(原版粒子)。
+     * 由客户端 BlockEntityTicker 每 tick 调用——Flywheel 渲染线程不能放粒子,故走 main-thread ticker。
+     * 每扳机一次(Scatter 双发点射也只 1 次,对齐既有后坐节奏,见 #62 决策);枪口位置 = 当前 yaw/pitch
+     * 的炮管口,与 Flywheel 后坐同源(零新增同步,ADR-0005 只发目标角+开火计数器)。
+     */
+    fun muzzleFlash() {
+        val lv = level ?: return
+        if (!lv.isClientSide) return
+        val fire = fireCount
+        if (fire == lastMuzzleFire) return
+        lastMuzzleFire = fire
+        // 枪口:结构中心沿当前 yaw 水平外推 + pitch 抬升(与 fire() 的 muzzle = center + facing×dist 同源)。
+        // 项目约定 yaw = atan2(dx, dz)(见 syncDirection),故 facing = (sin(yaw), 0, cos(yaw));pitch 负=向上。
+        val center = anchorCenter()
+        val yawRad = (Mth.DEG_TO_RAD * yaw).toDouble()
+        val pitchRad = (Mth.DEG_TO_RAD * pitch).toDouble()
+        val dist = (spec.size / 2f + 0.25f).toDouble()
+        val mz = center.add(
+            Math.sin(yawRad) * dist,
+            (MUZZLE_HEIGHT - 0.5).toDouble() + Math.sin(pitchRad) * dist,
+            Math.cos(yawRad) * dist
+        )
+        lv.addParticle(ParticleTypes.FLAME, mz.x, mz.y, mz.z, 0.0, 0.05, 0.0)
+        lv.addParticle(ParticleTypes.SMOKE, mz.x, mz.y, mz.z, 0.0, 0.05, 0.0)
+        lv.addParticle(ParticleTypes.LARGE_SMOKE, mz.x, mz.y, mz.z, 0.0, 0.02, 0.0)
     }
 
 

@@ -31,5 +31,16 @@ data class BulletType(
     /** 破片数(0 = 无);命中时在命中点按随机水平方向生成。 */
     val fragCount: Int = 0,
     /** 破片弹定义(自身为 BulletType,无再分裂)。 */
-    val fragBullet: BulletType? = null
+    val fragBullet: BulletType? = null,
+    /** 命中 FX 选型(默认渐隐环,上游 hitBulletColor 对齐)。 */
+    val hitEffect: BulletFx = BulletFx.RING,
+    /** 到寿 FX 选型(默认小型渐隐环,上游 hitBulletSmall 对齐)。 */
+    val despawnEffect: BulletFx = BulletFx.SMALL,
+    /**
+     * 命中色(RGB,客户端 FX 用)。注意与 [color] 语义不同:上游 hitColor 喂命中/消失/枪口/烟四个
+     * 特效槽位,与弹体渲染色解耦(铜弹上游 hitColor = back 色 #d39169 ≠ front #eac1a8);
+     * MTurrets 现有 [color] 是 front 弹体渲染色,不能复用,故新增本字段。
+     * 仅 [BulletFx.RING] 消费本颜色,FLAK/SMALL 走固定调色板。
+     */
+    val hitColor: Int = 0xFFFFFF
 )

@@ -35,8 +35,10 @@ class DuoBlock : BlueprintAnchorBlock(structureProperties()) {
         state: BlockState,
         type: BlockEntityType<E>
     ): BlockEntityTicker<E>? {
-        if (level.isClientSide || type !== ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()) return null
-        val ticker = BlockEntityTicker<DuoTurretBE> { _, _, _, be -> be.tickServer() }
+        if (type !== ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()) return null
+        val ticker = BlockEntityTicker<DuoTurretBE> { _, _, _, be ->
+            if (level.isClientSide) be.muzzleFlash() else be.tickServer()
+        }
         @Suppress("UNCHECKED_CAST")
         return ticker as BlockEntityTicker<E>
     }

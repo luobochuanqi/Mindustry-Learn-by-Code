@@ -32,6 +32,7 @@ object MTurrets {
         ModFluids.register()
         ModBlockEntityTypes.register()
         ModSounds.register()
+        ModParticles.register()
         ModEntities.register()
         ModRecipeTypes.register()
         ModTabs.register()

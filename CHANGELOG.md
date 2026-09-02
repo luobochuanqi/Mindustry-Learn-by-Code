@@ -14,6 +14,7 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 - **Duo** — twin-barrel turret fed with items. Copper is the ammo (1 item = 2 rounds, 9 damage per hit). Holds 100 rounds, reaches 20 blocks, tracks ground and air, and leads moving targets instead of shooting where they are now. Pouring water in speeds up reload by half.
 - Turrets fire on hostile mobs; passive creatures, pets and players are never targeted.
+- **Bullet effects** — turrets now have Mindustry-aligned visuals: a flash and smoke puff at the muzzle on every shot, a fading ring or tri-color burst where bullets hit (copper shows an orange ring, lead and glass a fixed tri-color burst; glass shards pop their own small bursts), and a small fade when a bullet expires out of range.
 
 **Production**
 

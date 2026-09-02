@@ -13,7 +13,11 @@ import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent
 import net.neoforged.neoforge.client.event.EntityRenderersEvent
 import net.neoforged.neoforge.client.extensions.common.IClientFluidTypeExtensions
 import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent
+import net.neoforged.neoforge.client.event.RegisterParticleProvidersEvent
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent
 import org.slf4j.Logger
+import xyz.luobo.mturrets.client.fx.ModFxClient
+import xyz.luobo.mturrets.common.BulletFxPayload
 import xyz.luobo.mturrets.common.ModBlockEntityTypes
 import xyz.luobo.mturrets.common.ModFluids
 import xyz.luobo.mturrets.common.liquids.FluidRegistry
@@ -68,6 +72,12 @@ object EventHandler {
         }
 
         @SubscribeEvent
+        fun registerParticleProviders(event: RegisterParticleProvidersEvent) {
+            // 子弹 FX 粒子工厂(#62):引擎按类型名自动建 SpriteSet,工厂只粒子化
+            xyz.luobo.mturrets.client.fx.ModFxClient.registerParticleProviders(event)
+        }
+
+        @SubscribeEvent
         fun registerClientExtensions(event: RegisterClientExtensionsEvent) {
             // 自动注册所有液体的客户端扩展
             registerAllFluidClientExtensions(event)
@@ -110,6 +120,24 @@ object EventHandler {
         }
     }
 
+    // payload 编码/解码两端都要(client handler 跑客户端,服务端 encode 走同 codec)→ Dist.ANY。
+    // playToClient 的 handler 只在客户端收到时触发(专用服务端只登记 codec、不跑 handler);
+    // handler 在 network 线程到达,粒子必须 main thread 放 → enqueueWork。
+    @EventBusSubscriber(modid = MTurrets.MOD_ID, value = [Dist.CLIENT, Dist.DEDICATED_SERVER])
+    object PayloadEvents : IModBusEvent {
+        @SubscribeEvent
+        fun registerPayloads(event: RegisterPayloadHandlersEvent) {
+            event.registrar("1").playToClient(
+                xyz.luobo.mturrets.common.BulletFxPayload.TYPE,
+                xyz.luobo.mturrets.common.BulletFxPayload.STREAM_CODEC
+            ) { payload, ctx ->
+                ctx.enqueueWork {
+                    val level = (ctx.player().level() as? net.minecraft.client.multiplayer.ClientLevel) ?: return@enqueueWork
+                    xyz.luobo.mturrets.client.fx.ModFxClient.dispatch(level, payload)
+                }
+            }
+        }
+    }
     // 此为服务端事件总线订阅器
     @EventBusSubscriber(modid = MTurrets.MOD_ID, value = [Dist.DEDICATED_SERVER])
     object ServerModEvents : IModBusEvent {

@@ -43,8 +43,10 @@ class ScatterBlock : BlueprintAnchorBlock(structureProperties()) {
         state: BlockState,
         type: BlockEntityType<E>
     ): BlockEntityTicker<E>? {
-        if (level.isClientSide || type !== ModBlockEntityTypes.SCATTER_BLOCK_ENTITY.get()) return null
-        val ticker = BlockEntityTicker<ScatterTurretBE> { _, _, _, be -> be.tickServer() }
+        if (type !== ModBlockEntityTypes.SCATTER_BLOCK_ENTITY.get()) return null
+        val ticker = BlockEntityTicker<ScatterTurretBE> { _, _, _, be ->
+            if (level.isClientSide) be.muzzleFlash() else be.tickServer()
+        }
         @Suppress("UNCHECKED_CAST")
         return ticker as BlockEntityTicker<E>
     }
