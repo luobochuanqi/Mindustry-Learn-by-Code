@@ -1297,6 +1297,36 @@ object ModGameTests {
         }
     }
 
+
+    /** Lock 恢复:锁定铜、域内只有铅 → 停摆不吞铅;补一格铜 → 恢复且只吞铜。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 250)
+    fun drillLockedIdleResumesWhenLockedOrePlaced(helper: GameTestHelper) {
+        val copperPos = BlockPos(0, 1, 0)
+        val leadPos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        helper.setBlock(leadPos, ModBlocks.ORE_LEAD.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(10) {
+            (helper.getBlockEntity(drillPos) as DrillBE).oreLock = copper
+        }
+        helper.runAfterDelay(40) {
+            if (countItem(helper, drillPos, lead) > 0) {
+                helper.fail("copper-locked drill must not mine lead")
+            }
+            helper.setBlock(copperPos, ModBlocks.ORE_COPPER.get())
+        }
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, copper) > 0) {
+                if (!helper.getBlockState(leadPos).`is`(ModBlocks.ORE_LEAD.get())) {
+                    helper.fail("resumed copper-locked drill must still leave lead untouched")
+                }
+                helper.succeed()
+            }
+        }
+    }
     /** 穿孔零成本:石头下压矿 → 产出铜,石头格纹丝不动,矿格回填宿主石头。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 150)
@@ -1344,6 +1374,32 @@ object ModGameTests {
         }
     }
 
+
+    /**
+     * 水加成随档生效:13 块铜(顶速档)+ 满罐水 → 走 7t/物品水码表。
+     * 断言不靠 tick 计时:水加成只在 boosted 分支扣罐(25mB/物品),干钻路径永不扣罐,
+     * 故"产出铜的同时罐量下降"即证明走了水码表。
+     */
+    @JvmStatic
+    @GameTest(template = "empty4x4", timeoutTicks = 200)
+    fun drillWaterBoostAppliesToTopTier(helper: GameTestHelper) {
+        val drillPos = BlockPos(1, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        for (i in 0 until 13) {
+            helper.setBlock(BlockPos(i / 4, 1, i % 4), ModBlocks.ORE_COPPER.get())
+        }
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        fillKilnTank(helper, drillPos)
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, copper) > 0) {
+                val tank = (helper.getBlockEntity(drillPos) as DrillBE).fluidCapability.currentFluid.amount
+                if (tank >= 1000) {
+                    helper.fail("water-boosted drill must drain the tank (25 mB/item), tank=${tank} — dry path never drains")
+                }
+                helper.succeed()
+            }
+        }
+    }
     /** 无限矿(T=24):24 块铜 → 持续产出且矿格零消费(借鉴 Create 抽岩浆;isInfinite 数据面)。 */
     @JvmStatic
     @GameTest(template = "empty4x4", timeoutTicks = 500)

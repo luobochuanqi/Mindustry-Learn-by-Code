@@ -65,6 +65,13 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         const val IDLE_RESCAN_TICKS = 20
 
         /**
+         * 4×4 扫描域 = 2×2 足迹同心外扩一圈;锚点居 +X/+Z 角,故相对锚点范围 (−1,−1)–(2,2)
+         * 不对称(中心在足迹中心而非锚点)。
+         */
+        const val REGION_MIN = -1
+        const val REGION_MAX = 2
+
+        /**
          * 采集语义:矿石方块 → 产物物品(代码表;一期三种矿石全可钻,无硬质门控)。
          * 插入序 = Lock 循环序与平手序(铜→铅→煤),[LOCK_ORDER] 由此派生,勿乱序。
          */
@@ -150,7 +157,7 @@ class DrillBE(pos: BlockPos, state: BlockState) :
     }
 
     /**
-     * 当前目标矿种:Lock 指定,无 Lock 取 Reserve 最多者(平手按码表序铜>铅>煤);皆 0 返回 null(停摆)。
+     * 当前被采矿种:Lock 指定,无 Lock 取 Reserve 最多者(平手按码表序铜>铅>煤);皆 0 返回 null(停摆)。
      */
     private fun targetOre(): Item? {
         val locked = oreLock
@@ -170,8 +177,8 @@ class DrillBE(pos: BlockPos, state: BlockState) :
     }
 
     /**
-     * 服务端 tick:单 progress 全局计时,节奏 = 目标矿种 Reserve 数 n 查四档码表(水 Booster 换表)。
-     * 每完成一个周期产出一件:非无限矿按扫描序吞掉第一个目标矿格并回填宿主石头,随后重扫;
+     * 服务端 tick:单 progress 全局计时,节奏 = 被采矿种 Reserve 数 n 查四档码表(水 Booster 换表)。
+     * 每完成一个周期产出一件:非无限矿按扫描序吞掉第一个被采矿格并回填宿主石头,随后重扫;
      * 满载预检不过 → 停转不吞矿。无目标时低频重扫,外部补矿/挖矿自愈。
      */
     fun tickServer() {
@@ -233,15 +240,9 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         val lv = level
         if (lv !is ServerLevel) return
         val newCounts = IntArray(LOCK_ORDER.size)
-        val from = worldPosition.y - 1
-        for (y in from downTo lv.minBuildHeight) {
-            for (x in -1..2) {
-                for (z in -1..2) {
-                    val idx = ORE_BLOCK_INDEX[lv.getBlockState(BlockPos(worldPosition.x + x, y, worldPosition.z + z)).block]
-                        ?: continue
-                    newCounts[idx]++
-                }
-            }
+        for (pos in regionPositions(lv)) {
+            val idx = ORE_BLOCK_INDEX[lv.getBlockState(pos).block] ?: continue
+            newCounts[idx]++
         }
         val changed = newCounts.contentEquals(reserves).not()
         if (changed) {
@@ -251,20 +252,26 @@ class DrillBE(pos: BlockPos, state: BlockState) :
     }
 
     /**
-     * 扫描序取第一个指定矿种的矿格:深度浅→深,层内 x→z(与 [refreshScan] 同序,表面先吃、柱面不留洞)。
+     * 扫描序取第一个指定矿种的矿格(表面先吃、柱面不留洞)。
      */
     private fun scanFirstOre(lv: Level, ore: Item): BlockPos? {
         val index = ORE_INDEX[ore] ?: return null
+        return regionPositions(lv).firstOrNull { ORE_BLOCK_INDEX[lv.getBlockState(it).block] == index }
+    }
+
+    /**
+     * 扫描序遍历 4×4 柱域:深度浅→深,层内 x→z。计数与消费共用同一序列,
+     * 顺序是消费面可见行为(先吃浅处),改序会改变"哪块矿先被吞"。
+     */
+    private fun regionPositions(lv: Level): Sequence<BlockPos> = sequence {
         val from = worldPosition.y - 1
         for (y in from downTo lv.minBuildHeight) {
-            for (x in -1..2) {
-                for (z in -1..2) {
-                    val pos = BlockPos(worldPosition.x + x, y, worldPosition.z + z)
-                    if (ORE_BLOCK_INDEX[lv.getBlockState(pos).block] == index) return pos
+            for (x in REGION_MIN..REGION_MAX) {
+                for (z in REGION_MIN..REGION_MAX) {
+                    yield(BlockPos(worldPosition.x + x, y, worldPosition.z + z))
                 }
             }
         }
-        return null
     }
 
     /** 首次放置/区块重载即给客户端准确初值,不必等首个采掘周期;客户端值随 update tag 覆盖,不重算。 */
