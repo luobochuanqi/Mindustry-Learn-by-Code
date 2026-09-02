@@ -82,10 +82,21 @@ object StructureDataProvider : IBlockComponentProvider {
                     Component.translatable(
                         "jade.mturrets.drill_lock",
                         lock?.let { Component.translatable(it.descriptionId) }
-                            ?: Component.translatable("jade.mturrets.auto")
+                            ?: Component.translatable("jade.mturrets.drill_lock_none")
                     )
                 )
-                tooltip.add(Component.translatable("jade.mturrets.drill_reserve", be.reserves))
+                // #50:锁定单行该矿种;未锁定三行分矿种;无限态(Reserve ≥ T)显 ∞
+                val oreItems = if (lock != null) listOf(lock) else DrillBE.LOCK_ORDER
+                for (ore in oreItems) {
+                    val value = if (be.isInfinite(ore)) "∞" else be.oreReserve(ore).toString()
+                    tooltip.add(
+                        Component.translatable(
+                            "jade.mturrets.drill_reserve_typed",
+                            Component.translatable(ore.descriptionId),
+                            value
+                        )
+                    )
+                }
                 bufferLine(tooltip, be)
             }
         }

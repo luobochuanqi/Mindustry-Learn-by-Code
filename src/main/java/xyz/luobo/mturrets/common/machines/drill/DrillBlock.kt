@@ -23,7 +23,8 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 
 /**
  * 机械钻头(蓝图 2×2,ADR-0003/0008):角锚点 +X/+Z 生长(#26 约定),3 成员格为钻头外观结构块。
- * 交互无 GUI:可倒出液体的手持物右键灌内罐(水加成);空手右键取 Buffer。
+ * 交互无 GUI(#50):可倒出液体的手持物右键灌内罐(水加成);手持任意模组矿石右键循环切 Lock
+ * (铜→铅→煤→无,与手持种类无关);空手右键取 Buffer;其余手持物拒绝。
  * 无配方输入 → 不放料通道(区别于窑炉,#35 spec 定案)。
  */
 class DrillBlock : BlueprintAnchorBlock(structureProperties()) {
@@ -76,6 +77,11 @@ class DrillBlock : BlueprintAnchorBlock(structureProperties()) {
             val extracted = drill.takeBufferStack()
                 ?: return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION
             ItemHandlerHelper.giveItemToPlayer(player, extracted)
+            return ItemInteractionResult.CONSUME
+        }
+        // 手持模组矿石 = 推进一步 Lock 循环(#50;不消耗手持物,CONSUME 指交互已处理)
+        if (drill.isOreItem(stack)) {
+            drill.cycleLock()
             return ItemInteractionResult.CONSUME
         }
         // 手持其它物品:无放料通道,拒绝并整体短路(避免落回 useWithoutItem 误取出)

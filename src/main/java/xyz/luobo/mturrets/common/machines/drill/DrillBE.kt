@@ -6,8 +6,8 @@ import net.minecraft.core.registries.BuiltInRegistries
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket
 import net.minecraft.resources.ResourceLocation
-import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.Containers
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.item.Item
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
@@ -30,11 +30,16 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchor
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 
 /**
- * 机械钻头 BE(#35):2×2 蓝图锚点,采口 = 锚点正下方 1×1 格(#35 spec 用户裁决)。
- * 采集语义(#24):每产出 1 物品吞掉采口矿石格、回填宿主石头(y<0 → deepslate,否则 stone),矿脉会采空;
- * 无能耗;内罐水为 Booster(CONTEXT 词表):有水按 25 tick/物品、耗 25 mB 结算,干罐回落 40 tick 基础节奏。
- * 产物入内 Buffer(准入 = 三种矿石物品),满载停转(不吞矿、不推进);
- * 采口非矿石则停摆不报错,补料(新矿/重新放置)后续转。
+ * 机械钻头 BE(#35 基础 + #50 区域开采,逻辑挖矿):2×2 蓝图锚点,不占能耗。
+ *
+ * 开采语义(#50 spec,取代 #35 采口 1×1 逐格咬柱):
+ * 扫描域 = 2×2 足迹同心外扩一圈的 4×4 水平柱面,从锚点正下方扫到世界底,统计铜/铅/煤各自 Reserve;
+ * 只消费目标矿格(吞掉 → 回填宿主石头 y<0 deepslate / 否则 stone,世界无缝),石头/空气/流体不碰,穿孔零成本。
+ * 目标 = Lock 指定矿种,无 Lock 取数量最多者(平手按注册序铜>铅>煤);节奏按目标 Reserve 数 n 分四档
+ * (n 越多挖越快,上游 Mindustry dominantItems 同构、尺度按 3D 重定标),水 Booster 乘 ×1.6 后仍四档。
+ * 某矿种 n ≥ INFINITE_THRESHOLD(≈1.5–2 条矿脉 blob 交汇)视为无限矿:该矿种零消费、永采不完、Jade 显 ∞(借鉴 Create 抽岩浆)。
+ * 扫描无状态:只在事件时机重扫(放置/区块加载、每产出一件、切 Lock、空闲低频复查),无缓存列表、无 blockChanged 监听。
+ * 产物入内 Buffer(准入 = 三种矿石物品),满载停转;空手右键取 Buffer,手持任意模组矿石右键循环切 Lock(与手持种类无关)。
  */
 class DrillBE(pos: BlockPos, state: BlockState) :
     MTurretsModBlockEntity(ModBlockEntityTypes.DRILL.get(), pos, state), BlueprintAnchor, HummingMachine {
@@ -43,19 +48,41 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         const val BUFFER_SLOTS = 20
         /** 内罐容量(mB):一桶恰好充满。 */
         const val WATER_TANK_CAPACITY = 1000
-        /** 基础节奏(#24):2 秒/物品。 */
-        const val BASE_TICKS_PER_ITEM = 40
-        /** 水加成节奏:40 / 1.6(#24 水 boost ×1.6 → 1.25 秒/物品)。 */
-        const val WATER_TICKS_PER_ITEM = 25
         /** 每物品耗水(mB):一桶 ≈ 40 物品 ≈ 50 秒,数值可调。 */
         const val WATER_PER_ITEM = 25
 
-        /** 采口矿石方块 → 产物物品(代码表;一期三种矿石全可钻,无硬质门控)。 */
+        /** 节奏分档粒度 s(上游 dominantItems 同构,尺度按 3D 重定标):档位 = min(ceil(n/s), 4)。 */
+        const val TIER_DIVIDER = 4
+        /** 无限矿阈值 T:某矿种域内 Reserve ≥ T → 该矿种零消费无限产(≈1.5–2 条 blob 交汇,#24 blob size 48)。 */
+        const val INFINITE_THRESHOLD = 24
+
+        /** 干钻节奏码表(tick/物品),下标 = 档位-1;干钻 40/⌈n/4⌉ 封顶 4 档。 */
+        val DRY_TICKS_PER_ITEM = intArrayOf(40, 20, 13, 10)
+        /** 水加成节奏码表 = 干钻 ÷1.6 取整(Booster ×1.6 语义,#35 延续)。 */
+        val WATER_TICKS_PER_ITEM = intArrayOf(25, 13, 8, 7)
+
+        /** 空闲态(无目标)低频重扫间隔:外部补矿/挖矿靠它自愈,不逐 tick 扫。 */
+        const val IDLE_RESCAN_TICKS = 20
+
+        /**
+         * 采集语义:矿石方块 → 产物物品(代码表;一期三种矿石全可钻,无硬质门控)。
+         * 插入序 = Lock 循环序与平手序(铜→铅→煤),[LOCK_ORDER] 由此派生,勿乱序。
+         */
         private val ORE_OUTPUTS: Map<Block, Item> = mapOf(
             ModBlocks.ORE_COPPER.get() to ModItems.getMaterial(Materials.COPPER).get(),
             ModBlocks.ORE_LEAD.get() to ModItems.getMaterial(Materials.LEAD).get(),
             ModBlocks.ORE_COAL.get() to ModItems.getMaterial(Materials.COAL).get()
         )
+
+        /** Lock 循环序 = 产物注册序(铜→铅→煤),Jade 三行同序。 */
+        val LOCK_ORDER: List<Item> = ORE_OUTPUTS.values.toList()
+
+        /** 产物物品 → 码表下标(Reserve 计数槽位)。 */
+        private val ORE_INDEX: Map<Item, Int> = ORE_OUTPUTS.values.withIndex().associate { (i, v) -> v to i }
+
+        /** 矿石方块 → 码表下标。 */
+        private val ORE_BLOCK_INDEX: Map<Block, Int> =
+            ORE_OUTPUTS.entries.withIndex().associate { (i, e) -> e.key to i }
     }
 
     override val currentBlueprint: Blueprint
@@ -73,27 +100,41 @@ class DrillBE(pos: BlockPos, state: BlockState) :
 
     private var progress = 0
 
+    /** 空闲重扫节拍(只在无目标时推进,见 [tickServer])。 */
+    private var idleTicks = 0
+
     /**
-     * 运转态(客户端 hum 消费,#57):采口有矿 ∧ Buffer 可再收(即本 tick 实际在挖)。
-     * 服务端权威、随 update tag 同步(见 getUpdateTag);客户端不做口径判断,只读。
+     * 运转态(客户端 hum 消费,#57):存在可采目标 ∧ Buffer 可再收(即本 tick 实际在挖)。
+     * 服务端权威、随 update tag 同步;客户端不做口径判断,只读。
      */
     override var isRunning: Boolean = false
         private set
 
-    // 显示面读数(Jade #52 消费;锁循环切换行为归钻头区域开采票 #50)
+    // 显示面读数(Jade #52/#50 消费;右键循环切换行为归本 BE)
 
-    /** 当前锁定的矿种;null = 自动(全矿)。设置即重算储量并同步客户端。 */
+    /** 当前 Lock 的矿种;null = 无 Lock(默认采数量最多的矿种)。设置即重扫并同步。 */
     var oreLock: Item? = null
         set(value) {
             if (field != value) {
                 field = value
-                refreshReserves()
+                refreshScan()
+                syncData()
             }
         }
 
-    /** 柱内储量:锚点正下方矿柱中锁定矿种(自动 = 全部矿石)的剩余块数;服务端权威。 */
-    var reserves: Int = 0
-        private set
+    /** 分矿种 Reserve(码表序铜/铅/煤),服务端权威,扫描时重算;客户端值随 update tag 覆盖。 */
+    private var reserves = IntArray(LOCK_ORDER.size)
+
+    /** 手持任意模组矿石物品即推进一步 Lock 循环(与手持种类无关,#50 spec);null→铜→铅→煤→null。 */
+    fun cycleLock() {
+        oreLock = LOCK_ORDER.getOrNull(LOCK_ORDER.indexOf(oreLock) + 1)
+    }
+
+    /** 某矿种的 Reserve(域内剩余块数);未知矿种返回 0。 */
+    fun oreReserve(item: Item): Int = ORE_INDEX[item]?.let { reserves[it] } ?: 0
+
+    /** 某矿种是否处于无限态(Reserve ≥ T);无限矿零消费、Jade 显 ∞。 */
+    fun isInfinite(item: Item): Boolean = oreReserve(item) >= INFINITE_THRESHOLD
 
     /** Buffer 准入:只存三种矿石物品(钻头产物;放料通道对无配方输入的钻头无意义)。 */
     fun isOreItem(stack: ItemStack): Boolean = ORE_OUTPUTS.containsValue(stack.item)
@@ -109,29 +150,70 @@ class DrillBE(pos: BlockPos, state: BlockState) :
     }
 
     /**
-     * 服务端 tick:采口为矿石才推进;每 tick 按罐内水量取节奏(满 25 mB → 水加成),
-     * 满程结算 = 吞矿回填宿主石头 + 产出入 Buffer;Buffer 满载预检不过 → 停转不吞矿。
+     * 当前目标矿种:Lock 指定,无 Lock 取 Reserve 最多者(平手按码表序铜>铅>煤);皆 0 返回 null(停摆)。
+     */
+    private fun targetOre(): Item? {
+        val locked = oreLock
+        if (locked != null) {
+            return if (oreReserve(locked) > 0) locked else null
+        }
+        var best: Item? = null
+        var bestCount = 0
+        for (item in LOCK_ORDER) {
+            val c = oreReserve(item)
+            if (c > bestCount) {
+                best = item
+                bestCount = c
+            }
+        }
+        return best
+    }
+
+    /**
+     * 服务端 tick:单 progress 全局计时,节奏 = 目标矿种 Reserve 数 n 查四档码表(水 Booster 换表)。
+     * 每完成一个周期产出一件:非无限矿按扫描序吞掉第一个目标矿格并回填宿主石头,随后重扫;
+     * 满载预检不过 → 停转不吞矿。无目标时低频重扫,外部补矿/挖矿自愈。
      */
     fun tickServer() {
         val lv = level ?: return
-        val mouth = worldPosition.below()
-        val oreItem = ORE_OUTPUTS[lv.getBlockState(mouth).block]
+        val target = targetOre()
         // 满载停转:模拟插入无位则不吞矿、进度保持(取出后自动续转)
-        val room = oreItem != null && ItemHandlerHelper.insertItem(itemCapability, ItemStack(oreItem), true).isEmpty
-        // 运转态(客户端 hum):采口有矿 ∧ Buffer 可再收;仅在切换时同步,避免每 tick 发包
+        val room = target != null && ItemHandlerHelper.insertItem(itemCapability, ItemStack(target), true).isEmpty
+        // 运转态(客户端 hum):仅在切换时同步,避免每 tick 发包
         if (room != isRunning) {
             isRunning = room
             syncData()
         }
-        if (!room) return
-        val item = oreItem ?: return
+        if (!room) {
+            // 空闲态低频重扫:玩家补矿/挖矿后自愈,不逐 tick 扫
+            if (target == null && ++idleTicks >= IDLE_RESCAN_TICKS) {
+                idleTicks = 0
+                refreshScan()
+            }
+            return
+        }
+        val item = target!!
+        idleTicks = 0
+        val n = oreReserve(item)
+        val infinite = n >= INFINITE_THRESHOLD
         val boosted = fluidCapability.currentFluid.amount >= WATER_PER_ITEM
-        val speed = if (boosted) WATER_TICKS_PER_ITEM else BASE_TICKS_PER_ITEM
+        // 档位 = min(ceil(n/4), 4),n ≥ 1 已由 room 保证
+        val tier = (n - 1) / TIER_DIVIDER + 1
+        val speed = (if (boosted) WATER_TICKS_PER_ITEM else DRY_TICKS_PER_ITEM)
+            .getOrElse(tier - 1) { DRY_TICKS_PER_ITEM.last() }
         if (++progress < speed) return
         progress = 0
-        // 采集语义:吞掉矿石格、回填宿主石头;浅层 stone / 深层 deepslate
-        lv.setBlock(mouth, hostStoneFor(mouth), 3)
-        refreshReserves() // 采口被吞,储量读数当场更新(Jade 不滞后一个周期)
+        if (!infinite) {
+            // 非无限矿:按扫描序吞第一个目标矿格,回填宿主石头(浅层 stone / 深层 deepslate)
+            val mouth = scanFirstOre(lv, item)
+            if (mouth == null) {
+                // 缓存计数过期(外部挖空):重扫后本周期放弃结算,不凭空产物品
+                refreshScan()
+                return
+            }
+            lv.setBlock(mouth, hostStoneFor(mouth), 3)
+            refreshScan()
+        }
         if (boosted) drainFluidInternal(WATER_PER_ITEM)
         val leftover = ItemHandlerHelper.insertItem(itemCapability, ItemStack(item), false)
         if (!leftover.isEmpty) {
@@ -145,35 +227,57 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         if (pos.y < 0) Blocks.DEEPSLATE.defaultBlockState() else Blocks.STONE.defaultBlockState()
 
     /**
-     * 重算储量:扫锚点正下方矿柱,逐格匹配 ORE_OUTPUTS;锁定态只数锁定矿种,自动态数全矿。
-     * 扫描面 = 现采口 1×1 列;#50 把开采扩到 2×2 柱时同步扩这里。
+     * 重扫 4×4 柱域,刷新分矿种 Reserve;计数变化才同步(事件节流,不逐 tick 发包)。
      */
-    private fun refreshReserves() {
+    private fun refreshScan() {
         val lv = level
         if (lv !is ServerLevel) return
-        val locked = oreLock
-        var count = 0
-        var y = worldPosition.y - 1
-        while (y >= lv.minBuildHeight) {
-            val item = ORE_OUTPUTS[lv.getBlockState(BlockPos(worldPosition.x, y, worldPosition.z)).block]
-            if (item != null && (locked == null || item == locked)) count++
-            y--
+        val newCounts = IntArray(LOCK_ORDER.size)
+        val from = worldPosition.y - 1
+        for (y in from downTo lv.minBuildHeight) {
+            for (x in -1..2) {
+                for (z in -1..2) {
+                    val idx = ORE_BLOCK_INDEX[lv.getBlockState(BlockPos(worldPosition.x + x, y, worldPosition.z + z)).block]
+                        ?: continue
+                    newCounts[idx]++
+                }
+            }
         }
-        reserves = count
-        syncData()
+        val changed = newCounts.contentEquals(reserves).not()
+        if (changed) {
+            reserves = newCounts
+            syncData()
+        }
+    }
+
+    /**
+     * 扫描序取第一个指定矿种的矿格:深度浅→深,层内 x→z(与 [refreshScan] 同序,表面先吃、柱面不留洞)。
+     */
+    private fun scanFirstOre(lv: Level, ore: Item): BlockPos? {
+        val index = ORE_INDEX[ore] ?: return null
+        val from = worldPosition.y - 1
+        for (y in from downTo lv.minBuildHeight) {
+            for (x in -1..2) {
+                for (z in -1..2) {
+                    val pos = BlockPos(worldPosition.x + x, y, worldPosition.z + z)
+                    if (ORE_BLOCK_INDEX[lv.getBlockState(pos).block] == index) return pos
+                }
+            }
+        }
+        return null
     }
 
     /** 首次放置/区块重载即给客户端准确初值,不必等首个采掘周期;客户端值随 update tag 覆盖,不重算。 */
     override fun onLoad() {
         super.onLoad()
-        if (level is ServerLevel) refreshReserves()
+        if (level is ServerLevel) refreshScan()
     }
 
     override fun saveAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
         super.saveAdditional(tag, registries)
         tag.putInt("drill_progress", progress)
         tag.putString("drill_ore_lock", oreLock?.let { BuiltInRegistries.ITEM.getKey(it).toString() } ?: "")
-        tag.putInt("drill_reserves", reserves)
+        tag.putIntArray("drill_ore_reserves", reserves)
         tag.putBoolean("drill_is_running", isRunning)
     }
     override fun loadAdditional(tag: CompoundTag, registries: HolderLookup.Provider) {
@@ -182,7 +286,9 @@ class DrillBE(pos: BlockPos, state: BlockState) :
         oreLock = tag.getString("drill_ore_lock").takeIf { it.isNotEmpty() }?.let {
             ResourceLocation.tryParse(it)?.let { id -> BuiltInRegistries.ITEM.getOptional(id).orElse(null) }
         }
-        reserves = tag.getInt("drill_reserves")
+        // 旧档单值 drill_reserves 不迁移(#50 spec):存量钻头节奏与读数复位
+        val saved = tag.getIntArray("drill_ore_reserves")
+        for (i in reserves.indices) reserves[i] = saved.getOrElse(i) { 0 }
         isRunning = tag.getBoolean("drill_is_running")
     }
 

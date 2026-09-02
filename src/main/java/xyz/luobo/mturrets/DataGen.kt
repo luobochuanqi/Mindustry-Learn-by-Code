@@ -169,9 +169,9 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         this.add("jade.mturrets.production", "Production: %s FE/t")
         this.add("jade.mturrets.fuel", "Burning: %s t / Fuel: %s")
         this.add("jade.mturrets.drill_lock", "Lock: %s")
-        this.add("jade.mturrets.drill_reserve", "Remaining: %s")
+        this.add("jade.mturrets.drill_reserve_typed", "%s: %s")
         this.add("jade.mturrets.drill_buffer", "Buffer: %s")
-        this.add("jade.mturrets.auto", "Auto")
+        this.add("jade.mturrets.drill_lock_none", "None")
 
         // 声音字幕(#57):sounds.json 的 subtitle 字段指向这些 key,声音字幕屏据此显示
         this.add("mturrets.subtitle.shoot_duo", "Duo Turret")

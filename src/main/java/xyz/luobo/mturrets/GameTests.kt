@@ -799,8 +799,8 @@ object ModGameTests {
         helper.runAfterDelay(5) {
             if (drill.isRunning) helper.fail("drill over stone (no ore) must not be running")
         }
-        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get()) // 补矿 → 开工
-        helper.runAfterDelay(15) {
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get()) // 补矿 → 空闲低频重扫(20t)后开工
+        helper.runAfterDelay(35) {
             if (!drill.isRunning) helper.fail("drill over ore with empty buffer must be running")
         }
         // 塞满 Buffer → 满载停转 → isRunning 转 false
@@ -1019,7 +1019,7 @@ object ModGameTests {
             }
         }
     }
-    // 采矿:矿脉与钻头(#35,ADR-0008 一期材料链)。采口 = 锚点正下方 1×1;钻头 2×2 角锚点 (+X/+Z)。
+    // 采矿:矿脉与钻头(#35 基础,#50 逻辑挖矿:4×4 柱域/四档节奏/无限矿/Lock)。钻头 2×2 角锚点 (+X/+Z)。
 
     /** ① + ③:钻头 40 tick 基础节奏产出 1 铜入 Buffer,采口矿格被吞并回填宿主石头。 */
     @JvmStatic
@@ -1141,7 +1141,7 @@ object ModGameTests {
             // 补矿:采口已回填石头,放下新矿续转;待第二件产出后拆机
             helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
         }
-        helper.runAfterDelay(120) {
+        helper.runAfterDelay(150) {
             if (countItem(helper, drillPos, copper) < 1) {
                 helper.fail("drill did not resume after ore refill")
             }
@@ -1226,22 +1226,29 @@ object ModGameTests {
         }
     }
 
-    // ===== 钻头储量读数(#52,Jade 数据面):自动全矿计数/采掘消耗递减/锁定矿种过滤 =====
+    // ===== 钻头区域开采(#50,逻辑挖矿):4×4 柱域/分矿种 Reserve/四档节奏/无限矿/Lock 循环 =====
 
+    /** 数据面(#52 迁移):Reserve 按 4×4 柱域分矿种计数(铜/铅各 1、煤 0)。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
-    fun drillReserveCountsColumnOres(helper: GameTestHelper) {
+    fun drillReserveCountsRegionOresByType(helper: GameTestHelper) {
         val drillPos = BlockPos(1, 2, 1)
         helper.setBlock(BlockPos(1, 1, 1), ModBlocks.ORE_COPPER.get())
         helper.setBlock(BlockPos(1, 0, 1), ModBlocks.ORE_LEAD.get())
         helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        val coal = ModItems.getMaterial(Materials.COAL).get()
         helper.runAfterDelay(5) {
-            val reserves = (helper.getBlockEntity(drillPos) as? DrillBE)?.reserves ?: -1
-            if (reserves != 2) helper.fail("auto reserves must count all ores in the column, got $reserves")
+            val drill = helper.getBlockEntity(drillPos) as DrillBE
+            if (drill.oreReserve(copper) != 1) helper.fail("copper reserve must count its own blocks, got ${drill.oreReserve(copper)}")
+            if (drill.oreReserve(lead) != 1) helper.fail("lead reserve must count its own blocks, got ${drill.oreReserve(lead)}")
+            if (drill.oreReserve(coal) != 0) helper.fail("coal reserve must be 0, got ${drill.oreReserve(coal)}")
             helper.succeed()
         }
     }
 
+    /** 数据面(#52 迁移):采掘消耗 → 对应矿种 Reserve 当场递减到 0。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 120)
     fun drillReserveDecaysAfterMining(helper: GameTestHelper) {
@@ -1252,27 +1259,206 @@ object ModGameTests {
         helper.setBlock(drillPos, ModBlocks.DRILL.get())
         helper.succeedWhen {
             if (countItem(helper, drillPos, copper) > 0) {
-                val reserves = (helper.getBlockEntity(drillPos) as? DrillBE)?.reserves ?: -1
-                if (reserves != 0) helper.fail("reserves must drop to 0 once the only ore is mined, got $reserves")
+                val drill = helper.getBlockEntity(drillPos) as DrillBE
+                if (drill.oreReserve(copper) != 0) {
+                    helper.fail("copper reserve must drop to 0 once its only ore is mined, got ${drill.oreReserve(copper)}")
+                }
+                helper.succeed()
             }
         }
     }
 
+    /** Lock 目标过滤:锁定铅 → 浅处铜矿不碰,深处置铅矿被吞、回填宿主石头。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun drillLockTargetsOnlyLockedOre(helper: GameTestHelper) {
+        val copperPos = BlockPos(1, 1, 1)
+        val leadPos = BlockPos(1, 0, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        helper.setBlock(copperPos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(leadPos, ModBlocks.ORE_LEAD.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        val expectedHost =
+            if (helper.absolutePos(leadPos).y < 0) Blocks.DEEPSLATE else Blocks.STONE
+        helper.runAfterDelay(10) {
+            (helper.getBlockEntity(drillPos) as DrillBE).oreLock = lead
+        }
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, lead) > 0) {
+                if (!helper.getBlockState(copperPos).`is`(ModBlocks.ORE_COPPER.get())) {
+                    helper.fail("lead-locked drill must not touch the copper block")
+                }
+                if (!helper.getBlockState(leadPos).`is`(expectedHost)) {
+                    helper.fail("mined lead block must be refilled with the host stone for its depth")
+                }
+                helper.succeed()
+            }
+        }
+    }
+
+    /** 穿孔零成本:石头下压矿 → 产出铜,石头格纹丝不动,矿格回填宿主石头。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 150)
+    fun drillTunnelsThroughStoneToOre(helper: GameTestHelper) {
+        val stonePos = BlockPos(1, 1, 1)
+        val orePos = BlockPos(1, 0, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        helper.setBlock(stonePos, Blocks.STONE)
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        val expectedHost =
+            if (helper.absolutePos(orePos).y < 0) Blocks.DEEPSLATE else Blocks.STONE
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, copper) > 0) {
+                if (!helper.getBlockState(stonePos).`is`(Blocks.STONE)) {
+                    helper.fail("tunneling must not touch the overlying stone block")
+                }
+                if (!helper.getBlockState(orePos).`is`(expectedHost)) {
+                    helper.fail("mined ore under stone must be refilled with the host stone")
+                }
+                helper.succeed()
+            }
+        }
+    }
+
+    /** 四档节奏(顶速):13 块铜(≥13 档)→ 10t/物品;35t 窗口已 ≥3 件(基准 40t 档必为 0)。 */
+    @JvmStatic
+    @GameTest(template = "empty4x4", timeoutTicks = 200)
+    fun drillSpeedScalesWithOreCount(helper: GameTestHelper) {
+        val drillPos = BlockPos(1, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        // 域 = 锚点 4×4(x/z 0..3),13 块铺 y=1 一层(钻头 y=2,域内)
+        for (i in 0 until 13) {
+            helper.setBlock(BlockPos(i / 4, 1, i % 4), ModBlocks.ORE_COPPER.get())
+        }
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(35) {
+            if (countItem(helper, drillPos, copper) < 3) {
+                helper.fail("13-ore region must mine at the top pace (10 tick/item), got ${countItem(helper, drillPos, copper)} by t35")
+            }
+        }
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, copper) >= 8) helper.succeed()
+        }
+    }
+
+    /** 无限矿(T=24):24 块铜 → 持续产出且矿格零消费(借鉴 Create 抽岩浆;isInfinite 数据面)。 */
+    @JvmStatic
+    @GameTest(template = "empty4x4", timeoutTicks = 500)
+    fun drillInfiniteOreNeverConsumed(helper: GameTestHelper) {
+        val drillPos = BlockPos(1, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        for (x in 0..3) for (z in 0..3) {
+            helper.setBlock(BlockPos(x, 1, z), ModBlocks.ORE_COPPER.get())
+        }
+        for (x in 0..3) for (z in 0..1) {
+            helper.setBlock(BlockPos(x, 0, z), ModBlocks.ORE_COPPER.get())
+        }
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(5) {
+            val drill = helper.getBlockEntity(drillPos) as DrillBE
+            if (drill.oreReserve(copper) != 24) helper.fail("expected 24 copper in the region, got ${drill.oreReserve(copper)}")
+            if (!drill.isInfinite(copper)) helper.fail("24 ores must be in the infinite tier")
+        }
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, copper) >= 30) {
+                if (countBlocksInDrillRegion(helper, drillPos, ModBlocks.ORE_COPPER.get()) != 24) {
+                    helper.fail("infinite ore must be zero-consumption, region shrank to ${countBlocksInDrillRegion(helper, drillPos, ModBlocks.ORE_COPPER.get())}")
+                }
+                helper.succeed()
+            }
+        }
+    }
+
+    /** Lock 循环:手持任意模组矿石右键推进一步(铜→铅→煤→无→铜),手持物不消耗;木棍仍拒绝。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)
-    fun drillLockFiltersReserveCount(helper: GameTestHelper) {
+    fun drillLockCyclesViaHeldOreItem(helper: GameTestHelper) {
         val drillPos = BlockPos(1, 2, 1)
-        helper.setBlock(BlockPos(1, 1, 1), ModBlocks.ORE_COPPER.get())
-        helper.setBlock(BlockPos(1, 0, 1), ModBlocks.ORE_LEAD.get())
-        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
         val lead = ModItems.getMaterial(Materials.LEAD).get()
-        helper.runAfterDelay(10) {
-            val drill = helper.getBlockEntity(drillPos) as? DrillBE
-                ?: throw IllegalStateException("drill BE missing")
-            drill.oreLock = lead // 右键循环切换属钻头开采票(#50),这里直走 #52 的读数数据面
-            if (drill.reserves != 1) helper.fail("lead lock must count only lead in the column, got ${drill.reserves}")
+        val coal = ModItems.getMaterial(Materials.COAL).get()
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(5) {
+            val drill = helper.getBlockEntity(drillPos) as DrillBE
+            // 同一条手持栈(铜)走完整个环:每步 CONSUME、手持不缩、锁按固定序推进(与手持种类无关)
+            val held = ItemStack(copper, 4)
+            val ring = listOf(copper, lead, coal, null, copper)
+            for (expect in ring) {
+                val result = mockUseOn(helper, drillPos, held)
+                if (result != ItemInteractionResult.CONSUME) {
+                    helper.fail("ore-item use must cycle the lock and consume the interaction, got $result")
+                }
+                if (held.count != 4) helper.fail("lock cycling must not consume the held item, left ${held.count}")
+                if (drill.oreLock != expect) helper.fail("cycle must land on $expect, got ${drill.oreLock}")
+            }
+            if (mockUseOn(helper, drillPos, ItemStack(Items.STICK)) != ItemInteractionResult.FAIL) {
+                helper.fail("non-ore non-fluid items must still be refused")
+            }
+            if (drill.oreLock != copper) helper.fail("refused use must not touch the lock")
             helper.succeed()
         }
+    }
+
+    /** 成员格转发切 Lock:右键成员格手持矿 → 锚点 Lock 推进(成员 = 锚点,无区别)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun drillMemberCyclesLockViaAnchor(helper: GameTestHelper) {
+        val drillPos = BlockPos(1, 2, 1)
+        val memberPos = BlockPos(2, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(5) {
+            val drill = helper.getBlockEntity(drillPos) as DrillBE
+            val memberState = helper.getBlockState(memberPos)
+            if (memberState.block !is StructuralBlock) helper.fail("member block missing at $memberPos")
+            val player = helper.makeMockPlayer(GameType.SURVIVAL)
+            val hit = BlockHitResult(Vec3.ZERO, Direction.UP, helper.absolutePos(memberPos), false)
+            val result = memberState.useItemOn(
+                ItemStack(copper), helper.level, player, InteractionHand.MAIN_HAND, hit
+            )
+            if (result != ItemInteractionResult.CONSUME) {
+                helper.fail("member ore use must cycle the anchor lock, got $result")
+            }
+            if (drill.oreLock != copper) helper.fail("member use must land the lock on the anchor, got ${drill.oreLock}")
+            helper.succeed()
+        }
+    }
+
+    /** 空闲自愈:无矿停摆后玩家补矿 → 低频重扫(20t)发现目标,续转产出。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 200)
+    fun drillIdleDetectsPlacedOre(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        helper.setBlock(orePos, Blocks.STONE)
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(40) {
+            if ((helper.getBlockEntity(drillPos) as DrillBE).isRunning) {
+                helper.fail("ore-free drill must stay idle")
+            }
+            if (countItem(helper, drillPos, copper) > 0) helper.fail("ore-free drill must not produce")
+            helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        }
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, copper) > 0) helper.succeed()
+        }
+    }
+
+    /** 统计钻头 4×4 域(dx/dz ∈ −1..2)内模板地板以上的某方块数(无限矿零消费断言用)。 */
+    private fun countBlocksInDrillRegion(helper: GameTestHelper, drillPos: BlockPos, block: Block): Int {
+        var n = 0
+        for (y in (drillPos.y - 1) downTo 0) {
+            for (x in -1..2) {
+                for (z in -1..2) {
+                    if (helper.getBlockState(drillPos.offset(x, y - drillPos.y, z)).`is`(block)) n++
+                }
+            }
+        }
+        return n
     }
 
     @JvmStatic
