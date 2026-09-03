@@ -11,6 +11,8 @@ import net.minecraft.server.level.ServerLevel
 import net.minecraft.util.RandomSource
 import net.minecraft.world.Containers
 import net.minecraft.world.item.ItemStack
+import net.minecraft.client.multiplayer.ClientLevel
+import java.util.HashSet
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.Blocks
@@ -23,7 +25,7 @@ import net.minecraft.world.level.material.PushReaction
  * 校验失败整体回滚(退控制器物品 + actionbar);任何移除路径同步拆解成员。
  * 放置/拆除收口在本类,逻辑与状态只住锚点 BE(见 [BlueprintAnchor])。
  */
-abstract class BlueprintAnchorBlock(properties: Properties) : BaseEntityBlock(properties) {
+abstract class BlueprintAnchorBlock(properties: Properties) : BaseEntityBlock(properties), MultiPosDestructionHandler {
     /** 本锚点方块的固定形状;拆除收口不依赖运行时数据,形状必须静态可知。 */
     abstract val blueprint: Blueprint
 
@@ -51,6 +53,26 @@ abstract class BlueprintAnchorBlock(properties: Properties) : BaseEntityBlock(pr
     ): InteractionResult = useWithoutItem(state, level, pos, player, hitResult)
 
     override fun getRenderShape(state: BlockState): RenderShape = RenderShape.MODEL
+
+    /**
+     * 全结构格集(锚点 + 全部成员偏移):裂纹代理(#42)的显示范围。
+     * 成员偏移即 [Blueprint] 的静态形状,结构成型只由蓝图盖出,无运行时漂移。
+     */
+    fun structureCells(anchorPos: BlockPos): MutableSet<BlockPos> {
+        val cells: MutableSet<BlockPos> = HashSet()
+        cells.add(anchorPos)
+        blueprint.members.forEach { cells.add(anchorPos.offset(it.offset)) }
+        return cells
+    }
+
+    /** 裂纹代理(#42):锚点收到破坏进度 → 全结构同步;单格结构(空蓝图)返回 null 退回原版行为。 */
+    override fun getExtraPositions(
+        level: ClientLevel,
+        pos: BlockPos,
+        blockState: BlockState,
+        progress: Int
+    ): MutableSet<BlockPos>? =
+        if (blueprint.members.isEmpty()) null else structureCells(pos)
 
     /**
      * 排程成型 tick。oldState 与新状态同方块时跳过:区块重载/重复 setBlock 会重放

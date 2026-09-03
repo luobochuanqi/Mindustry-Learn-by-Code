@@ -3,6 +3,10 @@ loaderVersion = "${loader_version_range}"
 license = "${mod_license}"
 #issueTrackerURL="https://github.com/luobochuanqi/MTurrets/issues"
 
+# 客户端 mixin:多方块破坏裂纹代理(#42)
+[[mixins]]
+config = "mturrets.mixins.json"
+
 [[mods]]
 modId = "${mod_id}"
 version = "${mod_version}"

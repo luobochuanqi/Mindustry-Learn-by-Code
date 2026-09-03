@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     }
   }
 }

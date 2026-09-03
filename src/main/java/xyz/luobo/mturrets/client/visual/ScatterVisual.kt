@@ -18,11 +18,12 @@ import kotlin.math.abs
 import kotlin.math.sign
 
 /**
- * Scatter 动件渲染(#34):Flywheel partial 模型 + TRANSFORMED 实例。
+ * Scatter 动件渲染(#34,#42):Flywheel partial 模型 + TRANSFORMED 实例。
  * 旋转头(双翼)与 -mid 中段(炮管刃片)共用结构中心枢轴(锚点块内 (1,1),size=2),
  * beginFrame 逐帧向同步的目标角按 rotateSpeed 逼近(客户端积分,补包间隙平滑);
  * 开火计数器单调变化 → 中段后坐脉冲(沿枪口方向退回 ~2px)。无 pitch/heat 层(WIP 决策)。
- * 静态基座四格由 blockstate 角模型承担(与 Duo 同思路,避免块状态全立方遮挡,#31 教训)。
+ * 全模型资产架构(#42):静态基座 + 动件全部由本 visual 渲染,方块侧渲染为空;
+ * 物品模型引用 full 模型,同一几何三条入口(世界/物品/裂纹代理)零双画。
  */
 class ScatterVisual(
     ctx: VisualizationContext,
@@ -30,6 +31,8 @@ class ScatterVisual(
     partialTick: Float
 ) : AbstractBlockEntityVisual<ScatterTurretBE>(ctx, blockEntity, partialTick), SimpleDynamicVisual {
 
+    /** 静态基座:恒等变换一次摆位,不逐帧更新。 */
+    private val base: TransformedInstance = instanceFor(ScatterModels.BASE)
     /** 旋转头(双翼):绕结构中心(锚点块内 (1,1))竖轴转 yaw。 */
     private val head: TransformedInstance = instanceFor(ScatterModels.HEAD)
     /** -mid 中段(炮管刃片):随头旋转 + 后坐沿枪口方向回退。 */
@@ -63,8 +66,8 @@ class ScatterVisual(
         ).createInstance()
 
     init {
+        base.setIdentityTransform().setChanged()
         head.setZeroTransform().setChanged()
-        mid.setZeroTransform().setChanged()
     }
 
     override fun beginFrame(context: DynamicVisual.Context) {
@@ -108,15 +111,17 @@ class ScatterVisual(
     }
 
     override fun updateLight(partialTick: Float) {
-        relight(head, mid)
+        relight(base, head, mid)
     }
 
     override fun collectCrumblingInstances(consumer: Consumer<Instance?>) {
+        consumer.accept(base)
         consumer.accept(head)
         consumer.accept(mid)
     }
 
     override fun _delete() {
+        base.delete()
         head.delete()
         mid.delete()
     }
@@ -128,6 +133,7 @@ object ScatterModels {
         PartialModel.of(ResourceLocation.fromNamespaceAndPath(MTurrets.MOD_ID, "block/turret/$path"))
 
     val HEAD: PartialModel = part("scatter_head")
+    val BASE: PartialModel = part("scatter_base")
     val MID: PartialModel = part("scatter_mid")
 
     /**

@@ -12,11 +12,13 @@ import net.minecraft.data.recipes.RecipeProvider
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.world.flag.FeatureFlags
 import net.minecraft.world.item.Item
+import net.minecraft.world.item.ItemDisplayContext
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.item.crafting.Ingredient
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets
 import net.neoforged.neoforge.client.model.generators.BlockStateProvider
+import net.neoforged.neoforge.client.model.generators.ItemModelBuilder
 import net.neoforged.neoforge.client.model.generators.ItemModelProvider
 import net.neoforged.neoforge.client.model.generators.ModelFile
 import net.neoforged.neoforge.common.data.ExistingFileHelper
@@ -196,13 +198,18 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
                 getBuilder(name).parent(ModelFile.UncheckedModelFile(modLoc("block/$name").toString()))
             }
 
-        // 炮台基座模型在 block/turret/ 下,与 "同名 block/<name>" 约定不同,必须显式指定
-        // (无此覆盖时物品/创造标签/锚点 Jade 图标会引用不存在的 block/duo 而渲染成骨架)
+        // 全模型资产架构(#42):炮台物品引用 full 模型,整座(含动件)进 GUI;
+        // display 纯公式:vanilla block 展示值 × s,s = 1/占地边长(模型按占地等比缩放回一格,
+        // 几何以原点格为角,缩放后自动居中)
         mapOf(
-            "duo" to "block/turret/duo_base",
-            "scatter" to "block/turret/scatter_base_corner"
-        ).forEach { (name, model) ->
-            getBuilder(name).parent(ModelFile.UncheckedModelFile(modLoc(model).toString()))
+            "duo" to ("block/turret/duo_full" to 1),
+            "scatter" to ("block/turret/scatter_full" to 2)
+        ).forEach { (name, spec) ->
+            val (model, footprint) = spec
+            applyBlockDisplay(
+                getBuilder(name).parent(ModelFile.UncheckedModelFile(modLoc(model).toString())),
+                1f / footprint
+            )
         }
 
         // Materials
@@ -216,6 +223,29 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
                 .parent(ModelFile.UncheckedModelFile("item/generated"))
                 .texture("layer0", modLoc("item/liquid/" + liquid.id))
         }
+    }
+
+    /**
+     * 炮台物品的 display 变换(#42 纯公式):vanilla 方块展示值,scale 乘等比因子 s。
+     * full 模型几何以原点格为角(占地 span = footprint×16),绕原点缩放 s 后
+     * 自然落回 0..16 一格体量,故 translation 沿用 vanilla 值、不加手调偏移。
+     */
+    private fun applyBlockDisplay(builder: ItemModelBuilder, s: Float) {
+        val t = builder.transforms()
+        t.transform(ItemDisplayContext.GUI)
+            .rotation(30f, 225f, 0f).scale(0.625f * s).end()
+        t.transform(ItemDisplayContext.GROUND)
+            .translation(0f, 3f, 0f).scale(0.25f * s).end()
+        t.transform(ItemDisplayContext.FIXED)
+            .rotation(-90f, 0f, 0f).translation(0f, 0f, -4f).scale(0.5f * s).end()
+        t.transform(ItemDisplayContext.THIRD_PERSON_RIGHT_HAND)
+            .rotation(75f, 45f, 0f).translation(0f, 2.5f, 0f).scale(0.375f * s).end()
+        t.transform(ItemDisplayContext.THIRD_PERSON_LEFT_HAND)
+            .rotation(75f, 45f, 0f).translation(0f, 2.5f, 0f).scale(0.375f * s).end()
+        t.transform(ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
+            .rotation(0f, 45f, 0f).scale(0.4f * s).end()
+        t.transform(ItemDisplayContext.FIRST_PERSON_LEFT_HAND)
+            .rotation(0f, 225f, 0f).scale(0.4f * s).end()
     }
 }
 
@@ -272,30 +302,22 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
             )
         )
 
-        // Duo(#31):块状态模型 = 静态基座(与 Flywheel 部件同几何)。
-        // 块状态模型走 chunk mesh 独立渲染路径,全立方会整体罩住内部部件——
-        // 基座只占底部 1/4,旋转炮身/炮管由 Flywheel visual 在其上叠加,互不遮挡。
-        val duo = ModBlocks.DUO_BLOCK.get()
-        this.simpleBlockWithItem(duo, this.models().getExistingFile(this.modLoc("block/turret/duo_base")))
-
-        // Scatter(#34):静态基座 = 四格各自块状态角模型(共用一角模型),锚点 y0;
-        // 成员格按编码偏移 variant 做 y 旋转(结构中心 = 锚点 + (1,1) 局部,每格贡献自己那一角)
-        val scatterCorner = this.models().getExistingFile(this.modLoc("block/turret/scatter_base_corner"))
-        this.simpleBlockWithItem(ModBlocks.SCATTER.get(), scatterCorner)
+        // 全模型资产架构(#42):炮台锚点与成员格方块侧渲染为空(几何由锚点 BE visual 承担),
+        // blockstate 只保留 elementless 的 particle 模型,供敲击/破坏粒子取色
+        val duoEmpty = this.models().getBuilder("block/turret/duo_empty")
+            .texture("particle", this.modLoc("block/turret/duo_parts"))
+        val scatterEmpty = this.models().getBuilder("block/turret/scatter_empty")
+            .texture("particle", this.modLoc("block/turret/scatter_parts"))
+        this.simpleBlock(ModBlocks.DUO_BLOCK.get(), duoEmpty)
+        this.simpleBlock(ModBlocks.SCATTER.get(), scatterEmpty)
         for (x in 0..2) for (y in 0..2) for (z in 0..2) {
-            // 存储值偏置 1(真偏移 = 存储-1);(1,0,0)→90°、(0,0,1)→270°、(1,0,1)→180° 拼回整座基座
-            val yaw = when (x to z) {
-                2 to 1 -> 90
-                1 to 2 -> 270
-                2 to 2 -> 180
-                else -> 0
-            }
+            // 27 个偏移编码变体仍需覆盖(INVISIBLE 不免 blockstate 查表),几何为空无 yaw
             this.getVariantBuilder(ModBlocks.SCATTER_STRUCTURAL.get())
                 .partialState()
                 .with(StructuralBlock.OFFSET_X, x)
                 .with(StructuralBlock.OFFSET_Y, y)
                 .with(StructuralBlock.OFFSET_Z, z)
-                .modelForState().modelFile(scatterCorner).rotationY(yaw).addModel()
+                .modelForState().modelFile(scatterEmpty).addModel()
         }
 
         // 蓝图管线骨架临时方块(贴图复用现有素材,真内容落地后删除)

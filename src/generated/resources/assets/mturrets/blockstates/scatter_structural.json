@@ -1,94 +1,85 @@
 {
   "variants": {
     "offset_x=0,offset_y=0,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=0,offset_y=0,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=0,offset_y=0,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=0,offset_y=1,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=0,offset_y=1,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=0,offset_y=1,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=0,offset_y=2,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=0,offset_y=2,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=0,offset_y=2,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=0,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=0,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=0,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 270
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=1,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=1,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=1,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 270
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=2,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=2,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=1,offset_y=2,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 270
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=0,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=0,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 90
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=0,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 180
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=1,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=1,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 90
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=1,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 180
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=2,offset_z=0": {
-      "model": "mturrets:block/turret/scatter_base_corner"
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=2,offset_z=1": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 90
+      "model": "mturrets:block/turret/scatter_empty"
     },
     "offset_x=2,offset_y=2,offset_z=2": {
-      "model": "mturrets:block/turret/scatter_base_corner",
-      "y": 180
+      "model": "mturrets:block/turret/scatter_empty"
     }
   }
 }

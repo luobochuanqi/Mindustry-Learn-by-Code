@@ -19,10 +19,11 @@ import kotlin.math.abs
 import kotlin.math.sign
 
 /**
- * Duo 动件渲染(ADR-0002/0005/0009,#31):Flywheel partial 模型 + TRANSFORMED 实例,
+ * Duo 动件渲染(ADR-0002/0005/0009,#31,#42):Flywheel partial 模型 + TRANSFORMED 实例,
  * beginFrame 逐帧向同步的目标角按 rotateSpeed 逼近(客户端积分,补包间隙平滑);
- * 开火计数器(单调)变化驱动对应炮管后坐脉冲;底座静态。
- * 无回退轨道:GPU visual 缺席时方块退回静态 blockstate 模型(瓶颈 Flywheel 已 jarJar 内嵌)。
+ * 开火计数器(单调)变化驱动对应炮管后坐脉冲。
+ * 全模型资产架构(#42):静态基座 + 动件全部由本 visual 渲染,方块侧渲染为空;
+ * 物品模型引用 full 模型,同一几何三条入口(世界/物品/裂纹代理)零双画。
  */
 class DuoVisual(
     ctx: VisualizationContext,
@@ -31,10 +32,9 @@ class DuoVisual(
 ) : AbstractBlockEntityVisual<DuoTurretBE>(ctx, blockEntity, partialTick), SimpleDynamicVisual {
 
     // ===== 部件位姿(块内局部空间,与 bbmodel 导出的部件几何对应) =====
-    // 基座由块状态模型承担(block/turret/duo_base,chunk mesh 静态渲染):
-    // 块状态与 Flywheel 是两条独立渲染路径,基座留在块状态侧可避免与 visual 双画 z-fight,
-    // 也保留无 Flywheel 时的静态回退外观。
 
+    /** 静态基座:恒等变换一次摆位,不逐帧更新。 */
+    private val base: TransformedInstance = instanceFor(DuoModels.BASE)
     /** 炮身:绕锚点中心竖轴旋转(偏航)。 */
     private val head: TransformedInstance = instanceFor(DuoModels.HEAD)
     /** 左炮管:挂在炮身上,绕自身铰点俯仰 + 后坐。 */
@@ -75,9 +75,9 @@ class DuoVisual(
         ).createInstance()
 
     init {
+        base.setIdentityTransform().setChanged()
         head.setZeroTransform().setChanged()
         barrelL.setZeroTransform().setChanged()
-        barrelR.setZeroTransform().setChanged()
     }
 
     override fun beginFrame(context: DynamicVisual.Context) {
@@ -144,16 +144,18 @@ class DuoVisual(
     }
 
     override fun updateLight(partialTick: Float) {
-        relight(head, barrelL, barrelR)
+        relight(base, head, barrelL, barrelR)
     }
 
     override fun collectCrumblingInstances(consumer: Consumer<Instance?>) {
+        consumer.accept(base)
         consumer.accept(head)
         consumer.accept(barrelL)
         consumer.accept(barrelR)
     }
 
     override fun _delete() {
+        base.delete()
         head.delete()
         barrelL.delete()
         barrelR.delete()
@@ -165,6 +167,7 @@ object DuoModels {
     private fun part(path: String): PartialModel =
         PartialModel.of(ResourceLocation.fromNamespaceAndPath(MTurrets.MOD_ID, "block/turret/$path"))
 
+    val BASE: PartialModel = part("duo_base")
     val HEAD: PartialModel = part("duo_head")
     val BARREL_L: PartialModel = part("duo_barrel_left")
     val BARREL_R: PartialModel = part("duo_barrel_right")

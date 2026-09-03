@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "xyz.luobo.mturrets.mixin.client",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "LevelRendererMixin",
+    "BlockDestructionProgressMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

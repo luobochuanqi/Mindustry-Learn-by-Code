@@ -8,6 +8,7 @@ import net.minecraft.world.ItemInteractionResult
 import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
+import net.minecraft.client.multiplayer.ClientLevel
 import net.minecraft.world.level.block.Block
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.level.LevelReader
@@ -25,7 +26,7 @@ import net.minecraft.world.phys.BlockHitResult
  * vanilla 的 IntegerProperty 不允许负最小值),锚点坐标 = 本格坐标 - 解码偏移,
  * 成员格零持久化引用。
  */
-class StructuralBlock(properties: Properties) : Block(properties) {
+open class StructuralBlock(properties: Properties) : Block(properties), MultiPosDestructionHandler {
     init {
         registerDefaultState(
             defaultBlockState()
@@ -52,6 +53,13 @@ class StructuralBlock(properties: Properties) : Block(properties) {
             return super.getCloneItemStack(level, pos, state)
         }
         return ItemStack(anchorState.block.asItem())
+    }
+
+    /** 裂纹代理(#42):成员格收到破坏进度 → 全结构(锚点 + 各成员)同步显示;锚点缺失(收口中)退回单格。 */
+    override fun getExtraPositions(level: ClientLevel, pos: BlockPos, blockState: BlockState, progress: Int): MutableSet<BlockPos>? {
+        val anchorPos = pos.subtract(decodeOffset(blockState))
+        val anchor = level.getBlockState(anchorPos).block as? BlueprintAnchorBlock ?: return null
+        return anchor.structureCells(anchorPos)
     }
     
     /**

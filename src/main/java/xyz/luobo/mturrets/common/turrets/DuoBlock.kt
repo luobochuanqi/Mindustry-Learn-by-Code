@@ -9,6 +9,7 @@ import net.minecraft.world.entity.player.Player
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.block.BaseEntityBlock
+import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
@@ -27,6 +28,9 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 class DuoBlock : BlueprintAnchorBlock(structureProperties()) {
 
     override val blueprint: Blueprint = Blueprint(emptyList())
+
+    // 全模型资产架构(#42):方块侧渲染为空,几何全部由 BE visual 承担(Create 大水车锚点同款)
+    override fun getRenderShape(state: BlockState): RenderShape = RenderShape.ENTITYBLOCK_ANIMATED
 
     override fun newBlockEntity(pos: BlockPos, state: BlockState): BlockEntity = DuoTurretBE(pos, state)
 

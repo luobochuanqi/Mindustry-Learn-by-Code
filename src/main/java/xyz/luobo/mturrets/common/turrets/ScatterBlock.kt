@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.BaseEntityBlock
 import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
+import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.level.block.state.BlockState
 import net.minecraft.world.phys.BlockHitResult
 import net.neoforged.neoforge.fluids.FluidUtil
@@ -22,11 +23,13 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 
 /**
  * Scatter(蓝图 2×2,#34):角锚点 +X/+Z 生长(#26 约定),3 成员格为基座外观结构块;
- * 静态基座四格各用一角模型 + 成员按偏移 variant 做 y 旋转(#34 spec 渲染决策)。
  * 交互与 Duo 同语义:可倒出手持物灌 Coolant 内罐(水);手持弹药右键部分入仓(按整件向下取整,#46);
  * 无取出通道(单位账不存物理物品,拆除按倍率折回散落,ADR-0009);成员格交互经管线代理回锚点。
+ * 全模型资产架构(#42):方块侧渲染为空,几何全部由 BE visual 承担(Create 大水车锚点同款)。
  */
 class ScatterBlock : BlueprintAnchorBlock(structureProperties()) {
+
+    override fun getRenderShape(state: BlockState): RenderShape = RenderShape.ENTITYBLOCK_ANIMATED
 
     override val blueprint: Blueprint = Blueprint(
         listOf(

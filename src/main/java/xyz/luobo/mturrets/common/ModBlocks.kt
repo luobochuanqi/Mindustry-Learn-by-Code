@@ -14,6 +14,7 @@ import xyz.luobo.mturrets.common.power.PowerSourceBlock
 import xyz.luobo.mturrets.common.structure.TestStructureAnchor2x2Block
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 import xyz.luobo.mturrets.core.structure.StructuralBlock
+import xyz.luobo.mturrets.core.structure.TurretStructuralBlock
 import xyz.luobo.mturrets.common.machines.kiln.KilnBlock
 import xyz.luobo.mturrets.common.machines.drill.DrillBlock
 import xyz.luobo.mturrets.common.turrets.DuoBlock
@@ -54,9 +55,9 @@ object ModBlocks {
     val DUO_BLOCK: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("duo") { DuoBlock() }
     // Scatter(#34):2×2 蓝图锚点 + 基座成员格(无物品,掉落收口在锚点)
     val SCATTER: DeferredBlock<Block> = MOD_BLOCKS.registerBlock("scatter") { ScatterBlock() }
-    val SCATTER_STRUCTURAL: DeferredBlock<StructuralBlock> =
+    val SCATTER_STRUCTURAL: DeferredBlock<TurretStructuralBlock> =
         MOD_BLOCKS.registerBlock("scatter_structural") {
-            StructuralBlock(BlueprintAnchorBlock.structureProperties().noLootTable())
+            TurretStructuralBlock(BlueprintAnchorBlock.structureProperties().noLootTable())
         }
 
     // 蓝图管线(ADR-0003):骨架临时测试方块,真内容(#33/#34)复用同基类后删除
