@@ -59,11 +59,8 @@ abstract class TurretBE(
         /** Coolant 内罐容量(mB):一桶水恰好充满。 */
         const val WATER_TANK_CAPACITY = 1000
 
-        /** 枪口高度(块内局部 y):与 barrel 部件齐平。
-         * 1.5 期提至 0.75(块中线之上):抬弹道至目标胸口,子弹碰撞盒(±0.25)不再被地面雪堆
-         * 之类低矮方块夹住,而 LOS 细射线(起点同高、直指胸口)本就越过——消除「LOS 可见但
-         * 子弹被挡」的空耗开火(issue 68);同时命中点从脚部上移至躯干。 */
-        const val MUZZLE_HEIGHT = 0.75
+        /** 枪口高度(块内局部 y):与 barrel 部件齐平。 */
+        const val MUZZLE_HEIGHT = 0.44
 
         /** 后坐衰减(每 tick 递减量)。 */
         const val RECOIL_DECAY = 0.1f
@@ -252,14 +249,15 @@ abstract class TurretBE(
     }
 
     /**
-     * 视线判定(#43):枪口([muzzleFor])→ 目标胸口,只测方块碰撞形状(COLLIDER,与弹头 move 碰撞一致)、
+     * 视线判定(#43):枪口([muzzleFor])→ 目标包围盒中心,只测方块碰撞形状(COLLIDER,与弹头 move 碰撞一致)、
      * 流体不挡、不测实体,与原版 [LivingEntity.hasLineOfSight] 同判据。起点用枪口外推点而非锚点中心
      * (否则 1×1 中心落在自身实心方块内自命中、2×2 对角落在角成员方块内,详见 [muzzleFor])。
+     * 基准点取盒中心而非 eyeHeight*0.5(#68:旧值对僵尸仅 0.81,偏低致弹道/视线都朝脚部)。
      * 谓词末位调用:短求值保证 clip 只在通过阵营/存活/对空地/射程过滤的候选上跑。
      */
     private fun hasLosTo(entity: LivingEntity): Boolean {
         val lv = level ?: return false
-        val to = entity.position().add(0.0, entity.eyeHeight * 0.5, 0.0)
+        val to = entity.position().add(0.0, entity.boundingBox.getYsize() * 0.5, 0.0)
         return lv.clip(
             ClipContext(
                 muzzleFor(entity.position()),
@@ -296,9 +294,9 @@ abstract class TurretBE(
         return worldPosition.center.add(half.toDouble(), 0.0, half.toDouble())
     }
 
-    /** 提前量瞄准点:对移动目标按弹速解命中时间外推位置(LeadCalculator 存活件);瞄胸口而非脚底。 */
+    /** 提前量瞄准点:对移动目标按弹速解命中时间外推位置(LeadCalculator 存活件);瞄包围盒中心而非脚底(#68)。 */
     private fun aimPoint(tgt: LivingEntity): Vec3 {
-        val look = tgt.position().add(0.0, tgt.eyeHeight * 0.5.toDouble(), 0.0)
+        val look = tgt.position().add(0.0, tgt.boundingBox.getYsize() * 0.5, 0.0)
         val bullet = spec.ammoTypes.firstOrNull { it.item == magazine.tail?.item }?.bullet ?: return look
         val time = LeadCalculator.solveLeadEquation(
             look.subtract(anchorCenter()),

@@ -309,9 +309,9 @@ object ModGameTests {
 
         fun diag(): String {
             val center = helper.absolutePos(turretPos).center
-            val chest = zombie.position().add(0.0, zombie.eyeHeight * 0.5, 0.0)
+            val chest = zombie.position().add(0.0, zombie.boundingBox.getYsize() * 0.5, 0.0)
             val hz = Vec3(chest.x - center.x, 0.0, chest.z - center.z).normalize()
-            val muzzle = center.add(hz.x * 0.957, 0.75 - 0.5, hz.z * 0.957)
+            val muzzle = center.add(hz.x * 0.957, 0.44 - 0.5, hz.z * 0.957)
             val clip = helper.level.clip(
                 ClipContext(muzzle, chest, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty())
             )
