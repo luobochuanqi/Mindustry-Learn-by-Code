@@ -121,9 +121,10 @@ object TurretDebugRenderer {
         drawLine(pose, buffer, muzzle, muzzle.add(refDir.scale(reach)), 0.4f, 0.6f, 1f, 0.35f)
     }
 
-    /** 射线终点状态:命中 Monster(描其盒)/ 被方块挡(描该方块)。 */
-    private class RayHit(val at: Vec3, val box: AABB)
-    private class RayBlocked(val at: Vec3, val blocker: BlockPos)
+    /** 射线终点状态:命中 Monster(描其盒)/ 被方块挡(描该方块)/ 射程内两者皆无(不画)。 */
+    private sealed interface Ray
+    private class RayHit(val at: Vec3, val box: AABB) : Ray
+    private class RayBlocked(val at: Vec3, val blocker: BlockPos) : Ray
 
     /**
      * 取「最近方块阻挡」与「最近 Monster 段-盒进入」之近者;口径对位 ADR-0010 的最早进入者。
@@ -135,32 +136,30 @@ object TurretDebugRenderer {
         to: Vec3,
         targetAir: Boolean,
         targetGround: Boolean
-    ): Any? {
+    ): Ray? {
         val block = level.clip(
             ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty())
         )
         val blockDist = if (block.type == HitResult.Type.BLOCK) from.distanceToSqr(block.location) else Double.MAX_VALUE
 
-        var hitAt: Vec3? = null
-        var hitBox: AABB? = null
+        var nearest: RayHit? = null
         var monsterDist = Double.MAX_VALUE
-        for (entity in level.getEntitiesOfClass(LivingEntity::class.java, AABB(from, to).inflate(1.0)) {
-                it is Monster && it.isAlive
-            }) {
+        val candidates = level.getEntitiesOfClass(LivingEntity::class.java, AABB(from, to).inflate(1.0)) {
+            it is Monster && it.isAlive
+        }
+        for (entity in candidates) {
             if (!((targetAir && TurretBE.isAirUnit(entity)) || (targetGround && !TurretBE.isAirUnit(entity)))) continue
             val entry = entity.boundingBox.inflate(0.15).clip(from, to).orElse(null) ?: continue
             val d = from.distanceToSqr(entry)
             if (d < monsterDist) {
                 monsterDist = d
-                hitAt = entry
-                hitBox = entity.boundingBox
+                nearest = RayHit(entry, entity.boundingBox)
             }
         }
 
-        val at = hitAt
-        val box = hitBox
+        val hit = nearest
         return when {
-            at != null && box != null && monsterDist <= blockDist -> RayHit(at, box)
+            hit != null && monsterDist <= blockDist -> hit
             blockDist != Double.MAX_VALUE -> RayBlocked(block.location, BlockPos.containing(block.location))
             else -> null
         }
