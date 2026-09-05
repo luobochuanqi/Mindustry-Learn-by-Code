@@ -24,8 +24,6 @@ ref/*
 # 处理中的美术/模型源文件(Blockbench 工程等),定稿后导出进 src/main/resources;
 /assets/
 
-# 第三方技能树由 skills CLI 生成,可用 skills-lock.json 重建
-# (npx skills experimental_install);入库只放 lockfile
 .agents/
 
 # IDE
