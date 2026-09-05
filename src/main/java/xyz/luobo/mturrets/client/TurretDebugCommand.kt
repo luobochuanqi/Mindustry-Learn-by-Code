@@ -1,6 +1,5 @@
 package xyz.luobo.mturrets.client
 
-import com.mojang.brigadier.arguments.BoolArgumentType
 import com.mojang.brigadier.context.CommandContext
 import net.minecraft.ChatFormatting
 import net.minecraft.commands.CommandSourceStack
@@ -28,11 +27,10 @@ object TurretDebugCommand {
             Commands.literal("mturrets")
                 .then(
                     Commands.literal("debug")
+                        // 无参 = 翻转;带参 = 显式设值
                         .executes { ctx -> set(ctx, !TurretDebugRenderer.enabled) }
-                        .then(
-                            Commands.argument("enable", BoolArgumentType.bool())
-                                .executes { ctx -> set(ctx, BoolArgumentType.getBool(ctx, "enable")) }
-                        )
+                        .then(Commands.literal("on").executes { ctx -> set(ctx, true) })
+                        .then(Commands.literal("off").executes { ctx -> set(ctx, false) })
                 )
         )
     }

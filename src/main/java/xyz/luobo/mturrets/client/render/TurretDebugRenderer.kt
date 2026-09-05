@@ -106,19 +106,23 @@ object TurretDebugRenderer {
             is RayHit -> {
                 drawLine(pose, buffer, muzzle, ray.at, 0.25f, 1f, 0.25f, 1f)
                 LevelRenderer.renderLineBox(pose, buffer, ray.box, 0.25f, 1f, 0.25f, 1f)
+                drawAimIntent(turret, pose, buffer, muzzle, reach)
             }
 
             is RayBlocked -> {
                 drawLine(pose, buffer, muzzle, ray.at, 1f, 0.25f, 0.25f, 1f)
                 LevelRenderer.renderLineBox(pose, buffer, AABB(ray.blocker), 1f, 1f, 0.2f, 1f)
+                drawAimIntent(turret, pose, buffer, muzzle, reach)
             }
-            // 射程内既无 Monster 也无方块:不画
+            // 射程内既无 Monster 也无方块:整台不画(取消灰态,「无线」即「无结论」)
             null -> {}
         }
+    }
 
-        // 参考线:服务端瞄准意图(旋转中与主诊断线分离)
+    /** 服务端瞄准意图参考线:半透明中性色,与主诊断线在旋转未到位时分离。 */
+    private fun drawAimIntent(turret: TurretBE, pose: PoseStack, buffer: VertexConsumer, muzzle: Vec3, reach: Double) {
         val refDir = TurretBE.directionFromAngles(turret.targetYaw, turret.targetPitch)
-        drawLine(pose, buffer, muzzle, muzzle.add(refDir.scale(reach)), 0.4f, 0.6f, 1f, 0.35f)
+        drawLine(pose, buffer, muzzle, muzzle.add(refDir.scale(reach)), 0.85f, 0.85f, 0.85f, 0.4f)
     }
 
     /** 射线终点状态:命中 Monster(描其盒)/ 被方块挡(描该方块)/ 射程内两者皆无(不画)。 */
@@ -141,14 +145,14 @@ object TurretDebugRenderer {
             ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, CollisionContext.empty())
         )
         val blockDist = if (block.type == HitResult.Type.BLOCK) from.distanceToSqr(block.location) else Double.MAX_VALUE
-
         var nearest: RayHit? = null
         var monsterDist = Double.MAX_VALUE
         val candidates = level.getEntitiesOfClass(LivingEntity::class.java, AABB(from, to).inflate(1.0)) {
             it is Monster && it.isAlive
         }
         for (entity in candidates) {
-            if (!((targetAir && TurretBE.isAirUnit(entity)) || (targetGround && !TurretBE.isAirUnit(entity)))) continue
+            if (!TurretBE.acceptsCategory(entity, targetAir, targetGround)) continue
+            // inflate 0.15:与子弹实体直击查询同口径(ADR-0010),使绿点落在子弹真正命中的进入点
             val entry = entity.boundingBox.inflate(0.15).clip(from, to).orElse(null) ?: continue
             val d = from.distanceToSqr(entry)
             if (d < monsterDist) {

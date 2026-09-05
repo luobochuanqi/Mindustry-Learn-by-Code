@@ -124,6 +124,10 @@ abstract class TurretBE(
          */
         fun isAirUnit(entity: LivingEntity): Boolean =
             entity is FlyingMob || entity.isNoGravity() || entity is Blaze
+
+        /** 对空/对地过滤:该实体是否落入本炮台可锁类别(服务端索敌与 #77 可视化共用一份)。 */
+        fun acceptsCategory(entity: LivingEntity, targetAir: Boolean, targetGround: Boolean): Boolean =
+            (targetAir && isAirUnit(entity)) || (targetGround && !isAirUnit(entity))
     }
 
     override val currentBlueprint: Blueprint
@@ -283,13 +287,12 @@ abstract class TurretBE(
     // ===== 索敌 =====
 
     /**
-     * 目标过滤:只打 Monster(ADR-0009);按 spec 对空/对地标记过滤。
-     * 空中单位 = 飞行怪谓词(FlyingMob 恶魂/幻翼、无重力恼鬼、反推力悬浮的烈焰人),与高度/着地无关:
-     * 不用 !onGround——低空悬停的恶魂 4×4 箱体贴地 → onGround=true,旧判据会把它当落地怪放弃(用户实测)。
+     * 目标过滤(#43):只打 Monster(ADR-0009)+ 对空/对地类别([acceptsCategory])+ 射程内 + 有视线。
+     * 谓词末位调用 hasLosTo:短求值保证 clip 只在通过廉价过滤的候选上跑。
      */
     private fun isValidTarget(entity: LivingEntity): Boolean =
         entity is Monster && entity.isAlive && !entity.isRemoved &&
-            ((spec.targetAir && isAirUnit(entity)) || (spec.targetGround && !isAirUnit(entity))) &&
+            acceptsCategory(entity, spec.targetAir, spec.targetGround) &&
             entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range &&
             hasLosTo(entity)
 
