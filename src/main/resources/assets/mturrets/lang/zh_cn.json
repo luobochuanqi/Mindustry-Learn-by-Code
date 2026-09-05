@@ -69,6 +69,8 @@
   "block.mturrets.test_structure_anchor_2x2": "测试结构锚点(2×2)",
   "block.mturrets.test_structure_structural": "测试结构成员",
   "mturrets.message.blueprint_blocked": "空间不足,无法放置结构",
+  "mturrets.command.debug.on": "已开启炮台视线调试渲染",
+  "mturrets.command.debug.off": "已关闭炮台视线调试渲染",
   "mturrets.subtitle.shoot_duo": "双管开火",
   "mturrets.subtitle.shoot_scatter": "分裂开火",
   "mturrets.subtitle.machine_hum": "机器运转"

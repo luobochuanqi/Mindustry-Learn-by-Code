@@ -12,6 +12,7 @@ import dev.engine_room.flywheel.lib.visual.SimpleDynamicVisual
 import net.minecraft.resources.ResourceLocation
 import net.minecraft.util.Mth
 import xyz.luobo.mturrets.MTurrets
+import xyz.luobo.mturrets.client.render.TurretDebugRenderer
 import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
 import java.util.function.Consumer
 import kotlin.math.abs
@@ -71,6 +72,7 @@ class ScatterVisual(
             .translate(visualPos.x.toFloat(), visualPos.y.toFloat(), visualPos.z.toFloat())
             .setChanged()
         head.setZeroTransform().setChanged()
+        TurretDebugRenderer.register(blockEntity)
     }
 
     override fun beginFrame(context: DynamicVisual.Context) {
@@ -124,6 +126,7 @@ class ScatterVisual(
     }
 
     override fun _delete() {
+        TurretDebugRenderer.unregister(blockEntity)
         base.delete()
         head.delete()
         mid.delete()

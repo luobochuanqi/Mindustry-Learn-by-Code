@@ -180,6 +180,10 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         this.add("mturrets.subtitle.shoot_scatter", "Scatter Turret")
         this.add("mturrets.subtitle.machine_hum", "Machine running")
 
+        // 炮台 LOS 视线 debug 可视化(#77):客户端命令开关反馈
+        this.add("mturrets.command.debug.on", "Turret LOS debug rendering enabled")
+        this.add("mturrets.command.debug.off", "Turret LOS debug rendering disabled")
+
         // Jade plugin config entries(缺失会导致客户端断言崩溃)
         this.add("config.jade.plugin_mturrets.structure_data", "Structure Info")
     }

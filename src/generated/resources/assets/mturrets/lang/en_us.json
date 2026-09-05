@@ -67,6 +67,8 @@
   "jade.mturrets.production": "Production: %s FE/t",
   "jade.mturrets.progress": "Progress: %s%%",
   "jade.mturrets.supply": "Supply: %s%%",
+  "mturrets.command.debug.off": "Turret LOS debug rendering disabled",
+  "mturrets.command.debug.on": "Turret LOS debug rendering enabled",
   "mturrets.message.blueprint_blocked": "Not enough space for structure",
   "mturrets.subtitle.machine_hum": "Machine running",
   "mturrets.subtitle.shoot_duo": "Duo Turret",

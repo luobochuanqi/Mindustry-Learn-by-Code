@@ -29,6 +29,8 @@ import xyz.luobo.mturrets.core.structure.BlueprintAnchor
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 import kotlin.math.abs
 import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.sin
 import kotlin.math.sign
 import kotlin.math.sqrt
 
@@ -67,6 +69,61 @@ abstract class TurretBE(
 
         /** 旋转同步节流(旋转变化最快每 2 tick 上报一次)。 */
         const val SYNC_THROTTLE = 2
+
+        private const val SQRT2 = 1.41421356f
+
+        /**
+         * 发射/瞄准/旋转/可视化共用中心:2×2 起 = 锚点中心 + (size-1)/2 每水平轴(结构中心,#34)。
+         * 纯函数(不触 level),使 #77 客户端调试可视化与服务端走同一份几何。
+         */
+        fun structureCenter(worldPosition: BlockPos, size: Int): Vec3 {
+            val half = (size - 1) / 2f
+            return worldPosition.center.add(half.toDouble(), 0.0, half.toDouble())
+        }
+
+        /**
+         * 枪口点:结构中心沿 [toward] 的水平方向外推 [distance]、y = 结构中心 + MUZZLE_HEIGHT - 0.5。
+         * 起点须落在自身结构方块之外的空气里,否则 clip 自命中 / 弹头出生即撞墙。
+         */
+        fun muzzlePoint(center: Vec3, toward: Vec3, distance: Double): Vec3 {
+            val horizontal = Vec3(toward.x - center.x, 0.0, toward.z - center.z).normalize()
+            return center.add(
+                horizontal.x * distance,
+                (MUZZLE_HEIGHT - 0.5).toDouble(),
+                horizontal.z * distance
+            )
+        }
+
+        /**
+         * LOS 射线起点外推距离 = 结构外接圆半径(size/2·√2) + 0.25 间隙——必须超过角点半径,否则 2×2
+         * 时对角方位的射线起点落在角成员方块内,clip 自命中 → LOS 恒 false(致盲);1×1 时 0.957 > 0.707 半对角。
+         */
+        fun losMuzzleDistance(size: Int): Double = (size / 2f) * SQRT2 + 0.25
+
+        /** 弹头出生点外推距离(比 LOS 起点更靠内,LOS 起点须在其外以保证「可见 ⟹ 弹可及」)。 */
+        fun fireMuzzleDistance(size: Int): Double = size / 2f + 0.25
+
+        /**
+         * 角度 → 单位方向。项目约定 yaw = atan2(dx, dz)(0 = +Z、正角向 +X),pitch 负 = 向上
+         * (与 [pitchTowards] 产出及 Flywheel `rotateX` 消费一致)。
+         */
+        fun directionFromAngles(yaw: Float, pitch: Float): Vec3 {
+            val yawRad = Math.toRadians(yaw.toDouble())
+            val pitchRad = Math.toRadians(pitch.toDouble())
+            val cosPitch = cos(pitchRad)
+            return Vec3(sin(yawRad) * cosPitch, -sin(pitchRad), cos(yawRad) * cosPitch)
+        }
+
+        /** 瞄准/视线基准点:实体包围盒中心而非脚底(#68:旧值 eyeHeight*0.5 对僵尸仅 0.81,偏低)。 */
+        fun aimCenter(entity: LivingEntity): Vec3 =
+            entity.position().add(0.0, entity.boundingBox.getYsize() * 0.5, 0.0)
+
+        /**
+         * 空中单位判定:原版飞行怪抽象(FlyingMob)+ 恒无重力者(恼鬼)+ 烈焰人(重力学悬浮,最低空也悬停)。
+         * 与高度/着地无关:不用 !onGround——低空悬停的恶魂 4×4 箱体贴地 → onGround=true,旧判据会误放弃(#53)。
+         */
+        fun isAirUnit(entity: LivingEntity): Boolean =
+            entity is FlyingMob || entity.isNoGravity() || entity is Blaze
     }
 
     override val currentBlueprint: Blueprint
@@ -236,10 +293,6 @@ abstract class TurretBE(
             entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range &&
             hasLosTo(entity)
 
-    /** 空中单位判定:原版飞行怪抽象(FlyingMob)+ 恒无重力者(恼鬼)+ 烈焰人(重力学悬浮,最低空也悬停)。 */
-    private fun isAirUnit(entity: LivingEntity): Boolean =
-        entity is FlyingMob || entity.isNoGravity() || entity is Blaze
-
     private fun findTarget(lv: Level) {
         // 预筛选盒覆盖整个结构跨距(2×2 时锚点单格盒会漏掉 +x/+z 侧射程边缘目标)
         val area = AABB(worldPosition.center, worldPosition.offset(spec.size - 1, 0, spec.size - 1).center)
@@ -252,16 +305,14 @@ abstract class TurretBE(
      * 视线判定(#43):枪口([muzzleFor])→ 目标包围盒中心,只测方块碰撞形状(COLLIDER,与弹头 move 碰撞一致)、
      * 流体不挡、不测实体,与原版 [LivingEntity.hasLineOfSight] 同判据。起点用枪口外推点而非锚点中心
      * (否则 1×1 中心落在自身实心方块内自命中、2×2 对角落在角成员方块内,详见 [muzzleFor])。
-     * 基准点取盒中心而非 eyeHeight*0.5(#68:旧值对僵尸仅 0.81,偏低致弹道/视线都朝脚部)。
      * 谓词末位调用:短求值保证 clip 只在通过阵营/存活/对空地/射程过滤的候选上跑。
      */
     private fun hasLosTo(entity: LivingEntity): Boolean {
         val lv = level ?: return false
-        val to = entity.position().add(0.0, entity.boundingBox.getYsize() * 0.5, 0.0)
         return lv.clip(
             ClipContext(
                 muzzleFor(entity.position()),
-                to,
+                aimCenter(entity),
                 ClipContext.Block.COLLIDER,
                 ClipContext.Fluid.NONE,
                 CollisionContext.empty()
@@ -270,33 +321,18 @@ abstract class TurretBE(
             ?.type == HitResult.Type.MISS
     }
 
-    /**
-     * LOS 射线起点(枪口外推点):结构中心沿目标水平方向外推、y = 结构中心 + MUZZLE_HEIGHT - 0.5。
-     * 外推距离 = 结构外接圆半径(size/2·√2) + 0.25 间隙——必须超过角点半径,否则 2×2 时对角方位的
-     * 射线起点落在角成员方块内,clip 自命中 → LOS 恒 false(致盲);1×1 时 0.957 > 0.707 半对角,安全。
-     * 起点在 [fire] 弹头出生点之外、仍处空气中:最近墙体距炮台 ≥1 格,不改变「可见 ⟹ 弹可及」结论。
-     */
-    private fun muzzleFor(tgt: Vec3): Vec3 {
-        val horizontal = Vec3(tgt.x - anchorCenter().x, 0.0, tgt.z - anchorCenter().z).normalize()
-        val muzzleDistance = (spec.size / 2f) * 1.41421356f + 0.25f
-        return anchorCenter().add(
-            horizontal.x * muzzleDistance,
-            MUZZLE_HEIGHT - 0.5,
-            horizontal.z * muzzleDistance
-        )
-    }
+    /** LOS 射线起点:结构中心朝目标外推 [losMuzzleDistance](几何见 companion,与 #77 可视化共用)。 */
+    private fun muzzleFor(tgt: Vec3): Vec3 =
+        muzzlePoint(anchorCenter(), tgt, losMuzzleDistance(spec.size))
 
     // ===== 旋转与瞄准 =====
 
-    /** 发射/瞄准/旋转共用中心:2×2 起 = 锚点中心 + (size-1)/2 每水平轴(结构中心,#34)。 */
-    private fun anchorCenter(): Vec3 {
-        val half = (spec.size - 1) / 2f
-        return worldPosition.center.add(half.toDouble(), 0.0, half.toDouble())
-    }
+    /** 发射/瞄准/旋转共用中心(几何见 companion [structureCenter])。 */
+    private fun anchorCenter(): Vec3 = structureCenter(worldPosition, spec.size)
 
-    /** 提前量瞄准点:对移动目标按弹速解命中时间外推位置(LeadCalculator 存活件);瞄包围盒中心而非脚底(#68)。 */
+    /** 提前量瞄准点:对移动目标按弹速解命中时间外推位置(LeadCalculator 存活件);基准为包围盒中心(#68)。 */
     private fun aimPoint(tgt: LivingEntity): Vec3 {
-        val look = tgt.position().add(0.0, tgt.boundingBox.getYsize() * 0.5, 0.0)
+        val look = aimCenter(tgt)
         val bullet = spec.ammoTypes.firstOrNull { it.item == magazine.tail?.item }?.bullet ?: return look
         val time = LeadCalculator.solveLeadEquation(
             look.subtract(anchorCenter()),
@@ -336,15 +372,9 @@ abstract class TurretBE(
         val entry = magazine.tail ?: return
         val ammo = spec.ammoTypes.firstOrNull { it.item == entry.item } ?: return
         val aim = aimPoint(tgt)
-        // 枪口:结构中心,沿瞄准水平方向外推(2×2 结构中心离格边 1 格,外推距离随 size 放大),
+        // 枪口:结构中心沿瞄准方向外推(几何见 companion [muzzlePoint],与 LOS/可视化共用),
         // 保证出生点在空气(不与自己方块碰撞)
-        val horizontal = Vec3(aim.x - anchorCenter().x, 0.0, aim.z - anchorCenter().z).normalize()
-        val muzzleDistance = spec.size / 2f + 0.25f
-        val muzzle = anchorCenter().add(
-            horizontal.x * muzzleDistance,
-            MUZZLE_HEIGHT - 0.5,
-            horizontal.z * muzzleDistance
-        )
+        val muzzle = muzzlePoint(anchorCenter(), aim, fireMuzzleDistance(spec.size))
         var dir = aim.subtract(muzzle).normalize()
         dir = jitter(dir, spec.inaccuracy + ammo.bullet.inaccuracy, lv.random)
 
