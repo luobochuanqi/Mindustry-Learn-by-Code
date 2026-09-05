@@ -306,7 +306,9 @@ abstract class TurretBE(
     private fun yawTowards(pos: Vec3): Float {
         val dx = pos.x - anchorCenter().x
         val dz = pos.z - anchorCenter().z
-        return (Math.toDegrees(atan2(dz, dx)) - 90).toFloat()
+        // yaw 约定 0 = +Z、正角向 +X(与 muzzleFlash facing=(sin,0,cos) 及模型枪口同向);
+        // 旧 atan2(dz,dx)-90° 反相 180°,致炮口视觉指向与目标相反(issue 66)
+        return Math.toDegrees(atan2(dx, dz)).toFloat()
     }
 
     private fun pitchTowards(pos: Vec3): Float {
