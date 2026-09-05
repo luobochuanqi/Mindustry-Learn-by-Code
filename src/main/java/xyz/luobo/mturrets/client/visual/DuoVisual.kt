@@ -75,7 +75,10 @@ class DuoVisual(
         ).createInstance()
 
     init {
-        base.setIdentityTransform().setChanged()
+        // 基座:压锚点格基准层,按 visualPos 平移摆位(与动件同空间);#64 修复,此前纯恒等变换落在渲染原点
+        base.setIdentityTransform()
+            .translate(visualPos.x.toFloat(), visualPos.y.toFloat(), visualPos.z.toFloat())
+            .setChanged()
         head.setZeroTransform().setChanged()
         barrelL.setZeroTransform().setChanged()
     }
