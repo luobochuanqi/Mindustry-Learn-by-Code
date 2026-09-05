@@ -27,6 +27,8 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 - Jade tooltips now cover every phase-1 structure: turrets show ammo and structure health, the Kiln shows progress and its power-supply ratio during brownouts, the Battery shows stored FE, and the Drill shows its ore lock, column reserves and buffer contents. Hovering a member block of a multiblock shows the same info as its anchor.
 
+- A client-side debug view, toggled with `/mturrets debug`, draws each turret's line of sight: green (with the creature's outline) when it has a clear shot at a target, red (with the blocking block outlined) when terrain is in the way, and a faint second line showing where the turret is still turning toward — so "why won't it fire" is answerable at a glance.
+
 ### Changed
 
 - Kiln's internal energy buffer is now one craft's worth (500 FE) instead of twenty: it no longer acts as a hidden battery, so grid power (and the brownout ratio it shows) reflects what actually flows from the network. External energy injection still works.
