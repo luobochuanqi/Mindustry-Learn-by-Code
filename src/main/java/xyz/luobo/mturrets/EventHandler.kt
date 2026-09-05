@@ -132,12 +132,14 @@ object EventHandler {
                 xyz.luobo.mturrets.common.BulletFxPayload.STREAM_CODEC
             ) { payload, ctx ->
                 ctx.enqueueWork {
-                    val level = (ctx.player().level() as? net.minecraft.client.multiplayer.ClientLevel) ?: return@enqueueWork
+                    val level =
+                        (ctx.player().level() as? net.minecraft.client.multiplayer.ClientLevel) ?: return@enqueueWork
                     xyz.luobo.mturrets.client.fx.ModFxClient.dispatch(level, payload)
                 }
             }
         }
     }
+
     // 此为服务端事件总线订阅器
     @EventBusSubscriber(modid = MTurrets.MOD_ID, value = [Dist.DEDICATED_SERVER])
     object ServerModEvents : IModBusEvent {
@@ -152,24 +154,29 @@ object EventHandler {
             Capabilities.ItemHandler.BLOCK,
             ModBlockEntityTypes.KILN.get()
         ) { be, _ -> (be as? KilnBE)?.itemCapability }
+
         event.registerBlockEntity(
             Capabilities.EnergyStorage.BLOCK,
             ModBlockEntityTypes.KILN.get()
         ) { be, _ -> (be as? KilnBE)?.energyCapability }
+
         event.registerBlockEntity(
             Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.KILN.get()
         ) { be, _ -> (be as? KilnBE)?.fluidCapability }
+
         // 燃烧发电机(#56):燃料槽(仅煤,总量 8);无能量/液体通道
         event.registerBlockEntity(
             Capabilities.ItemHandler.BLOCK,
             ModBlockEntityTypes.COMBUSTION_GENERATOR.get()
         ) { be, _ -> (be as? xyz.luobo.mturrets.common.power.CombustionGeneratorBE)?.itemCapability }
+
         // 钻头(#35):Buffer / 内罐(水加成)两通道(2×2 蓝图锚点,查询即锚点位)
         event.registerBlockEntity(
             Capabilities.ItemHandler.BLOCK,
             ModBlockEntityTypes.DRILL.get()
         ) { be, _ -> (be as? DrillBE)?.itemCapability }
+
         event.registerBlockEntity(
             Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.DRILL.get()
@@ -183,6 +190,7 @@ object EventHandler {
         ) { be, _ ->
             if (be is xyz.luobo.mturrets.common.turrets.DuoTurretBE) be.magazineHandler else null
         }
+
         event.registerBlockEntity(
             Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
@@ -196,6 +204,7 @@ object EventHandler {
         ) { be, _ ->
             if (be is xyz.luobo.mturrets.common.turrets.ScatterTurretBE) be.magazineHandler else null
         }
+
         event.registerBlockEntity(
             Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.SCATTER_BLOCK_ENTITY.get()
@@ -232,6 +241,7 @@ object EventHandler {
             },
             ModBlocks.SCATTER_STRUCTURAL.get()
         )
+
         event.registerBlock(
             Capabilities.FluidHandler.BLOCK,
             { level, pos, state, _, _ ->
