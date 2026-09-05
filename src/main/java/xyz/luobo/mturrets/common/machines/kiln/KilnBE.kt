@@ -121,9 +121,8 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         return machineRecipes().any { it.matches(stack) || it.produces(stack) }
     }
 
-    /** 是否为任一机器配方的产物(右键取出的优先项)。 */
+    /** 是否为任一机器配方的产物(右键取出的优先项,产物自动弹出 #73 的 isProduct 谓词)。 */
     private fun isProductItem(stack: ItemStack): Boolean = machineRecipes().any { it.produces(stack) }
-
     /** 右键取出的选择:产出优先,否则退回首个存货(玩家清仓通道,无 GUI)。 */
     fun takeBufferStack(): ItemStack? {
         val cap = itemCapability
@@ -156,6 +155,11 @@ class KilnBE(pos: BlockPos, state: BlockState) :
      */
     fun tickServer() {
         val lv = level ?: return
+        // 产物自动弹出(#73):每 tick 把产物向四邻居标准 IItemHandler 转移,收不走留在 Buffer(满载停摆)。
+        // 结算产出后下一 tick 自会弹出;转移零分配、单机低成本。
+        if (xyz.luobo.mturrets.core.machine.ProductEjector.eject(lv, worldPosition, itemCapability, ::isProductItem)) {
+            invalidateRecipe() // 产物移出可能腾出 Buffer 容量,配方缓存随之失效
+        }
         if (progress == 0) {
             val recipe = lookupRecipe(lv) ?: return
             // 启动校验:水为必需输入,不足即不开工(停摆、不倒退)

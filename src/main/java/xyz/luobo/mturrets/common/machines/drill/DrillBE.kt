@@ -183,6 +183,11 @@ class DrillBE(pos: BlockPos, state: BlockState) :
      */
     fun tickServer() {
         val lv = level ?: return
+        // 产物自动弹出(#73):每 tick 把矿石产物向四邻居标准 IItemHandler 转移,收不走的留在 Buffer。
+        // 与窑炉共用 ProductEjector;isProduct = 三种矿石。
+        if (xyz.luobo.mturrets.core.machine.ProductEjector.eject(lv, worldPosition, itemCapability, ::isOreItem)) {
+            setChanged()
+        }
         val target = targetOre()
         // 满载停转:模拟插入无位则不吞矿、进度保持(取出后自动续转)
         val room = target != null && ItemHandlerHelper.insertItem(itemCapability, ItemStack(target), true).isEmpty

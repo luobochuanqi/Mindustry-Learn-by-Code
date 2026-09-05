@@ -175,7 +175,14 @@ object EventHandler {
             ModBlockEntityTypes.DRILL.get()
         ) { be, _ -> (be as? DrillBE)?.fluidCapability }
 
-        // Duo 炮台(#31):Magazine 为单位账无物品通道(ADR-0009),只暴露 Coolant 内罐
+        // Duo 炮台(#31):Magazine 为单位账——供弹能力槽面把标准 IItemHandler 翻译到单位账(issue 73)。
+        // 只暴露 Coolant 内罐 + 弹药注入口(成员格 block 级路由见下方注册)
+        event.registerBlockEntity(
+            Capabilities.ItemHandler.BLOCK,
+            ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
+        ) { be, _ ->
+            if (be is xyz.luobo.mturrets.common.turrets.DuoTurretBE) be.magazineHandler else null
+        }
         event.registerBlockEntity(
             Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
@@ -183,7 +190,12 @@ object EventHandler {
             if (be is xyz.luobo.mturrets.common.turrets.DuoTurretBE) be.fluidCapability else null
         }
 
-        // Scatter(#34):同 Duo 只暴露 Coolant 内罐(锚点);成员格 block 级路由(见下方注册)
+        event.registerBlockEntity(
+            Capabilities.ItemHandler.BLOCK,
+            ModBlockEntityTypes.SCATTER_BLOCK_ENTITY.get()
+        ) { be, _ ->
+            if (be is xyz.luobo.mturrets.common.turrets.ScatterTurretBE) be.magazineHandler else null
+        }
         event.registerBlockEntity(
             Capabilities.FluidHandler.BLOCK,
             ModBlockEntityTypes.SCATTER_BLOCK_ENTITY.get()
@@ -200,7 +212,7 @@ object EventHandler {
             if (be is xyz.luobo.mturrets.common.power.BatteryBE) be.energyCapability else null
         }
 
-        // 钻头(#35)真内容与测试脚手架同款语义;脚手架随 #34 退役。
+        // 钻头/脚手架成员格物品能力路由回锚点 Buffer(#35);Scatter 成员格弹药路由见下方专用注册。
         event.registerBlock(
             Capabilities.ItemHandler.BLOCK,
             { level, pos, state, _, _ ->
@@ -211,7 +223,15 @@ object EventHandler {
             ModBlocks.DRILL_STRUCTURAL.get()
         )
 
-        // Scatter(#34):成员格流体路由回锚点 Coolant 内罐(装水经成员面可插任意成员格)
+        // Scatter(#34/#73):成员格流体/弹药路由回锚点(Coolant 内罐 + 供弹能力槽面,装水/供弹经成员面可插任意成员格)
+        event.registerBlock(
+            Capabilities.ItemHandler.BLOCK,
+            { level, pos, state, _, _ ->
+                val anchorPos = pos.subtract(StructuralBlock.decodeOffset(state))
+                (level.getBlockEntity(anchorPos) as? xyz.luobo.mturrets.common.turrets.ScatterTurretBE)?.magazineHandler
+            },
+            ModBlocks.SCATTER_STRUCTURAL.get()
+        )
         event.registerBlock(
             Capabilities.FluidHandler.BLOCK,
             { level, pos, state, _, _ ->

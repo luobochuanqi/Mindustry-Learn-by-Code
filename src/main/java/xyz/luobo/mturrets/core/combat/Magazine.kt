@@ -26,12 +26,17 @@ class Magazine(private val cap: Int) {
     /** 队尾弹种(当前选弹);空仓为 null。 */
     val tail: Entry? get() = entries.lastOrNull()
 
-    /** 部分装弹:按剩余容量向下取整到整件物品,返回接受件数(0 = 整堆拒收,物品原样保留,#46 取代 #31)。 */
-    fun load(item: Item, count: Int, unitMultiplier: Int): Int {
+    /** 当前容量内可接受的整件数(不改状态;供能力槽面 simulate 探测与 [load] 共用同一折算)。
+     * 向下取整到整件:不足一件的余量(free % mult)保持空着,不造免费弹药(守恒)。 */
+    fun acceptedFor(item: Item, count: Int, unitMultiplier: Int): Int {
         val free = cap - total
         if (free <= 0 || count <= 0 || unitMultiplier <= 0) return 0
-        // 向下取整到整件:不足一件的余量(free % mult)保持空着,不造免费弹药(守恒)
-        val acceptedItems = minOf(count, free / unitMultiplier)
+        return minOf(count, free / unitMultiplier)
+    }
+
+    /** 部分装弹:按剩余容量向下取整到整件,返回接受件数(0 = 整堆拒收,物品原样保留,#46 取代 #31)。 */
+    fun load(item: Item, count: Int, unitMultiplier: Int): Int {
+        val acceptedItems = acceptedFor(item, count, unitMultiplier)
         if (acceptedItems <= 0) return 0
         val units = acceptedItems * unitMultiplier
         val existing = entries.firstOrNull { it.item == item }

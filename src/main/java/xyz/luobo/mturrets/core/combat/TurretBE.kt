@@ -71,9 +71,11 @@ abstract class TurretBE(
 
     override val currentBlueprint: Blueprint
         get() = (blockState.block as BlueprintAnchorBlock).blueprint
-
-    /** 单位账弹仓(ADR-0009);无 capability 注入口(二期传送带期重做)。 */
+    /** 单位账弹仓(ADR-0009):按弹种分账、LIFO 选弹;自动化供弹经 [magazineHandler] 折算注入,不存物理物品。 */
     val magazine = Magazine(spec.maxAmmo)
+
+    /** 供弹能力槽面(#73 自动化供弹):把标准 IItemHandler 翻译到 Magazine 单位账。 */
+    val magazineHandler = MagazineItemHandler(this)
 
     /** 内罐只收水(Coolant;缺液只掉速不阻火,ADR-0009)。 */
     override val fluidCapability: FluidCapabilityImpl =

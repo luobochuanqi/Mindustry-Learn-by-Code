@@ -25,6 +25,7 @@ import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.shapes.CollisionContext
 import net.neoforged.neoforge.capabilities.Capabilities
 import net.neoforged.neoforge.fluids.FluidStack
+import net.neoforged.neoforge.items.ItemHandlerHelper
 import net.minecraft.world.level.material.Fluids
 import net.neoforged.neoforge.gametest.GameTestHolder
 import net.neoforged.neoforge.gametest.PrefixGameTestTemplate
@@ -159,6 +160,74 @@ object ModGameTests {
             helper.fail("full magazine must reject any more ammo")
         }
         helper.succeed()
+    }
+    /** ⑥ 自动化供弹(#73):溜槽/漏斗经标准 IItemHandler capability 向炮台供弹,按整件折算单位、
+     * 部分收退回余量;与手持右键装弹同一折算口径。Magazine 单位账分账、LIFO。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun duoAutoFeedsAmmoViaCapability(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        // 经能力注入 51 铜(倍率 2→unit cap 100):整件折算收 50、退回 1(与 #46 手持口径一致)
+        val cap = helper.level.getCapability(
+            Capabilities.ItemHandler.BLOCK, helper.absolutePos(turretPos), null
+        )!!
+        val rest = cap.insertItem(0, ItemStack(copper, 51), false)
+        if (rest.count != 1) helper.fail("51 copper must load 50 (2×50=100 units), leave 1, got ${rest.count}")
+
+        // 已满:再投整件拒收(全退回)
+        val over = cap.insertItem(0, ItemStack(copper, 4), false)
+        if (over.count != 4) helper.fail("full magazine must reject all, got ${over.count}")
+
+        // 不可退弹(ADR-0009 / Mindustry ItemTurret.removeStack=0):能力提取恒返回空
+        if (!cap.extractItem(0, 64, false).isEmpty) helper.fail("turret must not allow ammo extraction")
+        helper.succeed()
+    }
+
+    /** ⑦ 自动化供弹拒收非弹药(#73):能力槽面只收本炮台弹药,其它物品整件退回。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun duoAutoFeedRejectsNonAmmo(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        // Duo 只吃铜;铅/沙均拒
+        val cap = helper.level.getCapability(
+            Capabilities.ItemHandler.BLOCK, helper.absolutePos(turretPos), null
+        )!!
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+        if (cap.insertItem(0, ItemStack(lead, 3), false).count != 3) {
+            helper.fail("non-ammo lead must be fully rejected")
+        }
+        if (cap.insertItem(0, ItemStack(Items.SAND, 2), false).count != 2) {
+            helper.fail("non-ammo sand must be fully rejected")
+        }
+        helper.succeed()
+    }
+
+    /** ⑧ 自动化供弹 Scatter 成员格路由(#73):经成员格能力注入口也折算入锚点弹仓。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun scatterMemberAutoFeedsAmmo(helper: GameTestHelper) {
+        val anchorPos = BlockPos(1, 1, 1)
+        val memberPos = BlockPos(2, 1, 2)
+        helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
+        val lead = ModItems.getMaterial(Materials.LEAD).get()
+
+        // 成员格能力注入口在结构成型(延迟一 tick)后才路由回锚点;等成型后注入
+        helper.runAfterDelay(5) {
+            val cap = helper.level.getCapability(
+                Capabilities.ItemHandler.BLOCK, helper.absolutePos(memberPos), null
+            )
+            if (cap == null) {
+                helper.fail("scatter member must expose item capability after forming")
+                return@runAfterDelay
+            }
+            // 10 铅(倍率 4→unit cap 100):整件折算 10×4=40 单位,满额收
+            val rest = cap.insertItem(0, ItemStack(lead, 10), false)
+            if (!rest.isEmpty) helper.fail("member feed must fully load 10 lead, left ${rest.count}")
+            helper.succeed()
+        }
     }
 
     /** ③a 只打 Monster:僵尸与牛同框,牛不掉血、僵尸掉血。 */
@@ -1790,6 +1859,95 @@ object ModGameTests {
                 helper.fail("controller item must drop on member-break teardown")
             }
         }
+    }
+
+    /** ⑩ 窑炉产物自动弹出(#73):产物结算后向邻近标准 IItemHandler 容器转移(收得下则移出 Buffer)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun kilnAutoEjectsProductToNeighbor(helper: GameTestHelper) {
+        val kilnPos = BlockPos(1, 1, 1)
+        val chestPos = BlockPos(2, 1, 1) // 东邻
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+        helper.setBlock(chestPos, Blocks.CHEST)
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
+        fillKilnTank(helper, kilnPos)
+        injectEnergyUpTo(helper, kilnPos, 500)
+
+        // 产物(金属玻璃)自动弹到邻箱:kiln Buffer 内不再有产物,箱子收到
+        helper.succeedWhen {
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) > 0) {
+                helper.fail("kiln product must auto-eject to neighbor, still in buffer")
+            }
+            if (countContainerItem(chestPos, helper, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("neighbor chest must receive kiln product")
+            }
+        }
+    }
+
+    /** ⑪ 钻头产物自动弹出(#73):矿石产物向邻近容器转移。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 200)
+    fun drillAutoEjectsOreToNeighbor(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val chestPos = BlockPos(0, 2, 1) // 西邻
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        helper.setBlock(chestPos, Blocks.CHEST)
+
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, ModItems.getMaterial(Materials.COPPER).get()) > 0) {
+                helper.fail("drill ore must auto-eject to neighbor, still in buffer")
+            }
+            if (countContainerItem(chestPos, helper, ModItems.getMaterial(Materials.COPPER).get()) < 1) {
+                helper.fail("neighbor chest must receive drill ore")
+            }
+        }
+    }
+
+    /** ⑫ 产物弹出不丢物品(#73):邻容器满时产物留在 Buffer(满载停摆语义),取出/清空后继续。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 300)
+    fun drillEjectKeepsProductWhenNeighborFull(helper: GameTestHelper) {
+        val orePos = BlockPos(1, 1, 1)
+        val drillPos = BlockPos(1, 2, 1)
+        val chestPos = BlockPos(0, 2, 1)
+        helper.setBlock(orePos, ModBlocks.ORE_COPPER.get())
+        helper.setBlock(drillPos, ModBlocks.DRILL.get())
+        // 满奶酪箱:填 27 格 × 64 铜 → 无产出主存量,判断用"产物不丢、留在 Buffer"
+        helper.setBlock(chestPos, Blocks.CHEST)
+        val copper = ModItems.getMaterial(Materials.COPPER).get()
+        fillChest(helper, chestPos, ItemStack(copper, 64 * 27))
+
+        // 邻箱满:矿石弹不出去 → 留在钻头 Buffer(sum 1)
+        helper.succeedWhen {
+            if (countItem(helper, drillPos, copper) < 1) {
+                helper.fail("un-ejectable ore must stay in drill buffer (no loss)")
+            }
+        }
+    }
+
+    private fun fillChest(helper: GameTestHelper, pos: BlockPos, stack: ItemStack) {
+        val cap = helper.level.getCapability(
+            Capabilities.ItemHandler.BLOCK, helper.absolutePos(pos), null
+        ) ?: throw IllegalStateException("no chest capability at $pos")
+        // 跨槽堆叠直至放满(余量为感应满)
+        ItemHandlerHelper.insertItemStacked(cap, stack, false)
+    }
+
+    /** 统计容器(pos 处 capability)中某物品总量(与机器的 countItem 分离,复用于箱子)。 */
+    private fun countContainerItem(pos: BlockPos, helper: GameTestHelper, item: Item): Int {
+        val cap = helper.level.getCapability(
+            Capabilities.ItemHandler.BLOCK, helper.absolutePos(pos), null
+        ) ?: return 0
+        var count = 0
+        for (slot in 0 until cap.slots) {
+            val s = cap.getStackInSlot(slot)
+            if (s.`is`(item)) count += s.count
+        }
+        return count
     }
 
 }
