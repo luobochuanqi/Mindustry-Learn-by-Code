@@ -59,8 +59,11 @@ abstract class TurretBE(
         /** Coolant 内罐容量(mB):一桶水恰好充满。 */
         const val WATER_TANK_CAPACITY = 1000
 
-        /** 枪口高度(块内局部 y):与 barrel 部件齐平。 */
-        const val MUZZLE_HEIGHT = 0.44
+        /** 枪口高度(块内局部 y):与 barrel 部件齐平。
+         * 1.5 期提至 0.75(块中线之上):抬弹道至目标胸口,子弹碰撞盒(±0.25)不再被地面雪堆
+         * 之类低矮方块夹住,而 LOS 细射线(起点同高、直指胸口)本就越过——消除「LOS 可见但
+         * 子弹被挡」的空耗开火(issue 68);同时命中点从脚部上移至躯干。 */
+        const val MUZZLE_HEIGHT = 0.75
 
         /** 后坐衰减(每 tick 递减量)。 */
         const val RECOIL_DECAY = 0.1f
