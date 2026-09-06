@@ -19,10 +19,10 @@ import kotlin.math.abs
 import kotlin.math.sign
 
 /**
- * Scatter 动件渲染(#34,#42):Flywheel partial 模型 + TRANSFORMED 实例。
+ * Scatter 动件渲染(#34,#42,#75):Flywheel partial 模型 + TRANSFORMED 实例。
  * 旋转头(双翼)与 -mid 中段(炮管刃片)共用结构中心枢轴(锚点块内 (1,1),size=2),
  * beginFrame 逐帧向同步的目标角按 rotateSpeed 逼近(客户端积分,补包间隙平滑);
- * 开火计数器单调变化 → 中段后坐脉冲(沿枪口方向退回 ~2px)。无 pitch/heat 层(WIP 决策)。
+ * 中段绕真实管根铰点俯仰(rotateX,服务端 targetPitch),开火计数器单调变化 → 沿俯仰后管轴后坐脉冲。
  * 全模型资产架构(#42):静态基座 + 动件全部由本 visual 渲染,方块侧渲染为空;
  * 物品模型引用 full 模型,同一几何三条入口(世界/物品/裂纹代理)零双画。
  */
@@ -36,14 +36,14 @@ class ScatterVisual(
     private val base: TransformedInstance = instanceFor(ScatterModels.BASE)
     /** 旋转头(双翼):绕结构中心(锚点块内 (1,1))竖轴转 yaw。 */
     private val head: TransformedInstance = instanceFor(ScatterModels.HEAD)
-    /** -mid 中段(炮管刃片):随头旋转 + 后坐沿枪口方向回退。 */
+    /** -mid 中段(炮管刃片):随头转 yaw + 绕管根铰点俯仰 + 后坐沿俯仰后管轴回退。 */
     private val mid: TransformedInstance = instanceFor(ScatterModels.MID)
 
     // ===== 客户端动画状态(不持久化) =====
 
-    /** 首帧用服务端当前角初始化,避免加入时从 0° 摆过来。 */
     private var initialized = false
     private var smoothYaw = 0f
+    private var smoothPitch = 0f
     private var lastFire = 0L
     private var recoil = 0f
 
@@ -53,12 +53,17 @@ class ScatterVisual(
         const val PIVOT_Z = 1f
         /** 枢轴高度:基座顶面(动件坐于基座上)。 */
         const val PIVOT_Y = 0.3125f
+        /** 中段炮管铰点相对结构中心的偏移(模型 pivot (16,12,10) 换算):x 已在结构中心 0,
+         *  y +0.4375 = 12/16−0.3125, z −0.375 = 10/16−1。pitch 绕此水平轴,绝不能沿用 yaw
+         * 枢轴高度(0.3125)——yaw 绕竖轴与高度无关,俯仰绕水平轴则必须落在真实铰点。 */
+        const val MID_PIVOT_X = 0f
+        const val MID_PIVOT_Y = 0.4375f
+        const val MID_PIVOT_Z = -0.375f
         /** 中段后坐行程(格):≈2px(#34 spec)。 */
         const val RECOIL_OFFSET = 0.125f
         /** 后坐衰减(每帧乘子):~10 帧归零。 */
         const val RECOIL_DECAY = 0.6f
     }
-
     private fun instanceFor(partial: PartialModel): TransformedInstance =
         instancerProvider().instancer(
             InstanceTypes.TRANSFORMED,
@@ -79,6 +84,7 @@ class ScatterVisual(
         val pt = context.partialTick()
         if (!initialized) {
             smoothYaw = blockEntity.yaw
+            smoothPitch = blockEntity.pitch
             initialized = true
         }
 
@@ -86,6 +92,8 @@ class ScatterVisual(
         val step = blockEntity.spec.rotateSpeed * pt
         val yawDiff = Mth.wrapDegrees(blockEntity.targetYaw - smoothYaw)
         smoothYaw += if (abs(yawDiff) <= step) yawDiff else sign(yawDiff) * step
+        val pitchDiff = Mth.wrapDegrees(blockEntity.targetPitch - smoothPitch)
+        smoothPitch += if (abs(pitchDiff) <= step) pitchDiff else sign(pitchDiff) * step
 
         // 开火计数器脉冲 → 中段后坐(跨包计数跳变时取最后一发)
         val fire = blockEntity.fireCount
@@ -96,6 +104,7 @@ class ScatterVisual(
         recoil *= RECOIL_DECAY
 
         val yawRad = Mth.DEG_TO_RAD * smoothYaw
+        val pitchRad = Mth.DEG_TO_RAD * smoothPitch
         val vx = visualPos.x.toFloat()
         val vy = visualPos.y.toFloat()
         val vz = visualPos.z.toFloat()
@@ -107,11 +116,16 @@ class ScatterVisual(
             .translate(-PIVOT_X, -PIVOT_Y, -PIVOT_Z)
             .setChanged()
 
-        // 中段:随头旋转;后坐在旋转帧内沿局部 -Z 回退(即朝枪口反方向,贴着炮管轴)
+        // 中段:先随头转 yaw(铰点 x/z 中心),再绕炮管真实铰点俯仰,后坐沿俯仰后管轴回退。
+        // 旋转顺序对齐 Duo poseBarrel:yaw 由 pivot 承担 → 平移至铰点 → rotateX(pitch) → 后坐。
         mid.setIdentityTransform()
             .translate(vx + PIVOT_X, vy + PIVOT_Y, vz + PIVOT_Z)
             .rotateY(yawRad)
-            .translate(-PIVOT_X, -PIVOT_Y, -PIVOT_Z - recoil * RECOIL_OFFSET)
+            .translate(MID_PIVOT_X, MID_PIVOT_Y, MID_PIVOT_Z)
+            .rotateX(pitchRad)
+            .translate(0f, 0f, -recoil * RECOIL_OFFSET)
+            .translate(-MID_PIVOT_X, -MID_PIVOT_Y, -MID_PIVOT_Z)
+            .translate(-PIVOT_X, -PIVOT_Y, -PIVOT_Z)
             .setChanged()
     }
 
