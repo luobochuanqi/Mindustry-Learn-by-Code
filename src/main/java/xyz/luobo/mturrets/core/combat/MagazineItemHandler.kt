@@ -22,9 +22,9 @@ class MagazineItemHandler(private val turret: TurretBE) : IItemHandler {
         val accepted = turret.magazine.acceptedFor(stack.item, stack.count, ammo.unitMultiplier)
         if (accepted <= 0) return stack
         if (!simulate) {
-            turret.magazine.load(stack.item, stack.count, ammo.unitMultiplier)
-            // 能力路径不经玩家交互,须手动标记脏以实现存档;否则从不开火的供弹炮台弹药丢了
-            turret.setChanged()
+            // 能力路径不经玩家(管道/漏斗无喂弹人视角):归属维持装填前记录(可能为 null);
+            // 经 tryLoadAmmo 统一走"入账 + syncData"(#61,Jade 读数即时)。
+            turret.tryLoadAmmo(stack)
         }
         return if (accepted < stack.count) stack.copyWithCount(stack.count - accepted) else ItemStack.EMPTY
     }

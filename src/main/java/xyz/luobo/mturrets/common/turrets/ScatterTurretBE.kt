@@ -40,6 +40,8 @@ class ScatterTurretBE(pos: BlockPos, state: BlockState) :
             health = 200,
             coolantReloadMultiplier = 1.5f,
             coolantPerShot = 10,
+            // #63:中段炮管几何 y 10..16(轴 13/16=0.8125)相对结构中心层 0.5 → +0.3125
+            muzzleHeight = 0.3125,
             ammoTypes = listOf(
                 AmmoType(
                     item = ModItems.getMaterial(Materials.LEAD).get(),

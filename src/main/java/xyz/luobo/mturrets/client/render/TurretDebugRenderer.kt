@@ -11,7 +11,6 @@ import net.minecraft.client.renderer.RenderStateShard
 import net.minecraft.client.renderer.RenderType
 import net.minecraft.core.BlockPos
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.monster.Monster
 import net.minecraft.world.level.ClipContext
 import net.minecraft.world.phys.AABB
 import net.minecraft.world.phys.HitResult
@@ -98,7 +97,7 @@ object TurretDebugRenderer {
         val spec = turret.spec
         val center = TurretBE.structureCenter(turret.blockPos, spec.size)
         val dir = TurretBE.directionFromAngles(turret.yaw, turret.pitch)
-        val muzzle = TurretBE.muzzlePoint(center, center.add(dir), TurretBE.losMuzzleDistance(spec.size))
+        val muzzle = TurretBE.muzzlePoint(center, dir, TurretBE.losMuzzleDistance(spec.size), spec.muzzleHeight)
         val reach = spec.range.toDouble()
         val end = muzzle.add(dir.scale(reach))
 
@@ -131,8 +130,8 @@ object TurretDebugRenderer {
     private class RayBlocked(val at: Vec3, val blocker: BlockPos) : Ray
 
     /**
-     * 取「最近方块阻挡」与「最近 Monster 段-盒进入」之近者;口径对位 ADR-0010 的最早进入者。
-     * 非敌对实体不入候选(阵营过滤同服务端 isValidTarget)。返回 null = 射程内两者皆无。
+     * 取「最近方块阻挡」与「最近 Enemy 段-盒进入」之近者;口径对位 ADR-0010 的最早进入者。
+     * 非敌对实体不入候选(阵营过滤同服务端 isValidTarget,#60 Enemy 判据)。返回 null = 射程内两者皆无。
      */
     private fun castRay(
         level: ClientLevel,
@@ -146,24 +145,24 @@ object TurretDebugRenderer {
         )
         val blockDist = if (block.type == HitResult.Type.BLOCK) from.distanceToSqr(block.location) else Double.MAX_VALUE
         var nearest: RayHit? = null
-        var monsterDist = Double.MAX_VALUE
+        var hostileDist = Double.MAX_VALUE
         val candidates = level.getEntitiesOfClass(LivingEntity::class.java, AABB(from, to).inflate(1.0)) {
-            it is Monster && it.isAlive
+            TurretBE.isHostile(it) && it.isAlive
         }
         for (entity in candidates) {
             if (!TurretBE.acceptsCategory(entity, targetAir, targetGround)) continue
             // inflate 0.15:与子弹实体直击查询同口径(ADR-0010),使绿点落在子弹真正命中的进入点
             val entry = entity.boundingBox.inflate(0.15).clip(from, to).orElse(null) ?: continue
             val d = from.distanceToSqr(entry)
-            if (d < monsterDist) {
-                monsterDist = d
+            if (d < hostileDist) {
+                hostileDist = d
                 nearest = RayHit(entry, entity.boundingBox)
             }
         }
 
         val hit = nearest
         return when {
-            hit != null && monsterDist <= blockDist -> hit
+            hit != null && hostileDist <= blockDist -> hit
             blockDist != Double.MAX_VALUE -> RayBlocked(block.location, BlockPos.containing(block.location))
             else -> null
         }

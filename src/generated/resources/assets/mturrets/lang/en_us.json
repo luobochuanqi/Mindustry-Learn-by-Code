@@ -66,7 +66,7 @@
   "jade.mturrets.health": "Health: %s/%s",
   "jade.mturrets.production": "Production: %s FE/t",
   "jade.mturrets.progress": "Progress: %s%%",
-  "jade.mturrets.supply": "Supply: %s%%",
+  "jade.mturrets.progress_supply": "Progress: %s%% (supply %s%%)",
   "mturrets.command.debug.off": "Turret LOS debug rendering disabled",
   "mturrets.command.debug.on": "Turret LOS debug rendering enabled",
   "mturrets.message.blueprint_blocked": "Not enough space for structure",

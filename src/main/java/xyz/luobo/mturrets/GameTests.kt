@@ -39,6 +39,7 @@ import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
 import xyz.luobo.mturrets.core.combat.BulletType
+import xyz.luobo.mturrets.core.combat.TurretBE
 import xyz.luobo.mturrets.core.structure.StructuralBlock
 
 /**
@@ -512,6 +513,10 @@ object ModGameTests {
             // 再申 1 次得 0 → 断电;进度冻结在 7(本地缓冲 500 不影响,起始即空)
             if (kiln?.progressPercent != 7) {
                 helper.fail("kiln progress must freeze at 7%, got ${kiln?.progressPercent}")
+            }
+            // #67:进度原地 = 未推进 → hum 必须淡出(旧实现断电后 isRunning 恒真、空转续响)
+            if (kiln?.isRunning == true) {
+                helper.fail("power-cut kiln with frozen progress must stop running (hum fade-out)")
             }
             if (injectEnergyUpTo(helper, batteryPos, 2000) < 2000) helper.fail("battery refused refill")
         }
@@ -1631,11 +1636,10 @@ object ModGameTests {
     // ========== Scatter 2×2 防空炮(#34):蓝图管线 2×2 首验 + 双发点射/LIFO/溅射/破片/对空过滤 ==========
 
     /**
-     * 悬空靶:恶魂(Monster、4×4 大箱体)悬停不落不烧,子弹 1.575 格/步 100% 命中——
+     * 悬空靶:恶魂(FlyingMob 分支、Enemy、4×4 大箱体)悬停不落不烧,子弹 1.575 格/步 100% 命中——
      * 幽灵 0.9 格箱体在单步 1.575 下会整步越过(实体命中只查终点包围盒),对空断言会全数脱靶。
-     * 位置放模板内 x=0.2(不得越出结构所在区块——先前放 -0.4 时每逢模板起点恰在区块边界,
-     * 恶魂落入未加载的邻区块,t1 索敌看不到它,炮台转而瞄准他例的可见空中靶,断言全数失效)。
-     * 首步落点 (-0.57,2.3,2) 落在 4×4 箱体内,溅射几何按此校准。
+     * NOTE: 恶魂满血仅 10——"未受干扰"断言必须对 maxHealth 比较,旧的 health>=20f 恒真(致空转,#60)。
+     * 位置放模板内 x=0.2(不得越出结构所在区块——#55 区块边界防盲),首步落点落在 4×4 箱体内。
      */
     private fun hoverGhast(helper: GameTestHelper): net.minecraft.world.entity.monster.Ghast {
         val ghast = helper.spawnWithNoFreeWill(EntityType.GHAST, Vec3(0.2, 1.0, 2.0))
@@ -1712,17 +1716,23 @@ object ModGameTests {
         }
         val ghast = hoverGhast(helper)
         helper.runAfterDelay(9) {
+            val be = helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as ScatterTurretBE
+            // 开火护栏(#60):子弹实体与 fireCount 是"真开过火"的铁证——旧 hp>=20f 断言对满血 10 的
+            // 恶魂恒真,炮台不开火也能绿灯(空转);首发 t6 出膛,此刻扳机必已扣过。
+            if (be.fireCount < 1) {
+                helper.fail("turret must have fired at least once by t9")
+            }
             // 恶魂已被首发直击+溅射击杀;队列第 2 发仍在飞行(首发 t7 已消失)。
             // 计数用 level 级 AABB:helper.getEntities 会与模板边界求交,出界子弹会被漏数
-            if (!ghast.isRemoved && ghast.health >= 20f) {
-                helper.fail("first shot must hit and kill the ghast, hp=${ghast.health}")
-            }
             val bullets = helper.level.getEntities(
                 ModEntities.TURRET_BULLET.get(),
                 AABB(helper.absolutePos(turretPos)).inflate(4.0)
             ) { true }
             if (bullets.size != 1) {
                 helper.fail("queued second shot must still be in flight, found ${bullets.size}")
+            }
+            if (!ghast.isRemoved && ghast.health >= ghast.maxHealth) {
+                helper.fail("first shot must hit the ghast, hp=${ghast.health}")
             }
             breakForDrops(helper, turretPos)
         }
@@ -1768,10 +1778,11 @@ object ModGameTests {
         val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(2, 1, 0))
         fireproof(zombie)
         helper.runAfterDelay(40) {
-            if (!ghast.isRemoved && ghast.health >= 20f) {
+            // #60:阈值对恶魂真实满血(10)比较;旧 >=20f 恒真,空转也绿。
+            if (!ghast.isRemoved && ghast.health >= ghast.maxHealth) {
                 helper.fail("airborne ghast must be engaged")
             }
-            if (zombie.health != 20f) {
+            if (zombie.health != zombie.maxHealth) {
                 helper.fail("grounded zombie must stay full HP, hp=${zombie.health}")
             }
             helper.succeed()
@@ -1786,7 +1797,7 @@ object ModGameTests {
      * 不占用对空槽,更远的恶魂被接战、僵尸满血。
      */
     @JvmStatic
-    @GameTest(template = "empty3x3", batch = "scatterAirPredicateSkipsNearbyGroundUnit", timeoutTicks = 120)
+    @GameTest(template = "empty3x3", batch = "scatterAirPredicateSkipsNearbyGroundUnit", timeoutTicks = 120, skyAccess = true)
     fun scatterAirPredicateSkipsNearbyGroundUnit(helper: GameTestHelper) {
         val anchorPos = BlockPos(0, 1, 0)
         helper.setBlock(anchorPos, ModBlocks.SCATTER.get())
@@ -1794,14 +1805,28 @@ object ModGameTests {
         helper.setBlock(BlockPos(1, 0, 2), Blocks.STONE)
         val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
         fireproof(zombie)
-        // 恶魂 4×4 箱体放 (2,1,4):避开炮台 2×2 格体(防窒息)且比僵尸远(4.3 vs 1.9)
-        val ghast = helper.spawnWithNoFreeWill(EntityType.GHAST, BlockPos(2, 1, 4))
+        // 恶魂悬在壳顶正上方高 8 格处(skyAccess 去天花板,否则 y=3 顶板挡 LOS):
+        // 壳内 3×3 放不下 4×4 箱体(贴墙窒息)、壳外平射被屏障墙断视线;高处直击点距僵尸 >5,
+        // 铅弹 2 格溅射永不波及僵尸,"僵尸零掉血"判据干净。比僵尸远(6.8 vs 1.6)。
+        val ghast = helper.spawnWithNoFreeWill(EntityType.GHAST, Vec3(2.5, 8.0, 2.5))
+        ghast.isNoGravity = true
         fireproof(ghast)
+        // 身份判定在首发(t7)前:t5 无击退漂移、目标未死,判据稳定
+        helper.runAfterDelay(5) {
+            val be = helper.getLevel().getBlockEntity(helper.absolutePos(anchorPos)) as ScatterTurretBE
+            if (be.target !== ghast) {
+                helper.fail("turret must lock the flying ghast, locked=${be.target?.javaClass?.simpleName}")
+            }
+        }
         helper.runAfterDelay(50) {
-            if (!ghast.isRemoved && ghast.health >= 20f) {
+            val be = helper.getLevel().getBlockEntity(helper.absolutePos(anchorPos)) as ScatterTurretBE
+            if (be.fireCount < 1) {
+                helper.fail("turret must fire at the ghast")
+            }
+            if (!ghast.isRemoved && ghast.health >= ghast.maxHealth) {
                 helper.fail("air turret must engage the farther flying ghast, not the nearer ground zombie, ghast hp=${ghast.health}")
             }
-            if (zombie.health != 20f) {
+            if (zombie.health != zombie.maxHealth) {
                 helper.fail("ground zombie must stay untouched, hp=${zombie.health}")
             }
             helper.succeed()
@@ -1823,11 +1848,116 @@ object ModGameTests {
         val ghast = helper.spawn(EntityType.GHAST, BlockPos(2, 1, 4))
         fireproof(ghast)
         helper.runAfterDelay(60) {
-            if (!ghast.isRemoved && ghast.health >= 20f) {
+            // 接战证据:掉血或已死(被击移除);真实满血 10,旧 >=20f 恒真空转(#60)
+            if (ghast.isRemoved || ghast.health < ghast.maxHealth) {
+                helper.succeed()
+            } else {
                 helper.fail("real-AI ghast hovering at floor level must be engaged, hp=${ghast.health}")
+            }
+        }
+    }
+
+    /** #60②:史莱姆直挂 Mob(非 Monster),旧 Monster-only 判据漏收——Duo 必须收复并击杀。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", batch = "duoEngagesSlime", timeoutTicks = 120)
+    fun duoEngagesSlime(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 4))
+        val slime = helper.spawnWithNoFreeWill(EntityType.SLIME, BlockPos(1, 1, 2))
+        fireproof(slime)
+        // 小史莱姆满血 1,铜弹 9 伤一发死;isRemoved 即收复+命中双证
+        helper.runAfterDelay(40) {
+            if (!slime.isRemoved && slime.health >= slime.maxHealth) {
+                helper.fail("duo must engage slime (Enemy though not Monster), hp=${slime.health}")
             }
             helper.succeed()
         }
+    }
+
+    /** #60②:幻翼(FlyingMob 分支,非 Monster)悬空靶——对空炮台必须锁定它本身并扣扳机。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", batch = "scatterEngagesPhantom", timeoutTicks = 120)
+    fun scatterEngagesPhantom(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.SCATTER.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.LEAD).get(), 4))
+        val phantom = helper.spawnWithNoFreeWill(EntityType.PHANTOM, Vec3(0.2, 1.5, 2.0))
+        phantom.isNoGravity = true
+        fireproof(phantom)
+        helper.runAfterDelay(5) {
+            val be = helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as ScatterTurretBE
+            if (!phantom.isRemoved && be.target !== phantom) {
+                helper.fail("turret must lock the phantom itself, locked=${be.target?.javaClass?.simpleName}")
+            }
+        }
+        helper.runAfterDelay(12) {
+            val be = helper.getLevel().getBlockEntity(helper.absolutePos(turretPos)) as ScatterTurretBE
+            if (be.fireCount < 1) helper.fail("turret must have fired at the phantom by t12")
+            if (phantom.isRemoved || phantom.health < phantom.maxHealth) {
+                helper.succeed()
+            } else {
+                helper.fail("phantom must be engaged, hp=${phantom.health}")
+            }
+        }
+    }
+
+    /** #60①:手持装弹者 = 击杀归属——僵尸死时按玩家归属掉经验球(原版 killed_by_player 族掉落同理)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", batch = "duoLoaderKillAwardsExperience", timeoutTicks = 150)
+    fun duoLoaderKillAwardsExperience(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        mockUseOn(helper, turretPos, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 20))
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
+        fireproof(zombie)
+        helper.runAfterDelay(40) {
+            // 死亡动画期 isRemoved 仍 false(hp=0 已算死),isAlive 才是击杀铁证
+            if (zombie.isAlive) helper.fail("zombie must be dead by t40, hp=${zombie.health}")
+            val orbs = helper.getEntities(EntityType.EXPERIENCE_ORB, BlockPos(1, 1, 2), 4.0)
+            if (orbs.isEmpty()) helper.fail("loader-attributed kill must drop the experience orb")
+            helper.succeed()
+        }
+    }
+
+    /** #60① 对照:管道(能力)装弹无喂弹人——击杀无主,原版归属掉落(经验球)不触发。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", batch = "duoPipeFedKillAwardsNoExperience", timeoutTicks = 150)
+    fun duoPipeFedKillAwardsNoExperience(helper: GameTestHelper) {
+        val turretPos = BlockPos(1, 1, 1)
+        helper.setBlock(turretPos, ModBlocks.DUO_BLOCK.get())
+        val cap = helper.level.getCapability(
+            Capabilities.ItemHandler.BLOCK, helper.absolutePos(turretPos), null
+        ) ?: throw IllegalStateException("duo must expose ammo capability")
+        cap.insertItem(0, ItemStack(ModItems.getMaterial(Materials.COPPER).get(), 20), false)
+        val zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, BlockPos(1, 1, 2))
+        fireproof(zombie)
+        helper.runAfterDelay(40) {
+            if (zombie.isAlive) helper.fail("zombie must be dead by t40, hp=${zombie.health}")
+            val orbs = helper.getEntities(EntityType.EXPERIENCE_ORB, BlockPos(1, 1, 2), 4.0)
+            if (orbs.isNotEmpty()) helper.fail("ownerless (pipe-fed) kill must not credit player loot")
+            helper.succeed()
+        }
+    }
+
+    /** #63 枪口几何契约:muzzlePoint 纯函数按手算表钉死(水平外推不随俯仰缩短、y 锚在枪管平面)。
+     *  端到端出生点断言因观察窗口(±1 tick × 0.94 格/步)与旧值不可分,验收以 runClient 目视为准。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 20)
+    fun muzzleGeometryContractTable(helper: GameTestHelper) {
+        val center = Vec3(0.0, 0.0, 0.0)
+        // 平射:dir=+Z、Duo 参数(0.75 外推、枪管平面 0.0625)
+        val flat = TurretBE.muzzlePoint(center, Vec3(0.0, 0.0, 1.0), 0.75, 0.0625)
+        if (flat.distanceToSqr(Vec3(0.0, 0.0625, 0.75)) > 1e-9) {
+            helper.fail("flat muzzle must sit at barrel plane + 0.75 forward, got $flat")
+        }
+        // 仰射 45°(dir y=z=0.7071):水平外推保持 1.25(旧实现随 cos 缩短 → 出生点退回结构内)
+        val s = 0.7071067811865476
+        val up = TurretBE.muzzlePoint(center, Vec3(0.0, s, s), 1.25, 0.0625)
+        if (up.distanceToSqr(Vec3(0.0, 0.0625 + 1.25 * s, 1.25 * s)) > 1e-9) {
+            helper.fail("elevated muzzle must keep fixed horizontal reach, got $up")
+        }
+        helper.succeed()
     }
     /** ⑨ 成员破坏 → 整体拆除:控制器物品 + 余量折回散落(4 铅 → 四格清空)。 */
     @JvmStatic

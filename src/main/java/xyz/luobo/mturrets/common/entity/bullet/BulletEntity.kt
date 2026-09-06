@@ -1,13 +1,14 @@
 package xyz.luobo.mturrets.common.entity.bullet
 
 import net.minecraft.nbt.CompoundTag
+import net.minecraft.world.damagesource.DamageSource
 import net.minecraft.network.syncher.EntityDataSerializers
 import net.minecraft.network.syncher.SynchedEntityData
 import net.minecraft.world.entity.Entity
 import net.minecraft.world.entity.EntityType
 import net.minecraft.world.entity.LivingEntity
 import net.minecraft.world.entity.MoverType
-import net.minecraft.world.entity.monster.Monster
+import net.minecraft.world.entity.player.Player
 import net.minecraft.server.level.ServerLevel
 import net.minecraft.world.level.Level
 import net.minecraft.world.phys.AABB
@@ -17,12 +18,13 @@ import xyz.luobo.mturrets.common.ModEntities
 import xyz.luobo.mturrets.common.Payloads
 import xyz.luobo.mturrets.core.combat.BulletFx
 import xyz.luobo.mturrets.core.combat.BulletType
+import xyz.luobo.mturrets.core.combat.TurretBE
 
 /**
  * 通用飞行弹实体(ADR-0006/0009):单一实体承载全部飞行弹家族,行为差异全在 [BulletType] 数据对象。
  * 吃服务端权威运动(区块/碰撞/存档复用原版实体);客户端不做运动模拟,颜色/大小经同步数据渲染。
  *
- * 只攻击 Monster(ADR-0009 阵营过滤,不伤友好生物与玩家);命中即消失(despawnOnHit,
+ * 只攻击 Enemy(#60,阵营判据与炮台索敌同源,不伤友好生物与玩家);命中即消失(despawnOnHit,
  * 本期无穿透/分裂);寿命走 [BulletType.lifetime],超时消失。瞬时家族(闪电/激光/光束)按
  * ADR-0006 零实体原则另走射线判定,不注册本实体。
  */
@@ -42,6 +44,8 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
     private var hitFx: BulletFx = BulletFx.RING
     private var despawnFx: BulletFx = BulletFx.SMALL
     private var hitColor: Int = 0xFFFFFF
+    /** 击杀归属玩家(#60,服务端瞬态):直击/溅射伤害源记其名下;null = 无主(现状语义)。 */
+    private var damageOwner: Player? = null
 
     /** RGB 颜色 + 顶字节 lifetime(ADR-0010:客户端推导收缩进度;渲染只取 RGB,零新增同步字段) */
     var bulletColor: Int
@@ -57,11 +61,25 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
             entityData.set(DATA_SIZE, value)
         }
 
+    companion object {
+        /** 同步色:int 低 24 位 RGB,顶字节打包 lifetime(ADR-0010,客户端收缩用)。 */
+        val DATA_COLOR = SynchedEntityData.defineId(BulletEntity::class.java, EntityDataSerializers.INT)
+        val DATA_SIZE = SynchedEntityData.defineId(BulletEntity::class.java, EntityDataSerializers.FLOAT)
+        /** 碎片出生免撞时长(2 tick ≈ 2.25 格,足够冲出 4×4 目标的 2 格半径)。 */
+        const val FRAG_GRACE = 2
+    }
+
+    override fun defineSynchedData(builder: SynchedEntityData.Builder) {
+        builder.define(DATA_COLOR, 0xFFFFFF)
+        builder.define(DATA_SIZE, 0.5f)
+    }
+
     /**
      * 服务端初始化:以炮台校准后的方向(已含提前量与散布)发射。
      * [grace] 为出生免撞期:碎片在命中点生成时仍被原目标包围,短暂免撞避免瞬间自消。
+     * [owner] 为击杀归属玩家(#60):破片继承母弹归属(init 时传递,不二次解析)。
      */
-    fun init(bulletType: BulletType, direction: Vec3, grace: Int = 0) {
+    fun init(bulletType: BulletType, direction: Vec3, grace: Int = 0, owner: Player? = null) {
         // lifetime 顶字节打包进同步色(ADR-0010):渲染路径透明,≤255 的数据不变式
         require(bulletType.lifetime in 1..255) { "lifetime (${bulletType.lifetime}) must fit DATA_COLOR alpha byte" }
         damage = bulletType.damage
@@ -77,21 +95,9 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
         despawnFx = bulletType.despawnEffect
         hitColor = bulletType.hitColor
         graceTicks = grace
+        damageOwner = owner
         deltaMovement = direction.scale(bulletType.speed.toDouble())
         syncDirection()
-    }
-
-    companion object {
-        /** 同步色:int 低 24 位 RGB,顶字节打包 lifetime(ADR-0010,客户端收缩用)。 */
-        val DATA_COLOR = SynchedEntityData.defineId(BulletEntity::class.java, EntityDataSerializers.INT)
-        val DATA_SIZE = SynchedEntityData.defineId(BulletEntity::class.java, EntityDataSerializers.FLOAT)
-        /** 碎片出生免撞时长(2 tick ≈ 2.25 格,足够冲出 4×4 目标的 2 格半径)。 */
-        const val FRAG_GRACE = 2
-    }
-
-    override fun defineSynchedData(builder: SynchedEntityData.Builder) {
-        builder.define(DATA_COLOR, 0xFFFFFF)
-        builder.define(DATA_SIZE, 0.5f)
     }
 
     // 子弹生命周期短,状态全部初始化时注入,不持久化
@@ -124,7 +130,7 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
             return
         }
 
-        // 撞方块即消失;撞敌对生物(只打 Monster)也消失——直击列表一次查询、两分支共用(ADR-0010)
+        // 撞方块即消失;撞敌对生物(只打 Enemy,#60)也消失——直击列表一次查询、两分支共用(ADR-0010)
         val direct = queryTargets(sweep.minmax(boundingBox).inflate(0.15))
         if (horizontalCollision || verticalCollision || direct.isNotEmpty()) {
             val origin = if (horizontalCollision || verticalCollision) position()
@@ -136,10 +142,10 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
     /** 命中结算:直击 → 溅射 → 破片,随后消失(直击与溅射独立结算,ADR-0006/#34;origin=命中点)。 */
     private fun impact(direct: List<LivingEntity>, origin: Vec3) {
         val lv = level()
-        // 直击:命中列表由 tick 一次性扫掠查询(ADR-0010),不再二次查询;阵营过滤见查询处(ADR-0009)
+        // 直击:命中列表由 tick 一次性扫掠查询(ADR-0010),不再二次查询;阵营过滤见查询处(#60 Enemy)。
         for (target in direct) {
             if (!target.isAlive) continue
-            target.hurt(lv.damageSources().mobAttack(null), damage)
+            target.hurt(damageSourceFor(lv), damage)
         }
 
         // 原版 hurt 落 10t 无敌帧:同一弹的直击会吞掉紧随的溅射结算,违反「直击+溅射独立结算」;
@@ -148,18 +154,18 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
             target.invulnerableTime = 0
         }
 
-        // 溅射:命中点对 Monster 半径内独立结算,线性衰减 中心 100% → 边缘 40%(Mindustry 公式,#34)
+        // 溅射:命中点对 Enemy(#60)半径内独立结算,线性衰减 中心 100% → 边缘 40%(Mindustry 公式,#34)
         if (splashDamage > 0f && splashRadius > 0f) {
             val radius = splashRadius.toDouble()
             val area = lv.getEntities(this, AABB(origin, origin).inflate(radius)) { entity ->
-                entity is LivingEntity && entity is Monster && entity.isAlive
+                entity is LivingEntity && TurretBE.isHostile(entity) && entity.isAlive
             }
             for (target in area) {
                 if (!target.isAlive) continue
                 val distSqr = target.distanceToSqr(origin)
                 if (distSqr <= radius * radius) {
                     val falloff = 0.4f + 0.6f * (1f - (Math.sqrt(distSqr) / radius).toFloat())
-                    target.hurt(lv.damageSources().mobAttack(null), splashDamage * falloff)
+                    target.hurt(damageSourceFor(lv), splashDamage * falloff)
                 }
             }
         }
@@ -172,7 +178,7 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
                 val dir = Vec3(Math.sin(yaw.toDouble()), 0.0, Math.cos(yaw.toDouble()))
                 val bullet = ModEntities.TURRET_BULLET.get().create(lv) ?: return@repeat
                 bullet.moveTo(origin.x, origin.y, origin.z, 0f, 0f)
-                bullet.init(frag, dir, grace = FRAG_GRACE)
+                bullet.init(frag, dir, grace = FRAG_GRACE, owner = damageOwner)
                 lv.addFreshEntity(bullet)
             }
         }
@@ -182,13 +188,25 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
     }
 
     /**
-     * 命中/到寿 FX 发送(#62):仅服务端发(payload 纯客户端表现)。
-     * 暂关,未来实现。
+     * 伤害源(#60):装填玩家在场则记其名下(killed_by_player 掉落与经验球生效——原版 hurt 会把
+     * 玩家伤害源的击杀者写进目标的 lastHurtByPlayer);无主回落 mobAttack(现状语义)。
      */
+    private fun damageSourceFor(lv: Level): DamageSource {
+        val src = lv.damageSources()
+        val owner = damageOwner
+        return if (owner != null) {
+            DamageSource(src.playerAttack(owner).typeHolder(), this, owner)
+        } else {
+            DamageSource(src.mobAttack(null).typeHolder(), this)
+        }
+    }
+
+    /** 命中/到寿 FX 发送(#62):仅服务端发(payload 纯客户端表现)。暂关,未来实现。 */
     private fun sendFx(lv: Level, fx: BulletFx, at: Vec3) {
         val sl = lv as? ServerLevel ?: return
         // Payloads.send(sl, BulletFxPayload(fx, hitColor, at))
     }
+
     /** 朝向同步:yRot/xRot 携带飞行方向,客户端视线轴滚转对齐用(原版 move 包同步,零新增字段)。 */
     private fun syncDirection() {
         val dx = deltaMovement.x
@@ -199,10 +217,10 @@ class BulletEntity(entityType: EntityType<*>, level: Level) : Entity(entityType,
         setXRot(Math.toDegrees(Math.atan2(dy, horizontal)).toFloat())
     }
 
-    /** 敌对生物查询(ADR-0009 阵营过滤):直击候选,一次查询供撞墙/撞怪两分支共用(ADR-0010)。 */
+    /** 敌对生物查询(#60 阵营过滤 = Enemy):直击候选,一次查询供撞墙/撞怪两分支共用(ADR-0010)。 */
     private fun queryTargets(box: AABB): List<LivingEntity> =
         level().getEntities(this, box) { entity ->
-            entity is LivingEntity && entity is Monster && entity.isAlive
+            entity is LivingEntity && TurretBE.isHostile(entity) && entity.isAlive
         }.filterIsInstance<LivingEntity>()
 
     /** 路径上最早被穿过的候选 → 命中点(slab 进入点);无候选穿越返回 null。 */

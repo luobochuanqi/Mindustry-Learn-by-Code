@@ -61,10 +61,17 @@ object StructureDataProvider : IBlockComponentProvider {
                 tooltip.add(Component.translatable("jade.mturrets.health", be.health, be.spec.health))
             }
             is KilnBE -> {
-                tooltip.add(Component.translatable("jade.mturrets.progress", be.progressPercent))
-                // 供给比例只在棕停(<100%)时有信息量:满速是常态,不值得占一行
+                // #65:棕停时供电比例并入进度行——"变慢"与原因同屏,不再占独立一行悬在半空
                 if (be.supplyRatio < 1f) {
-                    tooltip.add(Component.translatable("jade.mturrets.supply", percent(be.supplyRatio)))
+                    tooltip.add(
+                        Component.translatable(
+                            "jade.mturrets.progress_supply",
+                            be.progressPercent,
+                            percent(be.supplyRatio)
+                        )
+                    )
+                } else {
+                    tooltip.add(Component.translatable("jade.mturrets.progress", be.progressPercent))
                 }
             }
             is BatteryBE -> {

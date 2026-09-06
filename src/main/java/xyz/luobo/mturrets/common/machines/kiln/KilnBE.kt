@@ -136,7 +136,11 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         return if (fallback >= 0) cap.extractItem(fallback, cap.getStack(fallback).count, false) else null
     }
 
-    /** 运行态(客户端 hum 消费,#57):加工中(进度未结算)。服务端权威,切换时随 update tag 同步。 */
+    /**
+     * 运行态(客户端 hum 消费,#57/#67):语义 = "本 tick 进度实际推进"——棕停慢速仍在转 → 响;
+     * 完全断电/缺料缺水冻结(进度原地) → 淡出。服务端权威,切换时随 update tag 同步;
+     * 唯一写入点 = [tickServer] 的进度差判定,各停摆分支无需各自维护标志。
+     */
     override var isRunning: Boolean = false
         private set
 
@@ -149,12 +153,22 @@ class KilnBE(pos: BlockPos, state: BlockState) :
     }
 
     /**
-     * 服务端 tick(由 [KilnBlock] 排程):空转查配方、水检过则开工;
-     * 加工中按进度均摊扣能,满程结算产出。本地缓冲不足时向图申领(#30):
-     * 无图维持 #33 创造注入语义(停摆、进度保持);有图按供电比例棕停推进。
+     * 服务端 tick:推进本体拆入 [tickProgress],运行态以进度差为准(#67)——
+     * 断电/缺料/空转路径原地 return,进度不动即淡出;结算 tick 进度归零仍算"有推进"。
      */
     fun tickServer() {
         val lv = level ?: return
+        val before = progress
+        tickProgress(lv)
+        setRunning(progress != before)
+    }
+
+    /**
+     * 加工推进(#33/#30):空转查配方、水检过则开工;加工中按进度均摊扣能,满程结算产出。
+     * 本地缓冲不足时向图申领:无图维持 #33 创造注入语义(停摆、进度保持);
+     * 有图按供电比例棕停推进——定点记账防漂移。
+     */
+    private fun tickProgress(lv: Level) {
         // 产物自动弹出(#73):每 tick 把产物向四邻居标准 IItemHandler 转移,收不走留在 Buffer(满载停摆)。
         // 结算产出后下一 tick 自会弹出;转移零分配、单机低成本。
         if (xyz.luobo.mturrets.core.machine.ProductEjector.eject(lv, worldPosition, itemCapability, ::isProductItem)) {
@@ -164,12 +178,11 @@ class KilnBE(pos: BlockPos, state: BlockState) :
             val recipe = lookupRecipe(lv) ?: return
             // 启动校验:水为必需输入,不足即不开工(停摆、不倒退)
             if (fluidCapability.currentFluid.amount < WATER_PER_CRAFT) return
-            setChanged()
             processingTime = recipe.processingTime
             consumedEnergy = 0
             progress = PROGRESS_UNIT
             supplyRatio = 1f
-            setRunning(true)
+            setChanged()
             return
         }
 
@@ -241,7 +254,6 @@ class KilnBE(pos: BlockPos, state: BlockState) :
         consumedEnergy = 0
         cachedRecipe = null
         recipeKnown = false
-        setRunning(false) // 进度归零 = 停摆,同步客户端 hum 淡出
         setChanged()
     }
 

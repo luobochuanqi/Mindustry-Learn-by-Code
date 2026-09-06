@@ -14,6 +14,7 @@
   "block.mturrets.scatter_structural": "分裂 成员",
   "jade.mturrets.ammo": "弹药: %s/%s",
   "jade.mturrets.progress": "进度: %s%%",
+  "jade.mturrets.progress_supply": "进度: %s%% (供电 %s%%)",
   "jade.mturrets.health": "生命: %s/%s",
   "jade.mturrets.production": "生产: %s FE/t",
   "jade.mturrets.fuel": "燃烧: %s tick / 燃料: %s",

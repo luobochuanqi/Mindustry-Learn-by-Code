@@ -34,6 +34,8 @@ class DuoTurretBE(pos: BlockPos, state: BlockState) :
             health = 250,
             coolantReloadMultiplier = 1.5f,
             coolantPerShot = 10,
+            // #63:炮管几何 y 7..11(轴 9/16=0.5625)相对块中心 0.5 → +0.0625
+            muzzleHeight = 0.0625,
             ammoTypes = listOf(
                 AmmoType(
                     item = ModItems.getMaterial(Materials.COPPER).get(),

@@ -166,7 +166,7 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         this.add("jade.mturrets.ammo", "Ammo: %s/%s")
         this.add("jade.mturrets.progress", "Progress: %s%%")
         this.add("jade.mturrets.health", "Health: %s/%s")
-        this.add("jade.mturrets.supply", "Supply: %s%%")
+        this.add("jade.mturrets.progress_supply", "Progress: %s%% (supply %s%%)")
         this.add("jade.mturrets.energy", "Energy: %s/%s FE")
         this.add("jade.mturrets.production", "Production: %s FE/t")
         this.add("jade.mturrets.fuel", "Burning: %s t / Fuel: %s")

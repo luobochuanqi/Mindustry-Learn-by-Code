@@ -2,13 +2,15 @@ package xyz.luobo.mturrets.core.combat
 
 import net.minecraft.core.BlockPos
 import net.minecraft.core.particles.ParticleTypes
+import net.minecraft.server.level.ServerLevel
 import net.minecraft.core.HolderLookup
 import net.minecraft.nbt.CompoundTag
 import net.minecraft.util.Mth
 import net.minecraft.world.entity.LivingEntity
-import net.minecraft.world.entity.monster.Monster
+import net.minecraft.world.entity.player.Player
 import net.minecraft.world.entity.FlyingMob
 import net.minecraft.world.entity.monster.Blaze
+import net.minecraft.world.entity.monster.Enemy
 import net.minecraft.world.item.ItemStack
 import net.minecraft.world.level.Level
 import net.minecraft.world.level.ClipContext
@@ -27,19 +29,19 @@ import xyz.luobo.mturrets.core.capability.impl.FluidCapabilityImpl
 import xyz.luobo.mturrets.core.structure.Blueprint
 import xyz.luobo.mturrets.core.structure.BlueprintAnchor
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
+import java.util.UUID
 import kotlin.math.abs
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sign
 import kotlin.math.sqrt
-
 /**
  * 新范式炮台锚点 BE(ADR-0009,#31):单层承载索敌/旋转/装填/开火管线、Magazine 单位账、
  * Coolant 内罐与 Health。
  *
  * 每 tick 时序(对位 ADR-0009):目标校验 → 装填累加(封顶 reload;Coolant 生效 ×1.5)→
- * 每 7t 索敌(Monster-only、最近优先)→ 旋转逼近目标角(rotateSpeed 封顶)→ 开火门
+ * 每 7t 索敌(Enemy-only、最近优先,#60)→ 旋转逼近目标角(rotateSpeed 封顶)→ 开火门
  * (装填满 ∧ 入 shootCone)→ 扳机扣 1 单位 + 造弹(各发共用扳机时刻瞄准角)→ curRecoil 衰减。
  * 装填与瞄准解耦:无目标照常装填。
  *
@@ -61,9 +63,6 @@ abstract class TurretBE(
         /** Coolant 内罐容量(mB):一桶水恰好充满。 */
         const val WATER_TANK_CAPACITY = 1000
 
-        /** 枪口高度(块内局部 y):与 barrel 部件齐平。 */
-        const val MUZZLE_HEIGHT = 0.44
-
         /** 后坐衰减(每 tick 递减量)。 */
         const val RECOIL_DECAY = 0.1f
 
@@ -82,20 +81,16 @@ abstract class TurretBE(
         }
 
         /**
-         * 枪口点:结构中心沿 [toward] 的水平方向外推 [distance]、y = 结构中心 + MUZZLE_HEIGHT - 0.5。
-         * 起点须落在自身结构方块之外的空气里,否则 clip 自命中 / 弹头出生即撞墙。
+         * 枪口点(#63):结构中心沿含俯仰的 [dir] 外推 [distance]、锚在枪管平面高度 [muzzleHeight]。
+         * 水平外推距离固定(不随俯仰缩短),保证任意仰角下起点都在自身结构方块之外,否则 clip 自命中 /
+         * 弹头出生即撞墙——[fireMuzzleDistance]/[losMuzzleDistance] 的取值保证这点。
+         * 纯函数(不触 level):发射/LOS/#77 可视化/枪口闪光共用一份几何。
          */
-        fun muzzlePoint(center: Vec3, toward: Vec3, distance: Double): Vec3 {
-            val horizontal = Vec3(toward.x - center.x, 0.0, toward.z - center.z).normalize()
-            return center.add(
-                horizontal.x * distance,
-                (MUZZLE_HEIGHT - 0.5).toDouble(),
-                horizontal.z * distance
-            )
-        }
+        fun muzzlePoint(center: Vec3, dir: Vec3, distance: Double, muzzleHeight: Double): Vec3 =
+            center.add(dir.x * distance, muzzleHeight + dir.y * distance, dir.z * distance)
 
         /**
-         * LOS 射线起点外推距离 = 结构外接圆半径(size/2·√2) + 0.25 间隙——必须超过角点半径,否则 2×2
+         * LOS 射线/可视化起点外推距离 = 结构外接圆半径(size/2·√2) + 0.25 间隙——必须超过角点半径,否则 2×2
          * 时对角方位的射线起点落在角成员方块内,clip 自命中 → LOS 恒 false(致盲);1×1 时 0.957 > 0.707 半对角。
          */
         fun losMuzzleDistance(size: Int): Double = (size / 2f) * SQRT2 + 0.25
@@ -125,6 +120,10 @@ abstract class TurretBE(
         fun isAirUnit(entity: LivingEntity): Boolean =
             entity is FlyingMob || entity.isNoGravity() || entity is Blaze
 
+        /** 阵营判据(#60):索敌/直击/溅射/破片四路径共用——原版 Enemy = "玩家之敌",
+         * 覆盖 Monster 分支、FlyingMob 分支(恶魂/幻翼)与直挂 Mob 的史莱姆/岩浆怪。 */
+        fun isHostile(entity: LivingEntity): Boolean = entity is Enemy
+
         /** 对空/对地过滤:该实体是否落入本炮台可锁类别(服务端索敌与 #77 可视化共用一份)。 */
         fun acceptsCategory(entity: LivingEntity, targetAir: Boolean, targetGround: Boolean): Boolean =
             (targetAir && isAirUnit(entity)) || (targetGround && !isAirUnit(entity))
@@ -138,6 +137,15 @@ abstract class TurretBE(
     /** 供弹能力槽面(#73 自动化供弹):把标准 IItemHandler 翻译到 Magazine 单位账。 */
     val magazineHandler = MagazineItemHandler(this)
 
+    /**
+     * 最后装填者(#60 击杀归属):炮台击杀记在喂弹人头上——原版 killed_by_player 掉落
+     * (烈焰棒/恶魂之泪)与经验球都挂玩家归属。手持/能力两条装弹路径都刷新;从未装弹为 null。
+     */
+    var loaderId: UUID? = null
+        private set
+    /** 装填者实体引用(服务端瞬态):本 session 内归属直取;重载/掉线后按 [loaderId] 查在线玩家。 */
+    private var loaderRef: Player? = null
+
     /** 内罐只收水(Coolant;缺液只掉速不阻火,ADR-0009)。 */
     override val fluidCapability: FluidCapabilityImpl =
         createFluidCapability(
@@ -149,7 +157,7 @@ abstract class TurretBE(
 
     // ===== 运行状态(服务端权威;saveAdditional 持久化) =====
 
-    /** 当前锁定目标(Monster-only)。 */
+    /** 当前锁定目标(Enemy-only,#60)。 */
     var target: LivingEntity? = null
         private set
 
@@ -193,6 +201,8 @@ abstract class TurretBE(
     /** 队列各发共用扳机时刻的瞄准方向与枪口(ADR-0009「各发共用扳机时刻瞄准角」)。 */
     private var burstDir = Vec3.ZERO
     private var burstMuzzle = Vec3.ZERO
+    /** 队列各发共用的击杀归属(扳机时刻解析,#60)。 */
+    private var burstOwner: Player? = null
 
     /** 队列弹种 = 扳机时刻的尾弹种(扣账后弹仓可能已变,队列不跟随)。 */
     private var burstType: BulletType? = null
@@ -204,10 +214,19 @@ abstract class TurretBE(
     fun ammoTypeFor(item: net.minecraft.world.item.Item): AmmoType? =
         spec.ammoTypes.firstOrNull { it.item == item }
 
-    /** 部分装弹:按剩余容量向下取整到整件,返回接受件数(0 = 整堆拒收,非本炮台弹药同为 0)。 */
-    fun tryLoadAmmo(stack: ItemStack): Int {
+    /** 部分装弹:按剩余容量向下取整到整件,返回接受件数(0 = 整堆拒收,非本炮台弹药同为 0)。
+     * 成功入账即刷新击杀归属(#60)并发同步包(#61,Jade 读数即时)。 */
+    fun tryLoadAmmo(stack: ItemStack, loader: Player? = null): Int {
         val ammo = ammoTypeFor(stack.item) ?: return 0
-        return magazine.load(stack.item, stack.count, ammo.unitMultiplier)
+        val accepted = magazine.load(stack.item, stack.count, ammo.unitMultiplier)
+        if (accepted > 0) {
+            if (loader != null) {
+                loaderRef = loader
+                loaderId = loader.uuid
+            }
+            syncData()
+        }
+        return accepted
     }
 
     override fun contentsToScatter(destroyed: Boolean): List<ItemStack> {
@@ -223,7 +242,7 @@ abstract class TurretBE(
 
         if (target != null && !isValidTarget(target!!)) target = null
 
-        // 每 7t 索敌(ADR-0009;首 tick 0%7==0 即找):Monster-only、射程内最近者优先
+        // 每 7t 索敌(ADR-0009;首 tick 0%7==0 即找):Enemy-only(#60)、射程内最近者优先
         if (targetTimer++ % TARGET_INTERVAL == 0) {
             findTarget(lv)
         }
@@ -273,7 +292,7 @@ abstract class TurretBE(
                 burstRemaining--
                 burstDelay = spec.shotDelay
                 val queuedType = burstType
-                if (queuedType != null) spawnBullet(lv, queuedType, burstMuzzle, burstDir)
+                if (queuedType != null) spawnBullet(lv, queuedType, burstMuzzle, burstDir, burstOwner)
             }
         }
 
@@ -287,11 +306,12 @@ abstract class TurretBE(
     // ===== 索敌 =====
 
     /**
-     * 目标过滤(#43):只打 Monster(ADR-0009)+ 对空/对地类别([acceptsCategory])+ 射程内 + 有视线。
+     * 目标过滤(#43/#60):只打 Enemy([isHostile],飞行怪/史莱姆不再被 Monster 类闸误排)+
+     * 对空/对地类别([acceptsCategory])+ 射程内 + 有视线。
      * 谓词末位调用 hasLosTo:短求值保证 clip 只在通过廉价过滤的候选上跑。
      */
     private fun isValidTarget(entity: LivingEntity): Boolean =
-        entity is Monster && entity.isAlive && !entity.isRemoved &&
+        isHostile(entity) && entity.isAlive && !entity.isRemoved &&
             acceptsCategory(entity, spec.targetAir, spec.targetGround) &&
             entity.distanceToSqr(anchorCenter()) <= spec.range * spec.range &&
             hasLosTo(entity)
@@ -324,9 +344,13 @@ abstract class TurretBE(
             ?.type == HitResult.Type.MISS
     }
 
-    /** LOS 射线起点:结构中心朝目标外推 [losMuzzleDistance](几何见 companion,与 #77 可视化共用)。 */
-    private fun muzzleFor(tgt: Vec3): Vec3 =
-        muzzlePoint(anchorCenter(), tgt, losMuzzleDistance(spec.size))
+    /** LOS 射线起点:结构中心朝目标方向外推 [losMuzzleDistance](几何见 companion,与 #77 可视化共用)。 */
+    private fun muzzleFor(tgt: Vec3): Vec3 {
+        val center = anchorCenter()
+        val horizontal = Vec3(tgt.x - center.x, 0.0, tgt.z - center.z)
+        val dir = if (horizontal.lengthSqr() == 0.0) Vec3(0.0, 0.0, 1.0) else horizontal.normalize()
+        return muzzlePoint(center, dir, losMuzzleDistance(spec.size), spec.muzzleHeight)
+    }
 
     // ===== 旋转与瞄准 =====
 
@@ -354,9 +378,11 @@ abstract class TurretBE(
     }
 
     private fun pitchTowards(pos: Vec3): Float {
-        val dx = pos.x - anchorCenter().x
-        val dz = pos.z - anchorCenter().z
-        val dy = pos.y - (worldPosition.y + MUZZLE_HEIGHT)
+        val center = anchorCenter()
+        val dx = pos.x - center.x
+        val dz = pos.z - center.z
+        // 锚在枪管平面(结构中心 + muzzleHeight,#63);旧值取锚点格 y + 常数,2×2 时偏低半格。
+        val dy = pos.y - (center.y + spec.muzzleHeight)
         val horizontal = sqrt(dx * dx + dz * dz)
         // 负 = 向上(visual 直接消费)
         return -Math.toDegrees(atan2(dy, horizontal)).toFloat()
@@ -371,23 +397,32 @@ abstract class TurretBE(
 
     // ===== 开火 =====
 
+    /** 归属解析(#60):瞬态引用在场(本 session 装弹)优先,否则按 UUID 查在线玩家;皆无 = 无主(现状语义)。 */
+    private fun resolveOwner(lv: Level): Player? {
+        loaderRef?.takeIf { !it.isRemoved }?.let { return it }
+        val id = loaderId ?: return null
+        return (lv as? ServerLevel)?.server?.playerList?.getPlayer(id)
+    }
+
     private fun fire(lv: Level, tgt: LivingEntity) {
         val entry = magazine.tail ?: return
         val ammo = spec.ammoTypes.firstOrNull { it.item == entry.item } ?: return
+        val owner = resolveOwner(lv)
         val aim = aimPoint(tgt)
-        // 枪口:结构中心沿瞄准方向外推(几何见 companion [muzzlePoint],与 LOS/可视化共用),
-        // 保证出生点在空气(不与自己方块碰撞)
-        val muzzle = muzzlePoint(anchorCenter(), aim, fireMuzzleDistance(spec.size))
-        var dir = aim.subtract(muzzle).normalize()
-        dir = jitter(dir, spec.inaccuracy + ammo.bullet.inaccuracy, lv.random)
+        val center = anchorCenter()
+        // 枪口:结构中心 → 瞄准点的单位方向含俯仰;出膛点沿该方向外推出格(#63,几何见 companion)。
+        val dir = aim.subtract(center).normalize()
+        val muzzle = muzzlePoint(center, dir, fireMuzzleDistance(spec.size), spec.muzzleHeight)
+        val shotDir = jitter(dir, spec.inaccuracy + ammo.bullet.inaccuracy, lv.random)
 
         // 点射排程:首发出膛 + 队列 (shots-1) 发,共用扳机时刻瞄准方向(ADR-0009;#34 首用)
-        spawnBullet(lv, ammo.bullet, muzzle, dir)
+        spawnBullet(lv, ammo.bullet, muzzle, shotDir, owner)
         burstRemaining = spec.shots - 1
         burstDelay = if (burstRemaining > 0) spec.shotDelay else 0f
-        burstDir = dir
+        burstDir = shotDir
         burstMuzzle = muzzle
         burstType = ammo.bullet
+        burstOwner = owner
 
         // 扳机扣账(点射各发共用同一次扣账,ADR-0009)
         magazine.drainOne()
@@ -400,10 +435,10 @@ abstract class TurretBE(
         syncData() // 开火计数器脉冲即时上报(枪管动画)
     }
 
-    private fun spawnBullet(lv: Level, type: BulletType, muzzle: Vec3, dir: Vec3) {
+    private fun spawnBullet(lv: Level, type: BulletType, muzzle: Vec3, dir: Vec3, owner: Player?) {
         val bullet = ModEntities.TURRET_BULLET.get().create(lv) ?: return
         bullet.moveTo(muzzle.x, muzzle.y, muzzle.z, 0f, 0f)
-        bullet.init(type, dir)
+        bullet.init(type, dir, owner = owner)
         lv.addFreshEntity(bullet)
         // 枪声(#57):每发一次,服务端在枪口定位播放,音调 0.8~1.2 / 音量 0.9~1.0 随机抖动,
         // 对齐 Mindustry SoundEffect;spawnBullet 对首射与点射各发各调一次,天然是"每发"入口。
@@ -424,16 +459,14 @@ abstract class TurretBE(
         val fire = fireCount
         if (fire == lastMuzzleFire) return
         lastMuzzleFire = fire
-        // 枪口:结构中心沿当前 yaw 水平外推 + pitch 抬升(与 fire() 的 muzzle = center + facing×dist 同源)。
-        // 项目约定 yaw = atan2(dx, dz)(见 syncDirection),故 facing = (sin(yaw), 0, cos(yaw));pitch 负=向上。
+        // 枪口:与 fire() 的出生点同一函数(方向取当前 yaw/pitch,水平外推固定 + 枪管平面高度)——
+        // 此前手写式漏了 pitch 的水平余弦缩放、且锚在旧 MUZZLE_HEIGHT,仰射时闪光与弹分离(#63)。
         val center = anchorCenter()
-        val yawRad = (Mth.DEG_TO_RAD * yaw).toDouble()
-        val pitchRad = (Mth.DEG_TO_RAD * pitch).toDouble()
-        val dist = (spec.size / 2f + 0.25f).toDouble()
-        val mz = center.add(
-            Math.sin(yawRad) * dist,
-            (MUZZLE_HEIGHT - 0.5).toDouble() + Math.sin(pitchRad) * dist,
-            Math.cos(yawRad) * dist
+        val mz = muzzlePoint(
+            center,
+            directionFromAngles(yaw, pitch),
+            fireMuzzleDistance(spec.size),
+            spec.muzzleHeight
         )
         lv.addParticle(ParticleTypes.FLAME, mz.x, mz.y, mz.z, 0.0, 0.05, 0.0)
         lv.addParticle(ParticleTypes.SMOKE, mz.x, mz.y, mz.z, 0.0, 0.05, 0.0)
@@ -464,6 +497,7 @@ abstract class TurretBE(
         totalShots = tag.getLong("turret_shots")
         fireCount = tag.getLong("turret_fire")
         health = tag.getInt("turret_health").coerceAtLeast(1)
+        loaderId = if (tag.hasUUID("turret_loader")) tag.getUUID("turret_loader") else null
         magazine.load(tag, registries)
     }
 
@@ -477,6 +511,7 @@ abstract class TurretBE(
         tag.putLong("turret_shots", totalShots)
         tag.putLong("turret_fire", fireCount)
         tag.putInt("turret_health", health)
+        loaderId?.let { tag.putUUID("turret_loader", it) }
         magazine.save(tag, registries)
     }
 

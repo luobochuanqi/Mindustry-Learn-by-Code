@@ -65,7 +65,7 @@ class DuoBlock : BlueprintAnchorBlock(structureProperties()) {
         }
         // 手持弹药右键装弹:按剩余容量向下取整到整件,部分入仓,手持堆按接受件数缩小(#46 取代 #31 整堆拒收)
         if (turret.ammoTypeFor(stack.item) != null) {
-            val accepted = turret.tryLoadAmmo(stack)
+            val accepted = turret.tryLoadAmmo(stack, player)
             return if (accepted > 0) {
                 stack.shrink(accepted)
                 ItemInteractionResult.CONSUME
