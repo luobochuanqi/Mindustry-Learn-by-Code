@@ -32,7 +32,7 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 ### Changed
 
 - Kiln's internal energy buffer is now one craft's worth (500 FE) instead of twenty: it no longer acts as a hidden battery, so grid power (and the brownout ratio it shows) reflects what actually flows from the network. External energy injection still works.
-- Bullets now render as proper two-layer shells (Mindustry's back/front sprite pair, tinted per ammo type) that face their direction of flight instead of flat white squares, and visibly shrink away right before despawning instead of popping out of existence. Each bullet now carries a soft additive glow halo in its ammo color — a Mindustry-style bloom without any shader mod — and the shells render at their true proportions, about 2.5× larger than before and matching Mindustry's copper slug size.
+- Bullets now render as proper two-layer shells (Mindustry's back/front sprite pair, tinted per ammo type) with the short side facing the direction of flight, and visibly shrink away right before despawning instead of popping out of existence. Each bullet carries a bright additive bloom — an ammo-colored halo plus a white-hot core drawn over the shell (the vanilla eyes-channel trick, no shader mod needed) — sized to Mindustry's copper slug proportions.
 
 ### Removed
 
