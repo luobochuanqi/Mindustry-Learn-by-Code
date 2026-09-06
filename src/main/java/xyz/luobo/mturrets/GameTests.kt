@@ -2115,6 +2115,27 @@ object ModGameTests {
         }
         helper.succeed()
     }
+
+    /** #75 旋转速度换算护栏:Duo/Scatter 均按 ADR-0009「角速度 ×3」换算(上游 10f/15f),防再蹈漏乘。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 20)
+    fun turretRotateSpeedFollowsAdr0009Scaling(helper: GameTestHelper) {
+        val duoSpec = DuoTurretBE(BlockPos.ZERO, ModBlocks.DUO_BLOCK.get().defaultBlockState()).spec
+        val scatterSpec = ScatterTurretBE(BlockPos.ZERO, ModBlocks.SCATTER.get().defaultBlockState()).spec
+        if (duoSpec.rotateSpeed != 30f) helper.fail("duo rotateSpeed must be 30 (10×3 ADR-0009), got ${duoSpec.rotateSpeed}")
+        if (scatterSpec.rotateSpeed != 45f) helper.fail("scatter rotateSpeed must be 45 (15×3 ADR-0009), got ${scatterSpec.rotateSpeed}")
+        helper.succeed()
+    }
+
+    /** #76 位置平滑回归护栏:子弹每 tick 广播(updateInterval=1)→ vanilla partialTick 插值全程生效。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 20)
+    fun bulletUpdateIntervalOneForSmoothRendering(helper: GameTestHelper) {
+        if (ModEntities.TURRET_BULLET.get().updateInterval() != 1) {
+            helper.fail("turret bullet must broadcast every tick (updateInterval=1) for smooth rendering, got " + ModEntities.TURRET_BULLET.get().updateInterval())
+        }
+        helper.succeed()
+    }
     /** ⑨ 成员破坏 → 整体拆除:控制器物品 + 余量折回散落(4 铅 → 四格清空)。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 100)

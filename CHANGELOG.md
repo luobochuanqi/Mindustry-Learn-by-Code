@@ -34,6 +34,8 @@ Current builds target Minecraft 1.21.1 on NeoForge 21.1.248.
 
 - Kiln's internal energy buffer is now one craft's worth (500 FE) instead of twenty: it no longer acts as a hidden battery, so grid power (and the brownout ratio it shows) reflects what actually flows from the network. External energy injection still works.
 - Bullets now render as proper two-layer shells (Mindustry's back/front sprite pair, tinted per ammo type) with the short side facing the direction of flight, and visibly shrink away right before despawning instead of popping out of existence. Each bullet carries a bright additive bloom — an ammo-colored halo plus a white-hot core drawn over the shell (the vanilla eyes-channel trick, no shader mod needed) — sized to Mindustry's copper slug proportions.
+- Scatter's barrels now turn three times faster (45° per tick, up from 15°), matching the "angular speed ×3" scaling rule every other turret stat follows (and Mindustry's own 15f value for Scatter) — the anti-air gun tracks fast targets instead of visibly lagging behind them.
+- In-flight bullets now glide smoothly instead of stepping in short hops: each one reports its position every tick, so the client can interpolate a continuous path between ticks.
 
 ### Removed
 
