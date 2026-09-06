@@ -45,6 +45,13 @@ repositories {
             includeGroup("mezz.jei")
         }
     }
+    maven {
+        name = "CurseForge"
+        url = uri("https://cursemaven.com")
+        content {
+            includeGroup("curse.maven")
+        }
+    }
 }
 
 base {
@@ -115,6 +122,7 @@ dependencies {
     runtimeOnly(libs.flywheel)
     implementation(libs.jade)
     runtimeOnly(libs.jei)
+    runtimeOnly("curse.maven:industrial-platform-1350900:8157754")
 }
 
 val generateModMetadata = tasks.register("generateModMetadata", ProcessResources::class.java) {
