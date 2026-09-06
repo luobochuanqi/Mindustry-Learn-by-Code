@@ -238,6 +238,18 @@ object EventHandler {
             ModBlocks.DRILL_STRUCTURAL.get()
         )
 
+        // 钻头成员格流体路由回锚点内罐(#58:Scatter 有专门 Coolant 路由,钻头同有水位加成罐,漏配致
+        // Jade 内建流体 provider 读不到成员格——主方块直读 BE 有显示、成员格无,成员面灌水也不通)
+        event.registerBlock(
+            Capabilities.FluidHandler.BLOCK,
+            { level, pos, state, _, _ ->
+                val anchorPos = pos.subtract(StructuralBlock.decodeOffset(state))
+                (level.getBlockEntity(anchorPos) as? DrillBE)?.fluidCapability
+            },
+            ModBlocks.DRILL_STRUCTURAL.get()
+        )
+
+
         // Scatter(#34/#73):成员格流体/弹药路由回锚点(Coolant 内罐 + 供弹能力槽面,装水/供弹经成员面可插任意成员格)
         event.registerBlock(
             Capabilities.ItemHandler.BLOCK,

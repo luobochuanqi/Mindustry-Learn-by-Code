@@ -1415,6 +1415,26 @@ object ModGameTests {
         }
     }
 
+    /** ⑥c:成员格流体路由——经成员面灌水解析回锚点内罐(Jade 内建流体 provider 依赖此),
+     *  修复钻头漏配 FluidHandler 成员路由(#58:Scatter 有、钻头无 → 成员格不显示储量)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 120)
+    fun drillMemberRoutesFluidToAnchor(helper: GameTestHelper) {
+        val anchorPos = BlockPos(1, 2, 1)
+        val memberPos = BlockPos(2, 2, 2)
+        helper.setBlock(anchorPos, ModBlocks.DRILL.get())
+        helper.runAfterDelay(5) {
+            val cap = helper.level.getCapability(Capabilities.FluidHandler.BLOCK, helper.absolutePos(memberPos), null)
+                ?: throw IllegalStateException("no fluid capability at drill member")
+            val filled = cap.fill(FluidStack(Fluids.WATER, 1000), net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction.EXECUTE)
+            if (filled <= 0) helper.fail("drill member must accept water into the anchor tank")
+            val tank = (helper.getBlockEntity(anchorPos) as DrillBE).fluidCapability.currentFluid.amount
+            if (tank != filled) helper.fail("member-filled water must land in the anchor tank, tank=$tank filled=$filled")
+            helper.succeed()
+        }
+    }
+
+
     /** ⑥b:成员格交互代理——右键成员 = 右键锚点:手持非流体 FAIL、空手取出 CONSUME(玩家视角成员与锚点无区别)。 */
     @JvmStatic
     @GameTest(template = "empty3x3", timeoutTicks = 140)
