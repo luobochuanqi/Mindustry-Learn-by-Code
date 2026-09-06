@@ -38,6 +38,9 @@ import xyz.luobo.mturrets.common.power.BatteryBE
 import xyz.luobo.mturrets.common.machines.kiln.KilnBE
 import xyz.luobo.mturrets.common.turrets.DuoTurretBE
 import xyz.luobo.mturrets.common.turrets.ScatterTurretBE
+import xyz.luobo.mturrets.common.power.PowerNodeBE
+import xyz.luobo.mturrets.core.power.PowerLinks
+import xyz.luobo.mturrets.core.power.PowerMemberBE
 import xyz.luobo.mturrets.core.combat.BulletType
 import xyz.luobo.mturrets.core.combat.TurretBE
 import xyz.luobo.mturrets.core.structure.StructuralBlock
@@ -720,6 +723,159 @@ object ModGameTests {
             if (countDrops(helper, genPos, generatorCoal) != 7) {
                 helper.fail("7 unburnt coal must scatter (burning coal excluded), got ${countDrops(helper, genPos, generatorCoal)}")
             }
+        }
+    }
+
+    // 电力节点无线链路(#69):跨格接线 + 激光数据面(服务端可观测 = 连通/分裂/绝缘/上限/自动补链)
+
+    /** 取节点 BE(供链路断言;直接经 BE 读 links,避免依赖客户端事件面)。 */
+    private fun nodeBE(helper: GameTestHelper, pos: BlockPos): PowerNodeBE =
+        helper.getBlockEntity(pos) as? PowerNodeBE
+            ?: throw IllegalStateException("no PowerNodeBE at $pos")
+
+    /** 放置自动补链:节点放下即在范围内(邻近)自动连上电源,拓扑连通。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun nodeAutolinksOnPlace(helper: GameTestHelper) {
+        val sourcePos = BlockPos(0, 1, 1)
+        val nodePos = BlockPos(1, 1, 1)
+        helper.setBlock(sourcePos, ModBlocks.POWER_SOURCE.get())
+        helper.setBlock(nodePos, ModBlocks.POWER_NODE.get())
+
+        helper.runAfterDelay(5) {
+            val node = nodeBE(helper, nodePos)
+            if (node.links.isEmpty()) {
+                helper.fail("node must autolink to the adjacent source on placement")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** 无线桥接:显式建链 source-nodeA(相邻)与 nodeB-kiln(相邻),nodeA-nodeB 隔空(非相邻)仅靠
+     * 无线链路相连——source 必须经这条无线一跳供到远端窑炉(先清空放置自动补链,排除直连干扰)。 */
+    @JvmStatic
+    @GameTest(template = "empty4x4", timeoutTicks = 400)
+    fun wirelessNodeBridgesRemoteKiln(helper: GameTestHelper) {
+        val sourcePos = BlockPos(0, 1, 0)
+        val nodeAPos = BlockPos(1, 1, 0)
+        val nodeBPos = BlockPos(3, 1, 2) // 与 nodeA 相距 (2,0,2):非相邻、但在无线范围 6 内
+        val kilnPos = BlockPos(3, 1, 3)
+        helper.setBlock(sourcePos, ModBlocks.POWER_SOURCE.get())
+        helper.setBlock(nodeAPos, ModBlocks.POWER_NODE.get())
+        helper.setBlock(nodeBPos, ModBlocks.POWER_NODE.get())
+        helper.setBlock(kilnPos, ModBlocks.KILN.get())
+
+        insertItem(helper, kilnPos, 0, ItemStack(ModItems.getMaterial(Materials.LEAD).get()))
+        insertItem(helper, kilnPos, 1, ItemStack(Items.SAND))
+        fillKilnTank(helper, kilnPos)
+
+        helper.runAfterDelay(10) {
+            val source = requireNotNull(helper.getBlockEntity(sourcePos) as? PowerMemberBE) { "source missing" }
+            val nodeA = nodeBE(helper, nodeAPos)
+            val nodeB = nodeBE(helper, nodeBPos)
+            val kiln = requireNotNull(helper.getBlockEntity(kilnPos) as? PowerMemberBE) { "kiln missing" }
+            listOf(source, nodeA, nodeB, kiln).forEach { PowerLinks.reset(helper.level, it) }
+
+            if (!nodeA.toggleLink(source) || !nodeA.toggleLink(nodeB) || !nodeB.toggleLink(kiln)) {
+                helper.fail("explicit wireless chain must link (source-A, A-B, B-kiln)")
+            }
+            if (nodeA.blockPos in nodeB.links == false) {
+                helper.fail("nodeB must hold the wireless link to nodeA, links=${nodeB.links}")
+            }
+        }
+
+        helper.succeedWhen {
+            // 远端窑炉只能经 A-B 无线一跳取电(source 与 kiln 不相邻、无直连)
+            val kiln = helper.getBlockEntity(kilnPos) as? KilnBE
+            if (countItem(helper, kilnPos, ModItems.getMaterial(Materials.METAGLASS).get()) < 1) {
+                helper.fail("kiln did not craft via the wireless node bridge")
+            }
+            if (kiln == null || kiln.supplyRatio < 1f) {
+                helper.fail("kiln must run at full speed via the wireless hop, ratio=${kiln?.supplyRatio}")
+            }
+        }
+    }
+
+    /** toggleLink 建链后拆链:一对节点显式连接再断开,链路对称消失、拓扑正确分裂。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun nodeToggleLinkConnectsAndSplits(helper: GameTestHelper) {
+        val nodeA = BlockPos(1, 1, 1)
+        val nodeB = BlockPos(2, 1, 1)
+        helper.setBlock(nodeB, ModBlocks.POWER_NODE.get())
+        helper.setBlock(nodeA, ModBlocks.POWER_NODE.get())
+
+        helper.runAfterDelay(5) {
+            val a = nodeBE(helper, nodeA)
+            val b = nodeBE(helper, nodeB)
+            // 相邻放置自动补链:此时 A-B 应已对称相连
+            if (!a.links.contains(b.blockPos) || !b.links.contains(a.blockPos)) {
+                helper.fail("adjacent auto-link must connect A-B symmetrically")
+            }
+            // toggle 第一次 = 拆链
+            if (!a.toggleLink(b)) {
+                helper.fail("toggleLink must break the existing link")
+            }
+            if (a.links.contains(b.blockPos) || b.links.contains(a.blockPos)) {
+                helper.fail("broken link must clear both sides")
+            }
+            // toggle 第二次 = 重新建链
+            if (!a.toggleLink(b) || !a.links.contains(b.blockPos) || !b.links.contains(a.blockPos)) {
+                helper.fail("toggleLink must re-create the link on second call")
+            }
+            helper.succeed()
+        }
+    }
+
+
+    /** 绝缘拒链:两节点间隔实心墙 → toggleLink 建链失败(隔墙不通电)。 */
+    @JvmStatic
+    @GameTest(template = "empty3x3", timeoutTicks = 100)
+    fun nodeLinkRejectedByInsulatingWall(helper: GameTestHelper) {
+        val aPos = BlockPos(0, 1, 1)
+        val bPos = BlockPos(2, 1, 1)
+        helper.setBlock(aPos, ModBlocks.POWER_NODE.get())
+        helper.setBlock(bPos, ModBlocks.POWER_NODE.get())
+        helper.setBlock(BlockPos(1, 1, 1), Blocks.STONE) // 中间隔墙
+
+        helper.runAfterDelay(5) {
+            val a = nodeBE(helper, aPos)
+            val b = nodeBE(helper, bPos)
+            val added = a.toggleLink(b)
+            val linked = a.links.contains(b.blockPos) || b.links.contains(a.blockPos)
+            if (added || linked) {
+                helper.fail("node links across an insulating wall must be rejected")
+            }
+            helper.succeed()
+        }
+    }
+
+    /** 上限:节点已有 3 条链路后,再连第 4 条被拒。先清空再逐个显式 toggle,排除自动补链干扰。 */
+    @JvmStatic
+    @GameTest(template = "empty4x4", timeoutTicks = 100)
+    fun nodeLinkRespectsMaxThree(helper: GameTestHelper) {
+        val centerPos = BlockPos(2, 1, 2)
+        val neighborPositions = listOf(BlockPos(0, 1, 2), BlockPos(2, 1, 0), BlockPos(2, 1, 3), BlockPos(1, 1, 2))
+        helper.setBlock(centerPos, ModBlocks.POWER_NODE.get())
+        neighborPositions.forEach { helper.setBlock(it, ModBlocks.POWER_NODE.get()) }
+
+        helper.runAfterDelay(5) {
+            val center = nodeBE(helper, centerPos)
+            val nodes = neighborPositions.map { nodeBE(helper, it) }
+            // 清空全部自动补链结果,从零显式建链
+            (nodes + center).forEach { PowerLinks.reset(helper.level, it) }
+            // 前 3 条应成功
+            for (i in 0..2) {
+                if (!center.toggleLink(nodes[i])) {
+                    helper.fail("link $i must succeed under max 3")
+                }
+            }
+            // 第 4 条必须被拒(中心已满)
+            val over = center.toggleLink(nodes[3])
+            if (over || center.links.size != PowerLinks.MAX_LINKS) {
+                helper.fail("4th link must be rejected at max 3, size=${center.links.size}")
+            }
+            helper.succeed()
         }
     }
 

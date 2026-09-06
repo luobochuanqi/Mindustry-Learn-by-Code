@@ -101,6 +101,12 @@ abstract class BlueprintAnchorBlock(properties: Properties) : BaseEntityBlock(pr
         for ((cellPos, memberState) in cells) {
             level.setBlockAndUpdate(cellPos, memberState)
         }
+        // 结构成型后钩子(无线链路 #69):子类(如 PowerNode)在此做放置后置动作(自动补链)
+        afterFormed(level, pos, state)
+    }
+
+    /** 结构成型后置钩子(#69 无线链路):空实现,子类如需放置自动补链则覆写。 */
+    protected open fun afterFormed(level: ServerLevel, pos: BlockPos, state: BlockState) {
     }
 
     /**

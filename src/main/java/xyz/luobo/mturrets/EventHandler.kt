@@ -69,8 +69,14 @@ object EventHandler {
             ) { context ->
                 xyz.luobo.mturrets.client.renderers.BulletRenderer(context)
             }
+            // PowerNode 空 BER:使节点 BE 进入 chunk compiler 的 renderableBlockEntities,
+            // 否则 `iterateVisibleBlockEntities` 枚举不到、激光渲染无从取数(TurretDebug #77 同款)。
+            event.registerBlockEntityRenderer(
+                xyz.luobo.mturrets.common.ModBlockEntityTypes.POWER_NODE.get()
+            ) { context ->
+                xyz.luobo.mturrets.client.power.PowerNodeRenderer(context)
+            }
         }
-
         @SubscribeEvent
         fun registerParticleProviders(event: RegisterParticleProvidersEvent) {
             // 子弹 FX 粒子工厂(#62):引擎按类型名自动建 SpriteSet,工厂只粒子化

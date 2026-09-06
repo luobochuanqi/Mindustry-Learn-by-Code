@@ -70,6 +70,9 @@
   "mturrets.command.debug.off": "Turret LOS debug rendering disabled",
   "mturrets.command.debug.on": "Turret LOS debug rendering enabled",
   "mturrets.message.blueprint_blocked": "Not enough space for structure",
+  "mturrets.message.link_cleared": "Node links cleared",
+  "mturrets.message.link_filled": "Node links auto-filled",
+  "mturrets.message.link_select": "Power node selected - click another power structure to link",
   "mturrets.subtitle.machine_hum": "Machine running",
   "mturrets.subtitle.shoot_duo": "Duo Turret",
   "mturrets.subtitle.shoot_scatter": "Scatter Turret"

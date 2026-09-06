@@ -21,3 +21,15 @@
 - **生产量 Int 精确**：#49 Power Source = 常量 333,320 FE/t（上游 `powerProduction = 1_000_000/60` 整型截断 16,666 × 20 FE）；#56 燃烧发电机 = 燃料计时生产（20 FE/t）。全链路沿用 `PowerGraph` 全 Int 账本，无浮点。
 - **窑炉本地储能 10,000 → 500 FE（一轮配方能耗）**：旧值是隐式大电池，违反本 ADR "节点零储能、电池储能" 模型（Mindustry 非缓冲建筑只存 `status×1`）。500 覆盖单轮，本地缓冲先于电网消耗，保留对外能量 capability 使外部 mod FE 仍可注入。
 - 多需求方公平分摊（原 `ponytail:` 上限）随第二个耗电结构落地时一并处理，不在本修订内。
+
+## 修订 2026-09（无线链路，issue #69）
+
+推翻 Considered Options 中"无线隔空连线无玩法意义,不做"的否决——Mindustry 原版 `PowerNode` 的无线链路是核心玩法（跨格导线拓扑），与"纯六面相邻连通"是两套层级。补上节点连接能力与激光可视化：
+
+- **链路 = 每构件持久化的对称端点集**：`PowerMemberBE.links: HashSet<BlockPos>`（两端各存对方锚点坐标），随节点 NBT 存档；链路不储能、不损耗、不改结算，只改**连通性**。
+- **BFS 并进链路拓扑**：`PowerGraphs.recolorAround` 的邻居枚举 = 六面相邻构件 + 链路远端；pos 自身作起点，使隔空连通正确并入、断链正确分裂。
+- **范围 6 格 / 每构件 3 条**（照搬 Mindustry `laserRange=6` / `maxNodes=3`）。`PowerLinks` 提供 `linkable`（范围/上限/未隔空视线）、`add`/`remove`/`toggle`/`reset`/`candidates`。
+- **绝缘 raycast**：两构件中心间 clip，被不透明可挡方块挡住即拒链（Mindustry `insulated`）——不做无视障碍的远程通电。
+- **交互（Mindustry `onConfigureBuildTapped`）**：空手右键节点 = 点选接线（第一击记待选、第二击切换）；再次点击同一节点 = 自动补满/清空；放置通过 `BlueprintAnchorBlock.afterFormed` 自动补链。走 `PlayerInteractEvent.RightClickBlock` 服务端事件，仅命中 PowerNode 格，不劫持窑炉/钻头空手取出。
+- **激光健康色**：`PowerNodeBE` 新增供电比例 `supplyRatioLaser`（服务端读 `PowerGraph.lastSupplyRatio`、随 update tag 同步）；客户端 `PowerLaserRenderer` 画静态激光，颜色供饱白 / 棕停金 `#fbd367` 渐变（对齐 Mindustry `setupColor`）。新增同步面 = 链路端点 + 供电比例；守 ADR-0005 面最小。
+- 节点渲染经**注册空 BER** 使 BE 进入 `renderableBlockEntities`（TurretDebug #77 同款结论：无 BER 的 BE 不可被 `iterateVisibleBlockEntities` 枚举）。

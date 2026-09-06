@@ -162,6 +162,9 @@ class ModLanguageProvider(output: PackOutput, locale: String) : LanguageProvider
         // 蓝图管线
         this.add("mturrets.message.blueprint_blocked", "Not enough space for structure")
 
+        this.add("mturrets.message.link_select", "Power node selected - click another power structure to link")
+        this.add("mturrets.message.link_cleared", "Node links cleared")
+        this.add("mturrets.message.link_filled", "Node links auto-filled")
         // Jade tooltips(与 zh_cn.json 手工维护的 key 一一对应)
         this.add("jade.mturrets.ammo", "Ammo: %s/%s")
         this.add("jade.mturrets.progress", "Progress: %s%%")
