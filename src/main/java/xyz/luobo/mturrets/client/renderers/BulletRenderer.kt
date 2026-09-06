@@ -126,9 +126,9 @@ class BulletRenderer(context: EntityRendererProvider.Context) :
             ResourceLocation.fromNamespaceAndPath(MTurrets.MOD_ID, "textures/entity/bullet-glow.png")
         /** 弹体画布补偿系数:贴图长轴占 52px 画布 28px;铜弹 bulletSize=0.5 → 可见长轴 ≈0.65 格。 */
         private const val SHELL_CANVAS_SCALE = 1.2f
-        /** 光晕画布 / 弹体画布:弹色外溢晕。 */
-        private const val GLOW_SCALE = 1.5f
-        /** 白热核心画布 / 弹体画布:加色饱和区。 */
-        private const val CORE_SCALE = 0.6f
+        /** 光晕画布 / 弹体画布:贴身弹色外晕(更大尺寸会把六角吞成光球,离线合成预览定稿)。 */
+        private const val GLOW_SCALE = 1.0f
+        /** 白热核心画布 / 弹体画布:加色饱和区,只冲亮中心、保留弹壳形状。 */
+        private const val CORE_SCALE = 0.35f
     }
 }
