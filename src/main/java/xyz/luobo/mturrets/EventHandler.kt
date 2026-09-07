@@ -43,6 +43,7 @@ object EventHandler {
             // 预注册 partial 模型:必须在首次资源重载烘焙之前(懒加载会错过 RegisterAdditional)
             xyz.luobo.mturrets.client.visual.DuoModels.preload()
             xyz.luobo.mturrets.client.visual.ScatterModels.preload()
+            xyz.luobo.mturrets.client.visual.DrillModels.preload()
             // Duo 动件 visual(ADR-0002/0005):Flywheel GPU 轨接管;visual 缺席时退回静态方块模型
             dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer.builder(
                 xyz.luobo.mturrets.common.ModBlockEntityTypes.DUO_BLOCK_ENTITY.get()
@@ -57,6 +58,14 @@ object EventHandler {
             )
                 .factory { ctx, be, pt ->
                     xyz.luobo.mturrets.client.visual.ScatterVisual(ctx, be, pt)
+                }
+                .apply()
+            // 钻头动件 visual(ADR-0011):静态 base + 自旋 rotator + 静止 top
+            dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer.builder(
+                xyz.luobo.mturrets.common.ModBlockEntityTypes.DRILL.get()
+            )
+                .factory { ctx, be, pt ->
+                    xyz.luobo.mturrets.client.visual.DrillVisual(ctx, be, pt)
                 }
                 .apply()
         }

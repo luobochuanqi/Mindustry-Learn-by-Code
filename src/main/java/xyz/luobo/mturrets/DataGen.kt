@@ -210,7 +210,9 @@ class ModItemModelProvider(output: PackOutput, existingFileHelper: ExistingFileH
         // 几何以原点格为角,缩放后自动居中)
         mapOf(
             "duo" to ("block/turret/duo_full" to 1),
-            "scatter" to ("block/turret/scatter_full" to 2)
+            "scatter" to ("block/turret/scatter_full" to 2),
+            // 钻头(ADR-0011):数据块侧为空,物品引用 full 整机(自旋扇叶在物品栏画成静态桨)
+            "mechanical_drill" to ("block/drill/mechanical_drill_full" to 2)
         ).forEach { (name, spec) ->
             val (model, footprint) = spec
             applyBlockDisplay(
@@ -289,25 +291,20 @@ class ModBlockStateProvider(output: PackOutput, existingFileHelper: ExistingFile
         this.simpleBlockWithItem(ModBlocks.ORE_COPPER.get(), this.models().cubeAll("ore_copper", this.modLoc("block/ore_copper")))
         this.simpleBlockWithItem(ModBlocks.ORE_LEAD.get(), this.models().cubeAll("ore_lead", this.modLoc("block/ore_lead")))
         this.simpleBlockWithItem(ModBlocks.ORE_COAL.get(), this.models().cubeAll("ore_coal", this.modLoc("block/ore_coal")))
-        // 钻头(#35):静态模型(ADR-0005 一期),锚点与成员格同外观;贴图预置 mechanical_drill*
-        this.simpleBlockWithItem(
-            ModBlocks.DRILL.get(),
-            this.models().cubeBottomTop(
-                "mechanical_drill",
-                this.modLoc("block/mechanical_drill"),
-                this.modLoc("block/mechanical_drill_top"),
-                this.modLoc("block/mechanical_drill_top")
-            )
-        )
-        this.simpleBlock(
-            ModBlocks.DRILL_STRUCTURAL.get(),
-            this.models().cubeBottomTop(
-                "mechanical_drill_structural",
-                this.modLoc("block/mechanical_drill"),
-                this.modLoc("block/mechanical_drill_top"),
-                this.modLoc("block/mechanical_drill_top")
-            )
-        )
+        // 钻头(ADR-0011):全模型资产架构,方块侧渲染为空(锚点 ENTITYBLOCK_ANIMATED、结构格 INVISIBLE),
+        // 几何由锚点 BE visual 承担(静态 base + 自旋 rotator + 静止 top);blockstate 只留 elementless particle 供粒子取色
+        val drillEmpty = this.models().getBuilder("block/drill/mechanical_drill_empty")
+            .texture("particle", this.modLoc("block/drill/mechanical_drill_parts"))
+        this.simpleBlock(ModBlocks.DRILL.get(), drillEmpty)
+        for (x in 0..2) for (y in 0..2) for (z in 0..2) {
+            // 27 个偏移编码变体仍需覆盖(INVISIBLE 不免 blockstate 查表),几何为空无 yaw
+            this.getVariantBuilder(ModBlocks.DRILL_STRUCTURAL.get())
+                .partialState()
+                .with(StructuralBlock.OFFSET_X, x)
+                .with(StructuralBlock.OFFSET_Y, y)
+                .with(StructuralBlock.OFFSET_Z, z)
+                .modelForState().modelFile(drillEmpty).addModel()
+        }
 
         // 全模型资产架构(#42):炮台锚点与成员格方块侧渲染为空(几何由锚点 BE visual 承担),
         // blockstate 只保留 elementless 的 particle 模型,供敲击/破坏粒子取色

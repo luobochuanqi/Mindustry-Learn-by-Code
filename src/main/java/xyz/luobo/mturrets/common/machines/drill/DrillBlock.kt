@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.entity.BlockEntity
 import net.minecraft.world.level.block.entity.BlockEntityTicker
 import net.minecraft.world.level.block.entity.BlockEntityType
 import net.minecraft.world.level.block.state.BlockState
+import net.minecraft.world.level.block.RenderShape
 import net.minecraft.world.phys.BlockHitResult
 import net.neoforged.neoforge.fluids.FluidUtil
 import net.neoforged.neoforge.items.ItemHandlerHelper
@@ -22,12 +23,16 @@ import xyz.luobo.mturrets.core.structure.Blueprint
 import xyz.luobo.mturrets.core.structure.BlueprintAnchorBlock
 
 /**
- * 机械钻头(蓝图 2×2,ADR-0003/0008):角锚点 +X/+Z 生长(#26 约定),3 成员格为钻头外观结构块。
+ * 机械钻头(蓝图 2×2,ADR-0003/0008/0011):角锚点 +X/+Z 生长(#26 约定),3 成员格为钻头外观结构块。
  * 交互无 GUI(#50):可倒出液体的手持物右键灌内罐(水加成);手持任意模组矿石右键循环切 Lock
  * (铜→铅→煤→无,与手持种类无关);空手右键取 Buffer;其余手持物拒绝。
  * 无配方输入 → 不放料通道(区别于窑炉,#35 spec 定案)。
+ * 全模型资产架构(ADR-0011):方块侧渲染为空,几何由锚点 BE visual 承担(静态 base + 自旋 rotator + 静止 top),
+ * 物品引用 full 模型。
  */
 class DrillBlock : BlueprintAnchorBlock(structureProperties()) {
+
+    override fun getRenderShape(state: BlockState): RenderShape = RenderShape.ENTITYBLOCK_ANIMATED
 
     override val blueprint: Blueprint = Blueprint(
         listOf(

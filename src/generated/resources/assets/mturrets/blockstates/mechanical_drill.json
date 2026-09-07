@@ -1,7 +1,7 @@
 {
   "variants": {
     "": {
-      "model": "mturrets:block/mechanical_drill"
+      "model": "mturrets:block/drill/mechanical_drill_empty"
     }
   }
 }

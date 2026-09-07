@@ -102,6 +102,18 @@ _Avoid_: 目标矿种, 模式
 钻头 4×4 柱扫描域内各矿种的剩余块数（未锁定 Jade 三行分矿种、锁定单行，≥阈值显 ∞）；Jade 读数。
 _Avoid_: 储量, 余量
 
+**Drill**:
+按 Lock 锁定矿种、在 4×4 柱扫描域内采集矿石作 Buffer 的机器；2×2 蓝图锚点，不占能耗。
+_Avoid_: 钻机, 矿机, 挖矿机
+
+**Rotator**:
+钻头自旋扇叶的视觉部件名；扇叶绕固定竖直轴转，转速恒定（Mindustry `rotateSpeed=2`）+ warmup 渐入。
+_Avoid_: 扇叶（中文）, rotor, spinner
+
+**Warmup**:
+钻头启停时扇叶由 0→1（或 1→0）的渐入渐出系数，决定视觉上转速的缓起缓停；0.015/tick 对齐上游。
+_Avoid_: 预热（那是概念）, ramping
+
 ### 电力 Power
 
 **Energy**:

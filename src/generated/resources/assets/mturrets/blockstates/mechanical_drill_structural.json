@@ -1,7 +1,85 @@
 {
   "variants": {
-    "": {
-      "model": "mturrets:block/mechanical_drill_structural"
+    "offset_x=0,offset_y=0,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=0,offset_y=0,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=0,offset_y=0,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=0,offset_y=1,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=0,offset_y=1,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=0,offset_y=1,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=0,offset_y=2,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=0,offset_y=2,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=0,offset_y=2,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=0,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=0,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=0,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=1,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=1,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=1,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=2,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=2,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=1,offset_y=2,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=0,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=0,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=0,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=1,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=1,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=1,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=2,offset_z=0": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=2,offset_z=1": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
+    },
+    "offset_x=2,offset_y=2,offset_z=2": {
+      "model": "mturrets:block/drill/mechanical_drill_empty"
     }
   }
 }
