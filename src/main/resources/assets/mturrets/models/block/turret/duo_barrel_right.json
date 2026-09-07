@@ -8,26 +8,47 @@
 	},
 	"elements": [
 		{
-			"from": [3, 7, 4],
-			"to": [7, 11, 14],
-			"rotation": {"angle": 0, "axis": "y", "origin": [5, 9, 5]},
+			"from": [2.41421, 6.58579, 4],
+			"to": [6.41421, 6.58579, 14],
+			"rotation": {"angle": 0, "axis": "z", "origin": [4.41421, 6.58579, 6]},
 			"faces": {
-				"north": {"uv": [4.5, 9, 5.5, 10], "texture": "#0"},
-				"east": {"uv": [8, 4.5, 10.5, 5.5], "texture": "#0"},
-				"south": {"uv": [3.5, 9, 4.5, 10], "texture": "#0"},
-				"west": {"uv": [8, 3.5, 10.5, 4.5], "texture": "#0"},
-				"up": {"uv": [8, 5.5, 9, 8], "texture": "#0"},
-				"down": {"uv": [8, 10.5, 9, 8], "texture": "#0"}
+				"north": {"uv": [0, 0, 1, 0], "texture": "#0"},
+				"east": {"uv": [0, 0, 2.5, 0], "texture": "#0"},
+				"south": {"uv": [0, 0, 1, 0], "texture": "#0"},
+				"west": {"uv": [0, 0, 2.5, 0], "texture": "#0"},
+				"up": {"uv": [7, 10, 6, 7.5], "texture": "#0"},
+				"down": {"uv": [8, 7.5, 7, 10], "texture": "#0"}
 			}
 		}
 	],
 	"groups": [
 		{
-			"name": "barrel_right",
+			"name": "barrel_left",
 			"origin": [0, 0, 0],
 			"scope": 0,
 			"color": 0,
+			"children": []
+		},
+		{
+			"name": "barrel_right",
+			"origin": [16, 0, 0],
+			"scope": 0,
+			"color": 0,
 			"children": [0]
+		},
+		{
+			"name": "head",
+			"origin": [0, 0, 0],
+			"scope": 0,
+			"color": 0,
+			"children": []
+		},
+		{
+			"name": "base",
+			"origin": [0, 0, 0],
+			"scope": 0,
+			"color": 0,
+			"children": []
 		}
 	]
 }
