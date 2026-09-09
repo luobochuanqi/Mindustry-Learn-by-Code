@@ -16,7 +16,7 @@
 
 ## 逻辑 tick 布局
 
-`MuMob` 用 `customServerAiStep()` 跑全部 steering（运动积分、索敌、武器更新）——服务端每 tick 跑、天然不进客户端 tick（Wither/Dragon/Shulker 同款 vanilla 缝）。`travel()` 仅服务端由自设 deltaMovement 走碰撞。
+`UnitMob` 用 `customServerAiStep()` 跑全部 steering(**不设 noAi**——LivingEntity.aiStep 仅 isEffectiveAi() 时调 serverAiStep→customServerAiStep,noAi=true 会连自定义 AI 一起关掉;正确做法 = 不注册任何 goal,空 goalSelector 空转)（运动积分、索敌、武器更新）——服务端每 tick 跑、天然不进客户端 tick（Wither/Dragon/Shulker 同款 vanilla 缝）。`travel()` 仅服务端由自设 deltaMovement 走碰撞。
 
 ## 高度/3D 平面化
 
@@ -51,7 +51,7 @@ research §1.2 声称"tick 类标量不缩放（Mindustry 与 MC 同为 20Hz）"
 | fire-rate | 3 shots | 3（点射不变） | 数值直搬 |
 | speed | 2.7 | **1.0125 ≈ 1.0** block/t | ×⅜ |
 | bullet speed | 2.5 | **0.9375** block/t | ×⅜（#76 已实证） |
-| hitSize | 9 px | **÷8 = 1.125 block** 半宽/≈2.25 直径 | 距离 ÷8 |
+| hitSize | 9 px | **÷8 = 1.125 block 全宽**(源码 HitboxComp.hitbox: setCentered(x,y,hitSize,hitSize),是边长非半径) | 距离 ÷8 |
 | circleTargetRadius | 60 | **÷8 = 7.5 block** | 距离 ÷8 |
 | weapon range | 80 px | **10 block** | ÷8 |
 | unit range | 76 px | **9.5 block** | ÷8 |
